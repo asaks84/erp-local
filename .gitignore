@@ -1,0 +1,36 @@
+# Laravel
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+.phpactor.json
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+
+# Banco com dados de clientes (LGPD) e chaves
+*.sql.gz
+*dump*.sql
+*backup*.sql
+localm43_senna*.sql
+*.pem
+*.p12
+*.key
+*.crt
+
+# Editor e sistema
+/.idea/
+/.fleet/
+/.zed/
+Thumbs.db
+desktop.ini
+.DS_Store
