@@ -217,3 +217,7 @@
 
 // aparece só no celular (no computador a mesma coisa já está no topo; ex.: busca do Início)
 @media (min-width: 901px) { .so-celular { display: none !important; } }
+
+// anotações do Início: o texto em destaque, maior que o campo de adicionar
+.anotacoes .list-group-item { font-size: 1.05rem; padding-top: .75rem; padding-bottom: .75rem; }
+.anotacoes .form-check-input { width: 1.2em; height: 1.2em; }
