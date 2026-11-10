@@ -22,7 +22,7 @@ Durante as etapas 1 a 5, o sistema atual continua sendo o oficial e só recebe c
 | Etapa | Situação |
 |---|---|
 | 1. Fundação | pronta para conferência (09/11/2026) |
-| 2. Cadastros e configurações | não iniciada |
+| 2. Cadastros e configurações | pronta para conferência (10/11/2026) |
 | 3. Dinheiro | não iniciada |
 | 4. Operação na gestão | não iniciada |
 | 5. Paralelo e virada | não iniciada |

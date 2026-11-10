@@ -9,6 +9,7 @@ use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Support\EmpresaAtual;
 use App\Support\Legado;
+use App\Console\Commands\Concerns\ImportaCadastros;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -18,11 +19,15 @@ use Illuminate\Support\Facades\DB;
  * Até a virada o sistema atual é o oficial, então ele sempre sobrescreve o que veio dele.
  *
  * Etapa 1: níveis de acesso, usuários e registro de atividades.
- * As próximas etapas acrescentam clientes, veículos, preços, ordens e pagamentos.
+ * Etapa 2: tipos, tabelas de estadia, serviços, clientes, veículos, mensalidades, convênios,
+ * fila do cadastro público e pagadores vinculados (Concerns\ImportaCadastros).
+ * A etapa 3 acrescenta ordens de serviço e pagamentos.
  * Ver docs/04-migracao-de-dados.md.
  */
 class LegadoImportar extends Command
 {
+    use ImportaCadastros;
+
     protected $signature = 'legado:importar
         {--empresa= : Nome da empresa (só na primeira importação)}
         {--unidade=Principal : Nome da unidade principal (só na primeira importação)}
@@ -49,6 +54,7 @@ class LegadoImportar extends Command
                 if (! $this->option('sem-atividades')) {
                     $this->atividades($legado, $usuarios);
                 }
+                $this->importarCadastros($legado);
             });
         });
 
@@ -96,7 +102,7 @@ class LegadoImportar extends Command
             foreach ($legado->conexao()->table($tabela)->orderBy('niv_id')->get() as $n) {
                 $antigos[] = [
                     'legado_id' => (int) $n->niv_id,
-                    'nome' => trim($n->niv_nome),
+                    'nome' => self::consertarAcentos(trim($n->niv_nome)),
                     'fixo' => (bool) $n->niv_fixo,
                     'permissoes' => array_values(array_intersect(array_filter(array_map('trim', explode(',', (string) $n->niv_permissoes))), $catalogo)),
                 ];
@@ -151,7 +157,7 @@ class LegadoImportar extends Command
             $novo = ! $usuario;
             $usuario ??= new Usuario;
             $usuario->fill([
-                'nome' => trim($u->usr_full_name),
+                'nome' => self::consertarAcentos(trim($u->usr_full_name)),
                 'login' => $login,
                 'nivel_id' => $nivelId,
                 'ativo' => true,

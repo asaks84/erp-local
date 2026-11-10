@@ -1,9 +1,82 @@
-import { Link, useForm } from '@inertiajs/react'
+import { Link, router, useForm } from '@inertiajs/react'
+import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
+import CampoValor from '../../Components/CampoValor'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import Icone from '../../Components/Icone'
+import { cnpj, telefone } from '../../lib/mascaras'
 
-export default function EmpresaEdit({ empresa, unidades }) {
+function PadroesMensalidade({ config }) {
+    const { data, setData, put, processing, errors } = useForm({ ...config, periodos: config.periodos })
+    return (
+        <form className="card mt-4" noValidate onSubmit={(e) => { e.preventDefault(); put('/empresa/config', { preserveScroll: true }) }}>
+            <div className="card-header">Padrões de mensalidade</div>
+            <div className="card-body">
+                <Campo rotulo="Dia de vencimento padrão (cliente novo)" type="number" min="1" max="31" value={data.dia_vencimento_padrao} erro={errors.dia_vencimento_padrao}
+                    onChange={(e) => setData('dia_vencimento_padrao', e.target.value)} />
+                <label className="form-label fw-semibold">Períodos de mensalidade</label>
+                {data.periodos.map((p, i) => (
+                    <div className="input-group mb-2" key={i}>
+                        <input className={`form-control${errors[`periodos.${i}`] ? ' is-invalid' : ''}`} value={p} maxLength={30} aria-label={`Período ${i + 1}`}
+                            onChange={(e) => setData('periodos', data.periodos.map((x, j) => (j === i ? e.target.value : x)))} />
+                        {data.periodos.length > 1 && <button type="button" className="btn btn-outline-secondary" onClick={() => setData('periodos', data.periodos.filter((_, j) => j !== i))}>Tirar</button>}
+                    </div>
+                ))}
+                <button type="button" className="btn btn-sm btn-outline-secondary mb-3" onClick={() => setData('periodos', [...data.periodos, ''])}>+ Período</button>
+                <div className="row g-2">
+                    <div className="col-5">
+                        <Campo as="select" rotulo="Taxa de pausa" value={data.pausa_taxa_tipo} onChange={(e) => setData('pausa_taxa_tipo', e.target.value)}>
+                            <option value="valor">Valor fixo</option>
+                            <option value="pct">% da mensalidade</option>
+                        </Campo>
+                    </div>
+                    <div className="col-7">
+                        <CampoValor rotulo="Taxa padrão por mês" prefixo={data.pausa_taxa_tipo === 'pct' ? '%' : 'R$'} value={data.pausa_taxa_valor} erro={errors.pausa_taxa_valor}
+                            onChange={(v) => setData('pausa_taxa_valor', v)} ajuda="Sugestão ao pausar; 0 = pausa grátis." />
+                    </div>
+                </div>
+            </div>
+            <div className="card-footer bg-transparent d-flex justify-content-end p-3">
+                <button type="submit" className="btn btn-primary" disabled={processing}>Salvar</button>
+            </div>
+        </form>
+    )
+}
+
+function LinkCadastro({ link }) {
+    const [qr, setQr] = useState(null)
+    useEffect(() => { if (link) QRCode.toDataURL(link, { width: 480, margin: 1 }).then(setQr) }, [link])
+    return (
+        <div className="card mt-4">
+            <div className="card-header">Cadastro público (QR Code do balcão)</div>
+            <div className="card-body">
+                {link ? (
+                    <>
+                        <p className="mb-2">O cliente escaneia, preenche e o cadastro cai na <Link href="/pendentes">Fila de espera</Link>.</p>
+                        <div className="d-flex flex-wrap gap-3 align-items-center">
+                            {qr && <img src={qr} alt="QR Code do cadastro" width="160" height="160" style={{ background: '#fff', padding: 8, borderRadius: 8 }} />}
+                            <div className="text-break small">
+                                <a href={link} target="_blank" rel="noreferrer">{link}</a>
+                                <div className="mt-2 d-flex gap-2 flex-wrap">
+                                    {qr && <a className="btn btn-sm btn-outline-secondary" href={qr} download="qrcode-cadastro.png">Baixar QR Code</a>}
+                                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => router.post('/empresa/link-cadastro', {}, { preserveScroll: true })}>Trocar link</button>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <p>O link de cadastro ainda não foi criado.</p>
+                        <button type="button" className="btn btn-primary" onClick={() => router.post('/empresa/link-cadastro', {}, { preserveScroll: true })}>Criar link e QR Code</button>
+                    </>
+                )}
+            </div>
+        </div>
+    )
+}
+
+export default function EmpresaEdit({ empresa, unidades, config, link_cadastro }) {
     const { data, setData, put, processing, errors } = useForm({
         nome: empresa.nome || '',
         razao_social: empresa.razao_social || '',
@@ -29,11 +102,11 @@ export default function EmpresaEdit({ empresa, unidades }) {
                                 onChange={(e) => setData('nome', e.target.value)} />
                             <Campo rotulo="Razão social" value={data.razao_social} erro={errors.razao_social} maxLength={120}
                                 onChange={(e) => setData('razao_social', e.target.value)} />
-                            <Campo rotulo="CNPJ ou CPF" value={data.documento} erro={errors.documento} maxLength={18} inputMode="numeric"
+                            <Campo rotulo="CNPJ" value={cnpj(data.documento)} erro={errors.documento} inputMode="numeric"
                                 onChange={(e) => setData('documento', e.target.value)} />
                             <div className="row g-2">
                                 <div className="col-sm-6">
-                                    <Campo rotulo="Telefone" value={data.telefone} erro={errors.telefone} maxLength={20} inputMode="tel"
+                                    <Campo rotulo="Telefone" value={telefone(data.telefone)} erro={errors.telefone} inputMode="tel"
                                         onChange={(e) => setData('telefone', e.target.value)} />
                                 </div>
                                 <div className="col-sm-6">
@@ -46,6 +119,7 @@ export default function EmpresaEdit({ empresa, unidades }) {
                             <button type="submit" className="btn btn-primary" disabled={processing}>Salvar</button>
                         </div>
                     </form>
+                    <PadroesMensalidade config={config} />
                 </div>
 
                 <div className="col-lg-6">
@@ -76,6 +150,7 @@ export default function EmpresaEdit({ empresa, unidades }) {
                             </table>
                         </div>
                     </div>
+                    <LinkCadastro link={link_cadastro} />
                 </div>
             </div>
         </div>

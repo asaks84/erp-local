@@ -6,7 +6,7 @@ Novo sistema de gestão do **Local Estacionamento** (Santos/SP): mensalistas, es
 
 ## Situação
 
-Etapa 1 (fundação) pronta para conferência: login, níveis de acesso, usuários, empresa e unidades, registro de atividades e importação do sistema atual. Ver [docs/10-plano-de-etapas.md](docs/10-plano-de-etapas.md).
+Etapas 1 (fundação) e 2 (cadastros e configurações) prontas para conferência: login, níveis, usuários, empresa e unidades, clientes, veículos, mensalidades, fila de espera e cadastro público, tabelas de estadia, serviços, convênios e a importação desses dados do sistema atual. Ver [docs/10-plano-de-etapas.md](docs/10-plano-de-etapas.md).
 
 O sistema atual (CodeIgniter, pasta `senna`) continua em produção até a virada e só recebe correções.
 

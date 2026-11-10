@@ -8,10 +8,11 @@ const nomeSistema = document.querySelector('meta[name="sistema"]')?.content || '
 
 createInertiaApp({
     title: (titulo) => (titulo ? `${titulo} · ${nomeSistema}` : nomeSistema),
-    resolve: (nome) => {
-        const paginas = import.meta.glob('./Pages/**/*.jsx', { eager: true })
-        const pagina = paginas[`./Pages/${nome}.jsx`]
-        if (!pagina) throw new Error(`Tela não encontrada: ${nome}`)
+    // cada tela é baixada só quando abre (o sistema fica leve mesmo com muitos módulos)
+    resolve: async (nome) => {
+        const paginas = import.meta.glob('./Pages/**/*.jsx')
+        if (!paginas[`./Pages/${nome}.jsx`]) throw new Error(`Tela não encontrada: ${nome}`)
+        const pagina = await paginas[`./Pages/${nome}.jsx`]()
         // toda tela usa o layout do sistema, menos as que dizem layout = null (login)
         if (pagina.default.layout === undefined) {
             pagina.default.layout = (conteudo) => <AppLayout>{conteudo}</AppLayout>

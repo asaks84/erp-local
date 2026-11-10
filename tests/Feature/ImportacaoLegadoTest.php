@@ -9,27 +9,20 @@ use App\Models\Usuario;
 use App\Support\EmpresaAtual;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\BancoLegado;
 use Tests\TestCase;
 
 /** Importação do sistema atual, com um banco de teste no formato dele (tabelas em MAIÚSCULAS). */
 class ImportacaoLegadoTest extends TestCase
 {
+    use BancoLegado;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->criarBancoLegado();
         $db = DB::connection('legado');
-        foreach (['USUARIOS', 'NIVEIS_ACESSO', 'LOG_ATIVIDADES', 'CLIENTES', 'VEICULOS', 'ORDEM_SERVICOS'] as $t) {
-            $db->statement("DROP TABLE IF EXISTS `{$t}`");
-        }
-        $db->statement('CREATE TABLE USUARIOS (usr_id SMALLINT AUTO_INCREMENT PRIMARY KEY, usr_full_name VARCHAR(40), usr_nickname VARCHAR(25), usr_password VARCHAR(255), is_online CHAR(1) DEFAULT 0, usr_admin TINYINT(1) DEFAULT 0, usr_niv_id INT NULL)');
-        $db->statement('CREATE TABLE NIVEIS_ACESSO (niv_id INT AUTO_INCREMENT PRIMARY KEY, niv_nome VARCHAR(40), niv_permissoes TEXT, niv_fixo TINYINT(1) DEFAULT 0)');
-        $db->statement('CREATE TABLE LOG_ATIVIDADES (log_id INT AUTO_INCREMENT PRIMARY KEY, log_quando DATETIME, log_usuario VARCHAR(25), log_ip VARCHAR(45), log_acao VARCHAR(40), log_detalhe VARCHAR(255))');
-        $db->statement('CREATE TABLE CLIENTES (cli_id SMALLINT PRIMARY KEY, cli_nome VARCHAR(75))');
-        $db->statement('CREATE TABLE VEICULOS (vcl_id SMALLINT PRIMARY KEY, vcl_placa VARCHAR(11))');
-        $db->statement('CREATE TABLE ORDEM_SERVICOS (ord_id INT PRIMARY KEY, ord_cli_id INT, ord_srv_codigo VARCHAR(5), ord_valor DECIMAL(6,2), ord_dt_pagamento DATE NULL)');
-
         $db->table('NIVEIS_ACESSO')->insert([
             ['niv_id' => 1, 'niv_nome' => 'Administrador', 'niv_permissoes' => '', 'niv_fixo' => 1],
             ['niv_id' => 2, 'niv_nome' => 'Gerente', 'niv_permissoes' => 'desconto,aprovar,servidor_antigo', 'niv_fixo' => 0],

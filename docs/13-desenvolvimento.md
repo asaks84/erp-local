@@ -19,11 +19,13 @@ Como o código da etapa 1 em diante está montado e as regras que cada tela nova
 
 ```
 app/
-  Models/                 Empresa, Unidade, Nivel, Usuario, LogAtividade
+  Models/                 Empresa, Unidade, Nivel, Usuario, LogAtividade, Cliente, Veiculo, MensalidadeContrato, MensalidadePausa,
+                          TipoVeiculo, Tarifa (+ faixas, pacotes), Servico, ServicoPreco, Convenio, CadastroPendente, PagadorVinculado
   Models/Concerns/        PertenceAEmpresa (filtro por empresa) e EmpresaScope
   Http/Controllers/       uma classe por tela (Usuario, Nivel, Empresa, Unidade, Atividade, Auth/Login)
   Http/Middleware/        Permissao, PermissaoDeclarada, Publica, HandleInertiaRequests, CabecalhosSeguranca
-  Support/                EmpresaAtual, Atividades (registro), Senha (bcrypt + SHA1 antigo), Legado (banco atual)
+  Servicos/               regras de negócio num lugar só: Tarifador (estadia), Precos (preço vigente), Contratos (mensalidade)
+  Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato
   Auth/UsuarioProvider    busca o usuário do login sem o filtro de empresa
   Console/Commands/       erp:instalar, legado:importar, legado:comparar
 config/erp.php            inatividade, faixas de IP do Cloudflare
@@ -34,8 +36,9 @@ resources/js/
   app.jsx                 início das telas (layout padrão para todas, menos o login)
   Layouts/AppLayout.jsx   menu lateral, menu de baixo no celular, tema, aviso de inatividade
   Pages/                  uma pasta por módulo (Usuarios/Index.jsx, Usuarios/Form.jsx...)
-  Components/             Campo (rótulo dentro do campo), Icone, Avisos, TituloPagina, Confirmar
-  lib/                    formato.js (datas e R$ em pt-BR), menu.js, permissoes.js, inatividade.js
+  Components/             Campo, CampoData (dd/mm/aaaa), CampoValor (R$ 1.234,56), BuscaCliente, Janela, Confirmar,
+                          CamposCliente, CamposVeiculo, CamposMensalidade, Paginacao, Icone, Avisos, TituloPagina
+  lib/                    formato.js (datas e R$ em pt-BR), mascaras.js (CPF, telefone, CEP, placa), menu.js, permissoes.js, inatividade.js
 resources/scss/           app.scss (cores, fonte, cantos, tema escuro) e _layout.scss
 tests/Feature/            testes automáticos
 ```
@@ -47,7 +50,8 @@ tests/Feature/            testes automáticos
 3. **Validação com `Rule::exists`/`Rule::unique` filtrando `empresa_id`** quando o campo aponta para outra tabela de negócio (o filtro global não vale dentro da regra de validação).
 4. **Registrar** ações sensíveis com `Atividades::registrar('acao', 'detalhe')`.
 5. **Item de menu** em `resources/js/lib/menu.js`, com a mesma permissão da rota (o menu só esconde; quem bloqueia é o servidor).
-6. **Textos em português**, datas e valores sempre por `lib/formato.js` (`data()`, `dataHora()`, `mesAno()`, `moeda()`), nunca por `toLocaleString`.
+6. **Textos em português**, datas e valores sempre por `lib/formato.js` (`data()`, `dataHora()`, `mesAno()`, `moeda()`), nunca por `toLocaleString`. Campos de data com `CampoData` e de valor com `CampoValor` (nunca o campo de data do navegador).
+9. **Preço e tarifa** sempre pelos serviços `Precos` e `Tarifador` (nunca recalcular na tela ou no controlador).
 7. **Colunas de data** do ERP se chamam `criado_em` e `atualizado_em` (base `App\Models\Modelo`).
 8. **Teste** para cada regra nova; para dinheiro, obrigatório.
 
@@ -67,7 +71,8 @@ tests/Feature/            testes automáticos
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 43 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, importação).
+- `php artisan test` roda todos. Hoje: 86 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, importação).
+- Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos
 

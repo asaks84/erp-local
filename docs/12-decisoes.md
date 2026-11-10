@@ -6,6 +6,14 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 10/11/2026 | Cliente importado mantém o **mesmo código** do sistema atual; os novos continuam a numeração | É como a equipe conhece e busca o cliente |
+| 10/11/2026 | "Remover" cliente ou veículo = desativar (encerra a mensalidade no dia, guarda histórico, pode reativar). Placa só não se repete entre veículos ativos | A partir da etapa 3 há dinheiro ligado ao cliente; apagar quebraria o histórico |
+| 10/11/2026 | Mensalidade é um contrato por veículo; reajuste = nova versão a partir de uma data; encerramento agendado = data de fim no contrato; pausa = meses inteiros com taxa (valor ou %) | Decisões do comparativo (vigência, pausa cobrada, cancelamento agendado) aplicadas |
+| 10/11/2026 | Períodos de mensalidade (Diurno, Noturno, 24 horas), dia de vencimento padrão e taxa de pausa padrão são configurações da empresa | Nada de texto comercial fixo no código |
+| 10/11/2026 | Cadastro público pelo endereço `/cadastro/<código>` (código gerado na tela da empresa, com QR Code); trocar o código invalida o QR antigo. Aprovado ou recusado, o cadastro sai da fila | Preparado para várias empresas; LGPD (não guardar dados de quem não virou cliente) |
+| 10/11/2026 | CPF/CNPJ conferido pelos dígitos verificadores nos cadastros novos; os importados entram como estão | Evitar erro de digitação sem barrar os dados antigos |
+| 10/11/2026 | Preços e tabelas importados valem "desde sempre" (01/01/2000); a partir daí, cada reajuste é uma versão com data | O sistema atual não tem vigência |
+| 10/11/2026 | A primeira cobrança (aprovar cadastro ou adicionar veículo) e a geração das mensalidades entram na etapa 3, junto com as ordens de serviço | É dinheiro: fica no mesmo pacote das cobranças e da baixa |
 | 09/11/2026 | Versões da etapa 1: Laravel 13, Inertia 3, React 19, Bootstrap 5.3, Vite 8; fonte Inter servida pelo próprio sistema | Versões atuais; sem Google Fonts a CSP fica mais simples e as telas não dependem de site externo |
 | 09/11/2026 | Login único no sistema todo (não por empresa) | O usuário entra sem escolher empresa; no SaaS, se precisar, a empresa vem pelo endereço (subdomínio) |
 | 09/11/2026 | Usuário não é excluído, é desativado | Mantém o histórico do registro de atividades e, nas próximas etapas, de quem lançou cada dinheiro |

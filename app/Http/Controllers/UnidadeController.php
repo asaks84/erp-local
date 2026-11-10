@@ -56,12 +56,14 @@ class UnidadeController extends Controller
 
     private function validar(Request $request, ?Unidade $unidade = null): array
     {
+        $request->merge(['telefone' => preg_replace('/\D/', '', (string) $request->input('telefone')) ?: null]);
+
         return $request->validate([
             'nome' => ['required', 'string', 'max:60', Rule::unique('unidades')
                 ->where('empresa_id', app(EmpresaAtual::class)->id())
                 ->ignore($unidade?->id)],
             'endereco' => ['nullable', 'string', 'max:160'],
-            'telefone' => ['nullable', 'string', 'max:20'],
+            'telefone' => ['nullable', 'string', 'min:10', 'max:11'],
             'ativa' => ['required', 'boolean'],
         ]);
     }

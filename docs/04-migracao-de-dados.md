@@ -33,8 +33,8 @@ Todos os dados atuais passam para o banco novo por um script de migração que r
 | Etapa | O que a importação traz |
 |---|---|
 | 1 (pronta) | Empresa e unidade principal (na primeira vez), níveis de acesso (permissões que não existem mais são descartadas), usuários com a senha atual, registro de atividades |
-| 2 | Clientes, veículos, contratos de mensalidade, preços, serviços, convênios, fila de cadastro |
-| 3 | Ordens de serviço, pagamentos, extrato importado, pagadores vinculados |
+| 2 (pronta) | Tipos de veículo, tabelas de estadia (faixas, pacotes, tipos), serviços com adicionais e preços, clientes (endereço e telefone juntos, mesmo código), veículos (placa improvisada vira sem placa), mensalidades (ligadas pelo id do veículo; início = primeira mensalidade gerada), convênios, fila de espera, pagadores vinculados. Acentos gravados duas vezes no sistema atual são corrigidos |
+| 3 | Ordens de serviço, pagamentos, extrato importado |
 
 ## Cuidados
 

@@ -1,6 +1,7 @@
 import { Link, useForm } from '@inertiajs/react'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
+import { telefone } from '../../lib/mascaras'
 
 export default function UnidadeForm({ unidade }) {
     const nova = !unidade
@@ -26,7 +27,7 @@ export default function UnidadeForm({ unidade }) {
                         onChange={(e) => setData('nome', e.target.value)} />
                     <Campo rotulo="Endereço" value={data.endereco} erro={errors.endereco} maxLength={160}
                         onChange={(e) => setData('endereco', e.target.value)} />
-                    <Campo rotulo="Telefone" value={data.telefone} erro={errors.telefone} maxLength={20} inputMode="tel"
+                    <Campo rotulo="Telefone" value={telefone(data.telefone)} erro={errors.telefone} inputMode="tel"
                         onChange={(e) => setData('telefone', e.target.value)} />
                     <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" role="switch" id="ativa"

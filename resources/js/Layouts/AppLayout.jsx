@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 import Icone from '../Components/Icone'
 import Avisos from '../Components/Avisos'
+import BuscaCliente from '../Components/BuscaCliente'
 import { MENU, itemAceso } from '../lib/menu'
 import { usePode } from '../lib/permissoes'
 import { dataExtensa, iniciais } from '../lib/formato'
@@ -12,7 +13,8 @@ function guardar(chave, valor) {
 }
 
 export default function AppLayout({ children }) {
-    const { auth, empresa } = usePage().props
+    const { auth, empresa, fila } = usePage().props
+    const [buscaAberta, setBuscaAberta] = useState(false)
     const pagina = usePage()
     const pode = usePode()
     const [menuAberto, setMenuAberto] = useState(false)
@@ -28,7 +30,10 @@ export default function AppLayout({ children }) {
     const maisAceso = aceso && !rapidos.some((it) => it.href === aceso)
 
     // fecha o menu do celular ao trocar de página
-    useEffect(() => router.on('navigate', () => setMenuAberto(false)), [])
+    useEffect(() => router.on('navigate', () => { setMenuAberto(false); setBuscaAberta(false) }), [])
+    useEffect(() => {
+        document.documentElement.classList.toggle('app-busca-aberta', buscaAberta)
+    }, [buscaAberta])
     useEffect(() => {
         document.documentElement.classList.toggle('app-menu-aberto', menuAberto)
     }, [menuAberto])
@@ -75,6 +80,7 @@ export default function AppLayout({ children }) {
                                     >
                                         <Icone nome={it.icone} />
                                         <span className="app-txt">{it.rotulo}</span>
+                                        {it.contador === 'fila' && fila > 0 && <span className="app-badge" aria-label={`${fila} na fila`}>{fila}</span>}
                                     </Link>
                                 ))}
                             </div>
@@ -111,6 +117,7 @@ export default function AppLayout({ children }) {
                 <button type="button" className={maisAceso ? 'ativo' : undefined} onClick={() => setMenuAberto(true)} aria-expanded={menuAberto}>
                     <Icone nome="menu" tamanho={22} />
                     Mais
+                    {fila > 0 && <span className="app-badge">{fila}</span>}
                 </button>
             </nav>
 
@@ -120,8 +127,12 @@ export default function AppLayout({ children }) {
                         <img className="logo-claro" src="/imagens/logo-local.png" alt={empresa?.nome} width="67" height="30" />
                         <img className="logo-escuro" src="/imagens/logo-local-escuro.png" alt={empresa?.nome} width="67" height="30" />
                     </Link>
+                    <BuscaCliente compacta autoFocus={buscaAberta} key={buscaAberta ? 'aberta' : 'fechada'} />
                     <div className="app-espaco" />
                     <span className="app-data">{dataExtensa(auth.agora)}</span>
+                    <button type="button" className="app-icone-btn app-busca-btn" onClick={() => setBuscaAberta((b) => !b)} aria-label="Buscar cliente">
+                        <Icone nome="busca" tamanho={20} />
+                    </button>
                     <button type="button" className="app-icone-btn app-tema" onClick={alternarTema} aria-label="Alternar modo claro / escuro" title="Modo claro / escuro">
                         <Icone nome="lua" tamanho={20} />
                         <Icone nome="sol" tamanho={20} />

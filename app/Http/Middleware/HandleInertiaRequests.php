@@ -31,6 +31,8 @@ class HandleInertiaRequests extends Middleware
                 'inatividade_minutos' => config('erp.inatividade_minutos'),
                 'agora' => now()->format('Y-m-d H:i:s'),
             ] : null,
+            // cadastros esperando aprovação (número no menu)
+            'fila' => fn () => $usuario?->pode('aprovar') ? \App\Models\CadastroPendente::count() : 0,
             'flash' => fn () => [
                 'sucesso' => $request->session()->get('sucesso'),
                 'erro' => $request->session()->get('erro'),

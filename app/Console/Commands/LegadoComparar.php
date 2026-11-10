@@ -2,7 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Models\CadastroPendente;
+use App\Models\Cliente;
+use App\Models\Convenio;
 use App\Models\Empresa;
+use App\Models\MensalidadeContrato;
+use App\Models\PagadorVinculado;
+use App\Models\Servico;
+use App\Models\Tarifa;
+use App\Models\TipoVeiculo;
+use App\Models\Veiculo;
 use App\Models\LogAtividade;
 use App\Models\Nivel;
 use App\Models\Usuario;
@@ -71,11 +80,33 @@ class LegadoComparar extends Command
             $linhas[] = ['Registro de atividades', $log, $n = LogAtividade::whereNotNull('legado_id')->count(), $igual($log, $n)];
         }
 
-        // base para as próximas etapas (ainda não migrado)
-        $falta = 'etapa 2';
-        $linhas[] = ['Clientes', $legado->contar('CLIENTES'), '—', $falta];
-        $linhas[] = ['Veículos', $legado->contar('VEICULOS'), '—', $falta];
+        // migrado na etapa 2
+        $linhas[] = ['Tipos de veículo', $x = $legado->contar('VEICULOS_TIPO'), $n = TipoVeiculo::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        if ($legado->tabela('TARIFAS')) {
+            $linhas[] = ['Tabelas de estadia', $x = $legado->contar('TARIFAS'), $n = Tarifa::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        }
+        $srv = $legado->exige('SERVICOS');
+        $x = (int) $db->selectOne("SELECT COUNT(*) n FROM `{$srv}` WHERE srv_papel <> 'sistema' AND srv_codigo NOT IN ('MEN','EST','CDT','DBT')")->n;
+        $linhas[] = ['Serviços', $x, $n = Servico::whereNotNull('legado_codigo')->count(), $igual($x, $n)];
+        $linhas[] = ['Clientes', $x = $legado->contar('CLIENTES'), $n = Cliente::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        $linhas[] = ['Veículos', $x = $legado->contar('VEICULOS'), $n = Veiculo::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        $vm = $legado->exige('VEICULOS_MENSALISTA');
+        $vc = $legado->exige('VEICULOS');
+        $mens = $db->selectOne("SELECT COUNT(*) n, COALESCE(SUM(m.vclms_mensalidade),0) total FROM `{$vm}` m JOIN `{$vc}` v ON v.vcl_placa = m.vclms_vcl_placa WHERE m.vclms_mensalidade > 0");
+        $ativos = MensalidadeContrato::whereNotNull('legado_id')->ativos()->get();
+        $linhas[] = ['Mensalistas (veículos)', (int) $mens->n, $ativos->count(), $igual((int) $mens->n, $ativos->count())];
+        $linhas[] = ['Soma das mensalidades (R$)', $this->moeda($mens->total), $this->moeda($ativos->sum('valor')), $igual($this->moeda($mens->total), $this->moeda($ativos->sum('valor')))];
+        if ($legado->tabela('CONVENIOS')) {
+            $linhas[] = ['Convênios', $x = $legado->contar('CONVENIOS'), $n = Convenio::count(), $igual($x, $n)];
+        }
+        if ($legado->tabela('CADASTROS_PENDENTES')) {
+            $linhas[] = ['Fila de espera', $x = $legado->contar('CADASTROS_PENDENTES'), $n = CadastroPendente::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        }
+        if ($legado->tabela('PAGADORES_VINCULADOS')) {
+            $linhas[] = ['Pagadores vinculados', $x = $legado->contar('PAGADORES_VINCULADOS'), $n = PagadorVinculado::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        }
 
+        // base para a próxima etapa (ainda não migrado)
         $ordens = $legado->exige('ORDEM_SERVICOS');
         $aberto = $db->select("SELECT ord_cli_id, SUM(CASE WHEN ord_srv_codigo = 'CDT' THEN -ord_valor ELSE ord_valor END) total
             FROM `{$ordens}` WHERE ord_dt_pagamento IS NULL GROUP BY ord_cli_id HAVING total > 0");

@@ -116,9 +116,13 @@ class UsuariosNiveisTest extends TestCase
     public function test_salva_dados_da_empresa(): void
     {
         $a = $this->criarEmpresa('a');
-        $this->actingAs($a->admin)->put('/empresa', ['nome' => 'Local Estacionamento', 'documento' => '12.345.678/0001-90', 'email' => 'x@y.com'])
+        $this->actingAs($a->admin)->put('/empresa', ['nome' => 'Local Estacionamento', 'documento' => '11.222.333/0001-81', 'telefone' => '(13) 3222-1111', 'email' => 'x@y.com'])
             ->assertSessionHas('sucesso');
         $this->assertSame('Local Estacionamento', $a->empresa->fresh()->nome);
+        $this->assertSame('11222333000181', $a->empresa->fresh()->documento);
+        $this->assertSame('1332221111', $a->empresa->fresh()->telefone);
+        $this->actingAs($a->admin)->put('/empresa', ['nome' => 'X', 'documento' => '529.982.247-25'])->assertSessionHasErrors('documento'); // CPF não
+        $this->actingAs($a->admin)->put('/empresa', ['nome' => 'X', 'documento' => '11.222.333/0001-82'])->assertSessionHasErrors('documento');
         $this->actingAs($a->admin)->put('/empresa', ['nome' => ''])->assertSessionHasErrors(['nome' => 'Preencha o nome.']);
     }
 
