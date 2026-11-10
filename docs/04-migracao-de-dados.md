@@ -25,6 +25,17 @@ Todos os dados atuais passam para o banco novo por um script de migração que r
 
 **Validação da migração:** antes da virada, um relatório compara os dois bancos: quantidade de clientes e veículos, total em aberto por cliente, total recebido por mês. Qualquer diferença de um centavo trava a virada.
 
+## Como rodar
+
+- `php artisan legado:importar` lê o banco do sistema atual (conexão `legado` no `.env`, só leitura) e grava no ERP. Cada registro guarda o id antigo (`legado_id`): rodar de novo atualiza, não duplica. Até a virada, o sistema atual sobrescreve o que veio dele; o que foi criado só no ERP fica intocado.
+- `php artisan legado:comparar` mostra os números lado a lado e grava o relatório em Markdown em `storage/app/private/relatorios/`. Sai com erro se houver diferença.
+
+| Etapa | O que a importação traz |
+|---|---|
+| 1 (pronta) | Empresa e unidade principal (na primeira vez), níveis de acesso (permissões que não existem mais são descartadas), usuários com a senha atual, registro de atividades |
+| 2 | Clientes, veículos, contratos de mensalidade, preços, serviços, convênios, fila de cadastro |
+| 3 | Ordens de serviço, pagamentos, extrato importado, pagadores vinculados |
+
 ## Cuidados
 
 - No sistema atual, várias tabelas se ligam ao veículo **pela placa** (cobranças, mensalidades). O script troca essas ligações pelo id interno do veículo.

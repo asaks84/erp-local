@@ -27,6 +27,17 @@ Usar sempre os termos de `docs/00-glossario.md`: **ordem de serviço** (todo ite
 - Sistema sempre em pt-BR, formatado pelo próprio sistema (nunca pelo locale do servidor ou do navegador).
 - Tabelas e colunas em `snake_case` minúsculo.
 
+## Código
+
+Organização, versões e o passo a passo de cada tela nova: `docs/13-desenvolvimento.md`. Resumo:
+
+- Rota sempre dentro de `permissao:<chave>` (ou `permissao:livre`); chave nova em `config/permissoes.php`.
+- Modelo de negócio com `use PertenceAEmpresa;`; `Rule::exists`/`Rule::unique` filtrando `empresa_id`.
+- `Atividades::registrar()` em ação sensível; datas `criado_em`/`atualizado_em`.
+- Telas em `resources/js/Pages`, formatos só por `resources/js/lib/formato.js`, campos com `Components/Campo`.
+- Rodar `php artisan test` antes de entregar; banco de teste `erp_teste`.
+- O Cauê roda os comandos (composer, npm, artisan) no PC dele; as bibliotecas do PHP chegam a este ambiente por um zip da pasta `vendor` quando mudam (o site de pacotes do PHP é bloqueado aqui).
+
 ## Infraestrutura
 
 - Produção: hospedagem compartilhada Hostinger (sem processos contínuos, sem WebSocket, sem webhook mTLS). Filas e agendas pelo cron. Inter por consulta periódica.

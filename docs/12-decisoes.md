@@ -6,6 +6,11 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 09/11/2026 | Versões da etapa 1: Laravel 13, Inertia 3, React 19, Bootstrap 5.3, Vite 8; fonte Inter servida pelo próprio sistema | Versões atuais; sem Google Fonts a CSP fica mais simples e as telas não dependem de site externo |
+| 09/11/2026 | Login único no sistema todo (não por empresa) | O usuário entra sem escolher empresa; no SaaS, se precisar, a empresa vem pelo endereço (subdomínio) |
+| 09/11/2026 | Usuário não é excluído, é desativado | Mantém o histórico do registro de atividades e, nas próximas etapas, de quem lançou cada dinheiro |
+| 09/11/2026 | Ambiente local em `http://erplocal.localhost` (Virtual Host do WAMP apontando para `public`) | Igual à produção, que vai num subdomínio; evita `/public` no endereço |
+| 09/11/2026 | Testes automáticos em MySQL (`erp_teste`), não SQLite | Mesmo banco da produção; a importação depende de comandos do MySQL |
 | 09/11/2026 | Recursos de estacionamento: capacidade e ocupação por unidade e tipo agora; validação de convênio por QR junto com o PDV; credencial do mensalista (tag/cartão) e câmera de placa/cancela registrados como futuro (comparativo, ponto 12) | Ocupação útil já; o resto depende de PDV ou hardware |
 | 09/11/2026 | Campos fiscais preparados (código de serviço municipal e alíquota de ISS no serviço; tabela de notas fiscais ligada à cobrança, sem emissão) e numeração própria por empresa e tipo de documento (cobrança, OS, ticket), sem buracos (comparativo, ponto 11) | Deixar a NFS-e pronta para o futuro; número que o cliente vê, por empresa no SaaS |
 | 09/11/2026 | Situação do pagamento (pendente, confirmado, falhou/expirado, estornado) junto com o Inter (etapa 8); baixa manual continua nascendo confirmada (comparativo, ponto 10) | Saber quais boletos/Pix estão emitidos aguardando pagamento |

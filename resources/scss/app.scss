@@ -1,0 +1,171 @@
+// Visual do ERP Local: Bootstrap 5.3 com as cores, a fonte e os cantos do sistema atual.
+// Tema claro e escuro pelo atributo data-bs-theme no <html> (botão sol/lua no topo).
+// Espaçamentos usados: 4, 8, 12, 16, 20, 24, 32 px.
+
+// ---------- variáveis do Bootstrap (antes de importar) ----------
+$font-family-sans-serif: "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+$font-size-base: .875rem; // 14px
+$line-height-base: 1.5;
+$headings-font-weight: 600;
+
+$primary: #c0281b;   // vermelho do logo
+$secondary: #5b6670;
+$success: #17723d;
+$danger: #b42318;
+$warning: #e0a100;
+$info: #1f6feb;
+$dark: #1a1a1a;
+
+$body-bg: #f4f6f8;
+$body-color: #17202a;
+$border-color: #e3e8ed;
+$link-color: #c0281b;
+$link-decoration: none;
+$link-hover-decoration: underline;
+
+$border-radius: .5rem;     // 8px
+$border-radius-sm: .375rem;
+$border-radius-lg: .75rem; // 12px
+$border-radius-xl: 1rem;
+
+$input-bg: #f1f3f5;
+$input-border-color: #d5dce3;
+$input-focus-border-color: #c0281b;
+$input-focus-box-shadow: 0 0 0 .2rem rgba(192, 40, 27, .22);
+$input-btn-focus-color: rgba(192, 40, 27, .22);
+$form-floating-label-opacity: .7;
+
+$card-border-radius: .75rem;
+$card-cap-bg: transparent;
+$box-shadow-sm: 0 1px 2px rgba(16, 24, 40, .06);
+
+$table-cell-padding-y: .625rem;
+$table-cell-padding-x: .75rem;
+$table-th-font-weight: 600;
+
+// ---------- tema escuro ----------
+$body-bg-dark: #0f1114;
+$body-color-dark: #e8eaed;
+$border-color-dark: #2a2f36;
+$link-color-dark: #f06a5d;
+$primary-text-emphasis-dark: #f06a5d;
+$danger-text-emphasis-dark: #ff8a7e;
+$success-text-emphasis-dark: #5fd08a;
+$warning-text-emphasis-dark: #f5c451;
+$primary-bg-subtle-dark: #3a1c19;
+$danger-bg-subtle-dark: #3d1c19;
+$success-bg-subtle-dark: #12301e;
+$warning-bg-subtle-dark: #2b2410;
+$body-secondary-bg-dark: #1c2025;
+$body-tertiary-bg-dark: #171a1f;
+
+@import "bootstrap/scss/bootstrap";
+
+// ---------- variáveis próprias (as mesmas do sistema atual) ----------
+:root,
+[data-bs-theme="light"] {
+	--l-surface: #ffffff;
+	--l-surface-2: #f8fafb;
+	--l-input: #f1f3f5;
+	--l-borda-forte: #d5dce3;
+	--l-texto-2: #5b6670;
+	--l-mudo: #6b7682;
+	--l-marca: #c0281b;
+	--l-marca-suave: #fbeceb;
+	--l-botao: #1a1a1a;          // botão principal: preto do logo
+	--l-botao-hover: #000000;
+	--l-aviso-suave: #fff8e6;
+	--l-aviso-texto: #8a5a00;
+	--l-anel: rgba(192, 40, 27, .22);
+	--l-sombra: 0 1px 2px rgba(16, 24, 40, .06);
+}
+
+[data-bs-theme="dark"] {
+	--l-surface: #171a1f;
+	--l-surface-2: #1c2025;
+	--l-input: #20252b;
+	--l-borda-forte: #363c44;
+	--l-texto-2: #b4bcc5;
+	--l-mudo: #8f98a2;
+	--l-marca: #f06a5d;
+	--l-marca-suave: #3a1c19;
+	--l-botao: #c0281b;          // no escuro o botão principal é vermelho
+	--l-botao-hover: #a52217;
+	--l-aviso-suave: #2b2410;
+	--l-aviso-texto: #f5c451;
+	--l-anel: rgba(240, 106, 93, .35);
+	--l-sombra: 0 1px 2px rgba(0, 0, 0, .4);
+	--bs-tertiary-bg: #171a1f;
+}
+
+body { -webkit-font-smoothing: antialiased; }
+.text-muted, .form-text { color: var(--l-mudo) !important; }
+
+// botão principal no padrão do sistema atual
+.btn-primary {
+	--bs-btn-bg: var(--l-botao);
+	--bs-btn-border-color: var(--l-botao);
+	--bs-btn-hover-bg: var(--l-botao-hover);
+	--bs-btn-hover-border-color: var(--l-botao-hover);
+	--bs-btn-active-bg: var(--l-botao-hover);
+	--bs-btn-active-border-color: var(--l-botao-hover);
+	--bs-btn-disabled-bg: var(--l-botao);
+	--bs-btn-disabled-border-color: var(--l-botao);
+	--bs-btn-focus-shadow-rgb: 192, 40, 27;
+	font-weight: 600;
+}
+.btn { font-weight: 500; }
+.btn-outline-secondary {
+	--bs-btn-color: var(--bs-body-color);
+	--bs-btn-border-color: var(--l-borda-forte);
+	--bs-btn-hover-bg: var(--l-surface-2);
+	--bs-btn-hover-color: var(--bs-body-color);
+	--bs-btn-hover-border-color: var(--l-borda-forte);
+	--bs-btn-active-bg: var(--l-surface-2);
+	--bs-btn-active-color: var(--bs-body-color);
+}
+
+.form-control, .form-select { background-color: var(--l-input); }
+.form-control:focus, .form-select:focus { background-color: var(--l-surface); }
+.form-floating > label { color: var(--l-mudo); }
+.form-check-input:checked { background-color: var(--l-marca); border-color: var(--l-marca); }
+
+.card { background: var(--l-surface); box-shadow: var(--l-sombra); border-color: var(--bs-border-color); }
+.card-footer { border-top-color: var(--bs-border-color); }
+.card-header { border-bottom-color: var(--bs-border-color); font-weight: 600; padding: 16px 20px; }
+.card-body { padding: 20px; }
+
+.table { --bs-table-bg: transparent; margin-bottom: 0; }
+.table > thead th {
+	font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+	color: var(--l-mudo); background: var(--l-surface-2); white-space: nowrap;
+}
+.table > tbody > tr:last-child > * { border-bottom: 0; }
+.table-hover > tbody > tr:hover > * { --bs-table-bg-state: var(--l-surface-2); }
+
+// selos (situação)
+.selo {
+	display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px;
+	font-size: 12px; font-weight: 600; white-space: nowrap;
+	background: var(--l-surface-2); color: var(--l-texto-2); border: 1px solid var(--bs-border-color);
+}
+.selo-ok { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); border-color: transparent; }
+.selo-erro { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); border-color: transparent; }
+.selo-aviso { background: var(--l-aviso-suave); color: var(--l-aviso-texto); border-color: transparent; }
+.selo-marca { background: var(--l-marca-suave); color: var(--l-marca); border-color: transparent; }
+
+// larguras: página (1200px) e formulário (640px)
+.pagina { max-width: 1200px; }
+.estreito { max-width: 640px; }
+
+.titulo-pagina {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+	margin: 24px 0 20px;
+	h1 { font-size: 22px; font-weight: 700; margin: 0; flex: 1 1 auto; }
+	p { width: 100%; margin: 0; color: var(--l-texto-2); }
+}
+
+@import "layout";
+
+// aviso neutro (informação), igual no claro e no escuro
+.aviso-neutro { background: var(--l-surface-2); border: 1px solid var(--bs-border-color); color: var(--l-texto-2); }

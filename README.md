@@ -6,14 +6,14 @@ Novo sistema de gestão do **Local Estacionamento** (Santos/SP): mensalistas, es
 
 ## Situação
 
-Em planejamento. Nenhuma etapa de código iniciada. Ver [docs/10-plano-de-etapas.md](docs/10-plano-de-etapas.md).
+Etapa 1 (fundação) pronta para conferência: login, níveis de acesso, usuários, empresa e unidades, registro de atividades e importação do sistema atual. Ver [docs/10-plano-de-etapas.md](docs/10-plano-de-etapas.md).
 
 O sistema atual (CodeIgniter, pasta `senna`) continua em produção até a virada e só recebe correções.
 
 ## Tecnologia
 
-- **Laravel** (PHP 8.3+) + **MySQL**
-- Telas: **Inertia + React + Bootstrap 5.3** (personalizado com o visual da marca, tema claro e escuro)
+- **Laravel 13** (PHP 8.3+) + **MySQL**
+- Telas: **Inertia 3 + React 19 + Bootstrap 5.3** (personalizado com o visual da marca, tema claro e escuro)
 - PDV: PWA no celular, online primeiro, API com Laravel Sanctum
 - Filas e tarefas agendadas pelo cron (hospedagem compartilhada)
 
@@ -23,7 +23,32 @@ Tudo em [`docs/`](docs/README.md): visão, modelo de dados, regras de negócio, 
 
 - [`HISTORICO.md`](HISTORICO.md) — alterações, da mais nova para a mais antiga.
 - [`CLAUDE.md`](CLAUDE.md) — regras do projeto para o Claude.
+- [`docs/13-desenvolvimento.md`](docs/13-desenvolvimento.md) — organização do código e regras de cada tela.
 
-## Rodar no computador
+## Rodar no computador (WAMP)
 
-Ainda não há código. Quando a etapa 1 começar, este trecho recebe o passo a passo (Composer, Node.js, `.env`, banco local, `php artisan migrate`, `npm run dev`).
+Precisa de PHP 8.3 (o do WAMP), Composer, Node.js e Git.
+
+1. **Endereço local.** No WAMP, abra `http://localhost`, em *Ferramentas* clique em **Add a Virtual Host** e preencha:
+   - nome: `erplocal.localhost`
+   - pasta: `C:/wamp64/www/erplocal/public`
+
+   Depois, no ícone do WAMP: *Ferramentas › Reiniciar DNS*. O sistema abre em `http://erplocal.localhost`.
+2. **Bancos.** No phpMyAdmin, crie três bancos vazios com o agrupamento `utf8mb4_unicode_ci`: `erplocal` (o ERP), `erp_teste` e `erp_teste_legado` (testes automáticos). O banco do sistema atual (`localm43_senna`) já existe e é só lido.
+3. **Instalar** (no terminal, dentro de `C:\wamp64\www\erplocal`):
+   ```
+   composer install
+   npm install
+   copy .env.example .env
+   php artisan key:generate
+   php artisan migrate
+   php artisan legado:importar --empresa="Local Estacionamento"
+   npm run build
+   ```
+4. Abra `http://erplocal.localhost` e entre com o mesmo login e senha do sistema atual.
+
+Conferir: `php artisan test` (testes automáticos) e `php artisan legado:comparar` (números dos dois sistemas).
+No PowerShell, se o `npm` for bloqueado ("running scripts is disabled"), use `npm.cmd` no lugar.
+Enquanto mexe nas telas, `npm run dev` atualiza o navegador sozinho (sem ele, rode `npm run build` depois de cada mudança).
+
+Como o código está organizado e as regras de cada tela nova: [docs/13-desenvolvimento.md](docs/13-desenvolvimento.md).

@@ -1,0 +1,173 @@
+// Estrutura das telas: menu lateral, barra do topo e menu de baixo no celular.
+// Mesmo desenho do sistema atual (application/views/include/header.php).
+
+.app { display: flex; min-height: 100vh; }
+
+.app-side {
+	flex: 0 0 248px; width: 248px;
+	background: var(--l-surface);
+	border-right: 1px solid var(--bs-border-color);
+	z-index: 60;
+}
+.app-side-in {
+	position: sticky; top: 0;
+	height: 100vh; overflow-y: auto;
+	display: flex; flex-direction: column;
+	padding: 20px 12px 12px;
+}
+.app-logo { display: block; padding: 0 8px 16px; }
+.app-logo img { display: block; width: 136px; height: auto; }
+.app-logo .logo-escuro, .app-logo .app-simbolo { display: none; }
+[data-bs-theme="dark"] .app-logo .logo-claro { display: none; }
+[data-bs-theme="dark"] .app-logo .logo-escuro { display: block; }
+
+.app-grupo {
+	padding: 16px 12px 4px;
+	font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+	color: var(--l-mudo);
+}
+.app-nav a {
+	display: flex; align-items: center; gap: 12px;
+	height: 40px; padding: 0 12px; margin: 2px 0;
+	border-radius: 8px;
+	color: var(--l-texto-2); font-weight: 500; text-decoration: none;
+	white-space: nowrap;
+}
+.app-nav a:hover { background: var(--l-surface-2); color: var(--bs-body-color); text-decoration: none; }
+.app-nav a.ativo { background: var(--l-marca-suave); color: var(--l-marca); font-weight: 600; }
+.app-nav svg, .app-bottom svg, .app-top svg { flex: 0 0 auto; }
+.app-txt { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.app-badge {
+	min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
+	display: inline-flex; align-items: center; justify-content: center;
+	background: var(--l-aviso-suave); color: var(--l-aviso-texto);
+	font-size: 12px; font-weight: 700;
+}
+
+.app-side-fim { margin-top: auto; padding-top: 16px; }
+.app-user {
+	display: flex; align-items: center; gap: 12px;
+	padding: 12px 8px; border-top: 1px solid var(--bs-border-color);
+}
+.app-avatar {
+	flex: 0 0 36px; width: 36px; height: 36px; border-radius: 18px;
+	display: flex; align-items: center; justify-content: center;
+	background: var(--l-botao); color: #fff;
+	font-weight: 700; font-size: 13px;
+}
+.app-user-nome { flex: 1; min-width: 0; }
+.app-user-nome strong { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-user-nome small { color: var(--l-mudo); font-size: 12px; }
+.app-icone-btn {
+	flex: 0 0 40px; width: 40px; height: 40px;
+	display: inline-flex; align-items: center; justify-content: center;
+	border: 0; border-radius: 8px; background: transparent;
+	color: var(--l-texto-2); cursor: pointer; text-decoration: none;
+}
+.app-icone-btn:hover { background: var(--l-surface-2); color: var(--bs-body-color); }
+.app-recolher { width: 100%; justify-content: flex-start; gap: 12px; padding: 0 12px; font: inherit; font-size: 13px; }
+.app-recolher svg { transition: transform .2s; }
+
+.app-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+
+.app-top {
+	position: sticky; top: 0; z-index: 50;
+	height: 64px; flex: 0 0 64px;
+	display: flex; align-items: center; gap: 12px;
+	padding: 0 32px;
+	background: var(--l-surface);
+	border-bottom: 1px solid var(--bs-border-color);
+}
+.app-top-logo { display: none; }
+.app-espaco { flex: 1 1 auto; }
+.app-data { color: var(--l-texto-2); white-space: nowrap; }
+.app-tema .icone-sol { display: none; }
+[data-bs-theme="dark"] .app-tema .icone-sol { display: block; }
+[data-bs-theme="dark"] .app-tema .icone-lua { display: none; }
+
+.app-content { flex: 1 1 auto; width: 100%; max-width: 1264px; margin: 0 auto; padding: 8px 32px 48px; }
+
+.app-bottom, .app-veu { display: none; }
+
+// menu recolhido (só ícones) no computador
+@media (min-width: 901px) {
+	.app-recolhido .app-side { flex-basis: 72px; width: 72px; }
+	.app-recolhido .app-logo { padding: 0 0 16px; text-align: center; }
+	.app-recolhido .app-logo img { display: none !important; }
+	.app-recolhido .app-logo .app-simbolo { display: block !important; width: 30px; margin: 0 auto; }
+	.app-recolhido .app-grupo { height: 1px; padding: 0; margin: 12px 8px; background: var(--bs-border-color); font-size: 0; }
+	.app-recolhido .app-nav a { justify-content: center; padding: 0; position: relative; }
+	.app-recolhido .app-nav .app-txt { display: none; }
+	.app-recolhido .app-nav .app-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; font-size: 11px; }
+	.app-recolhido .app-user { flex-direction: column; padding: 12px 0; }
+	.app-recolhido .app-user-nome { display: none; }
+	.app-recolhido .app-recolher { justify-content: center; padding: 0; }
+	.app-recolhido .app-recolher span { display: none; }
+	.app-recolhido .app-recolher svg { transform: rotate(180deg); }
+}
+
+// celular e tablet
+@media (max-width: 900px) {
+	.app-side {
+		position: fixed; left: 0; top: 0; bottom: 0;
+		width: 288px; max-width: 86vw;
+		transform: translateX(-100%); transition: transform .22s ease, visibility .22s;
+		visibility: hidden;
+		z-index: 200;
+	}
+	.app-menu-aberto .app-side { transform: none; visibility: visible; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
+	.app-side-in { height: 100%; }
+	.app-veu {
+		display: block; position: fixed; inset: 0; z-index: 150; background: rgba(0, 0, 0, .45);
+		opacity: 0; pointer-events: none; transition: opacity .2s;
+	}
+	.app-menu-aberto .app-veu { opacity: 1; pointer-events: auto; }
+	.app-recolher { display: none !important; }
+
+	.app-top { height: 56px; flex-basis: 56px; padding: 0 8px 0 16px; gap: 4px; }
+	.app-top-logo { display: block; }
+	.app-top-logo img { display: block; height: 30px; width: auto; }
+	.app-top-logo .logo-escuro { display: none; }
+	[data-bs-theme="dark"] .app-top-logo .logo-claro { display: none; }
+	[data-bs-theme="dark"] .app-top-logo .logo-escuro { display: block; }
+	.app-data { display: none; }
+
+	.app-content { padding: 4px 16px 96px; }
+
+	.app-bottom {
+		display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+		position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+		height: 64px;
+		background: var(--l-surface); border-top: 1px solid var(--bs-border-color);
+	}
+	.app-bottom a, .app-bottom button {
+		display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+		border: 0; background: none; font: inherit; font-size: 11px; color: var(--l-texto-2);
+		text-decoration: none; cursor: pointer; position: relative;
+	}
+	// se o navegador deixar um vão embaixo do menu, aparece a cor do menu e não a página
+	.app-bottom::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 120px; background: var(--l-surface); }
+	.app-bottom .ativo { color: var(--l-marca); font-weight: 600; }
+	.app-bottom .app-badge { position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; font-size: 11px; }
+}
+
+// aviso de inatividade
+.aviso-sessao {
+	position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 300;
+	display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+	max-width: calc(100vw - 32px); padding: 12px 16px;
+	background: var(--l-surface); border: 1px solid var(--bs-border-color); border-radius: 12px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, .2);
+}
+@media (max-width: 900px) { .aviso-sessao { bottom: 80px; } }
+
+// tela de login
+.tela-acesso {
+	min-height: 100vh; display: flex; align-items: center; justify-content: center;
+	padding: 24px 16px;
+}
+.tela-acesso .card { width: 100%; max-width: 380px; }
+.tela-acesso .logo { display: block; margin: 0 auto 24px; width: 160px; height: auto; }
+.tela-acesso .logo-escuro { display: none; }
+[data-bs-theme="dark"] .tela-acesso .logo-claro { display: none; }
+[data-bs-theme="dark"] .tela-acesso .logo-escuro { display: block; }

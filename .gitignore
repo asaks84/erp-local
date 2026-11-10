@@ -4,6 +4,8 @@
 /public/build/
 /public/hot
 /public/storage
+/public/fonts-manifest.dev.json
+/storage/app/private/relatorios/
 /storage/*.key
 /storage/pail
 .env
@@ -18,6 +20,7 @@ npm-debug.log
 yarn-error.log
 
 # Banco com dados de clientes (LGPD) e chaves
+*.zip
 *.sql.gz
 *dump*.sql
 *backup*.sql
@@ -28,6 +31,10 @@ localm43_senna*.sql
 *.crt
 
 # Editor e sistema
+/.vscode/
+/.cursor/
+/.phpunit.cache
+*.log
 /.idea/
 /.fleet/
 /.zed/
