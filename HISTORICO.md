@@ -4,6 +4,31 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 10/11/2026 — Início: anotações e alinhamento
+
+- **Anotações** no Início: cada usuário anota as tarefas que precisa fazer (ex.: cobrar um cliente, ligar para a contabilidade), com data opcional (mostra "hoje" e "atrasada"), marca como feita, edita e apaga. Só quem anotou vê. As 10 últimas feitas ficam em "Ver as feitas".
+- **Busca de cliente do Início** só aparece no celular (no computador ela já está no topo de todas as telas).
+- **Alinhamento:** "Recebido no mês" e "Anotações" ficam na mesma grade dos quatro números de cima (cada bloco ocupa duas colunas).
+- **134 testes automáticos.**
+- Banco: migração `2026_11_14_000001_create_anotacoes_table` (rodar `php artisan migrate`).
+
+## 10/11/2026 — Menu reorganizado
+
+- **Operação:** Estadias, Lavagens e serviços, Gerar mensalidades e Ordens de serviço.
+- **Gestão:** Contas em aberto, Cobranças, Extrato bancário, Recebimentos e Convênios. O grupo "Contas" deixou de existir.
+- **Sistema › Configurações:** um link só, com abas: Empresa e unidades, Tipos de veículo, Tabelas de estadia, Lavagens e serviços e Formas de pagamento (no celular as abas rolam para o lado). O grupo "Configurações" deixou de existir.
+- Arquivos: `resources/js/lib/menu.js`, novo `Components/AbasConfiguracoes.jsx`, telas de configuração e `_layout.scss`.
+
+## 10/11/2026 — Etapa 4: operação na gestão
+
+- **Estadias** (menu Operação): entrada pela placa (o sistema reconhece o veículo cadastrado e o mensalista; sem cadastro pede o tipo do veículo e o celular), sem placa com identificação, entrada em outro horário e convênio. Não deixa a mesma placa entrar duas vezes no pátio. Ticket com número da empresa.
+- **Pátio e saída:** lista de quem está dentro com o tempo correndo; na saída o valor é calculado pela tabela de estadia do tipo do veículo (com o detalhe de cada faixa) e dividido com o convênio. A parte de quem usou é paga na hora (forma e parcelas), vai para a conta do cliente cadastrado ou, se for mensalista, sai sem cobrança. Saída dentro da tolerância não gera conta. Estadia lançada por engano pode ser cancelada com motivo enquanto está no pátio. Saídas do dia e **histórico** com busca por placa, identificação ou ticket.
+- **Lavagens e serviços:** nova venda pela placa (cadastrado ou avulso, que lembra o tipo e o celular da última vez), serviço principal com adicionais pelo preço da tabela do tipo do veículo (serviços sem preço para o tipo aparecem bloqueados), convênio, e paga agora, na entrega ou na conta do cliente. **Quadro** com as etapas aguardando, lavando, pronta e entregue (as entregues de hoje), e receber no balcão o que o avulso deixou para pagar na entrega.
+- **Convênio:** a parte do convênio vira uma conta em aberto no cliente do convênio, com "(convênio)" na descrição; o fechamento é a cobrança normal desse cliente. Regras: "tudo" paga tudo; "tempo" paga a estadia até o limite (lavagens e serviços quem paga é o usuário); "desconto" dá o desconto a quem usou e o convênio não paga nada.
+- **Menu do celular:** Estadias e Lavagens ficam em "Mais"; o menu de baixo continua com Início, Clientes e Contas em aberto (o painel é administrativo, não é o caixa).
+- **132 testes automáticos.**
+- Banco: migração `2026_11_13_000001_create_operacao_tables` (rodar `php artisan migrate`).
+
 ## 10/11/2026 — Etapa 3: dinheiro
 
 - **Ordens de serviço:** todo valor do cliente (mensalidade, lavagem/serviço, estadia, débito, crédito) vira uma ordem com número da empresa. Ordem nunca é apagada: em aberto pode ser alterada ou cancelada com motivo (permissão "alterar contas"). Lista em Contas › Ordens de serviço.

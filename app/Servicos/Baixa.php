@@ -174,6 +174,49 @@ class Baixa
     }
 
     /**
+     * Pagamento na hora, no balcão (saída do pátio, lavagem avulsa): recebe exatamente o total das
+     * ordens informadas, sem crédito, débito nem desconto. Serve para quem não tem cadastro.
+     * O troco em dinheiro é coisa do caixa; aqui fica o valor das ordens.
+     */
+    public static function receberNaHora(array $ordens, int $formaId, int $parcelas = 1, string $origem = 'gestao'): Pagamento
+    {
+        $forma = FormaPagamento::find($formaId) ?? self::erro('forma_pagamento_id', 'Escolha a forma de pagamento.');
+        $parcelas = max(1, min($parcelas, max(1, $forma->parcelas_max)));
+
+        return DB::transaction(function () use ($ordens, $forma, $parcelas, $origem) {
+            $lista = OrdemServico::whereIn('id', collect($ordens)->map(fn ($o) => $o instanceof OrdemServico ? $o->id : (int) $o))->lockForUpdate()->get();
+            if ($lista->isEmpty() || $lista->contains(fn ($o) => $o->situacao !== 'aberta' || $o->tipo === 'credito')) {
+                self::erro('ordens', 'Alguma conta já foi paga ou cancelada. Abra a tela de novo.');
+            }
+            $valor = round($lista->sum(fn ($o) => (float) $o->valor), 2);
+            $agora = now();
+            $taxa = $forma->taxaSobre($valor, $parcelas);
+            $p = Pagamento::create([
+                'unidade_id' => Ordens::unidadePadrao(),
+                'uuid' => (string) Str::uuid(),
+                'cliente_id' => $lista->pluck('cliente_id')->filter()->unique()->count() === 1 ? $lista->first(fn ($o) => $o->cliente_id)->cliente_id : null,
+                'forma_pagamento_id' => $forma->id,
+                'conta_financeira_id' => $forma->conta_financeira_id,
+                'parcelas' => $parcelas,
+                'valor' => $valor,
+                'taxa' => $taxa,
+                'liquido' => round($valor - $taxa, 2),
+                'previsto_para' => $forma->previsaoPara($agora),
+                'recebido_em' => $agora,
+                'origem' => $origem,
+                'criado_por' => Auth::id(),
+            ]);
+            foreach ($lista as $o) {
+                PagamentoItem::create(['pagamento_id' => $p->id, 'ordem_id' => $o->id, 'valor' => (float) $o->valor]);
+                $o->update(['situacao' => 'paga', 'pago_em' => $agora]);
+            }
+            Atividades::registrar('pagamento_recebido', 'na hora: '.Formato::moeda($valor).' em '.$forma->nome.' · ordens '.$lista->pluck('numero')->map(fn ($n) => '#'.$n)->implode(', '));
+
+            return $p;
+        });
+    }
+
+    /**
      * Estorno: o pagamento fica registrado como estornado e as ordens voltam a ficar em aberto.
      * Crédito, débito ou serviço nascidos dele são cancelados; não dá se o crédito já foi usado.
      */

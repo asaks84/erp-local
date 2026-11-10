@@ -27,7 +27,8 @@ app/
   Http/Middleware/        Permissao, PermissaoDeclarada, Publica, HandleInertiaRequests, CabecalhosSeguranca
   Servicos/               regras de negócio num lugar só: Tarifador (estadia), Precos (preço vigente), Contratos (mensalidade),
                           Ordens (lançar/alterar/cancelar), Numeracao, Mensalidades (geração e primeira cobrança), Baixa (receber
-                          e estornar), Cobrancas (emitir, cancelar, situação), Extrato (CSV do banco), FormasPagamento
+                          e estornar), Cobrancas (emitir, cancelar, situação), Extrato (CSV do banco), FormasPagamento,
+                          Estadias (entrada, cálculo, saída), Vendas (lavagens e serviços, etapas), Convenios (divisão do valor)
   Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato, Csv
   Auth/UsuarioProvider    busca o usuário do login sem o filtro de empresa
   Console/Commands/       erp:instalar, legado:importar, legado:comparar
@@ -41,7 +42,8 @@ resources/js/
   Pages/                  uma pasta por módulo (Usuarios/Index.jsx, Usuarios/Form.jsx...)
   Components/             Campo, CampoData (dd/mm/aaaa), CampoValor (R$ 1.234,56), BuscaCliente, Janela, Confirmar,
                           CamposCliente, CamposVeiculo, CamposMensalidade, Paginacao, Icone, Avisos, TituloPagina,
-                          Dinheiro (rótulos e selos de ordem/cobrança), ContasCliente (bloco Contas da ficha), BuscaClienteCampo
+                          Dinheiro (rótulos e selos de ordem/cobrança), ContasCliente (bloco Contas da ficha), BuscaClienteCampo,
+                          Anotacoes (tarefas do Início), AbasConfiguracoes (abas de Sistema › Configurações; lista em menu.js CONFIGURACOES)
   lib/                    formato.js (datas e R$ em pt-BR), mascaras.js (CPF, telefone, CEP, placa), menu.js, permissoes.js, inatividade.js
 resources/scss/           app.scss (cores, fonte, cantos, tema escuro), _layout.scss e _impressao.scss (cobrança e telas impressas)
 tests/Feature/            testes automáticos
@@ -75,7 +77,7 @@ tests/Feature/            testes automáticos
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 119 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; importação e comparação).
+- `php artisan test` roda todos. Hoje: 134 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
 - Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos

@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react'
+import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import { data as fData } from '../../lib/formato'
@@ -8,6 +9,7 @@ const SELO = { vigente: ['selo-ok', 'Vigente'], futura: ['selo-aviso', 'Futura']
 export default function Tarifas({ tarifas }) {
     return (
         <div className="pagina">
+            <AbasConfiguracoes />
             <TituloPagina titulo="Tabelas de estadia" descricao="Quanto se cobra pelo tempo no pátio, por tipo de veículo. Reajuste = nova versão com data de início; até lá, vale a atual.">
                 <Link href="/configuracoes/tarifas/nova" className="btn btn-primary d-inline-flex align-items-center gap-2"><Icone nome="mais" /> Nova tabela</Link>
             </TituloPagina>

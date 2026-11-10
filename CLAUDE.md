@@ -36,6 +36,7 @@ Organização, versões e o passo a passo de cada tela nova: `docs/13-desenvolvi
 - `Atividades::registrar()` em ação sensível; datas `criado_em`/`atualizado_em`.
 - Telas em `resources/js/Pages`, formatos só por `resources/js/lib/formato.js`, campos com `Components/Campo`.
 - **Dinheiro:** toda ordem nasce por `App\Servicos\Ordens` (número da empresa via `Numeracao`); toda baixa passa por `App\Servicos\Baixa::receber()` (telas, extrato e, depois, PDV e Inter); cobrança só por `Cobrancas::emitir()`. Nunca apagar ordem ou pagamento: cancelar/estornar com motivo. Valor com sinal (crédito negativo) por `OrdemServico::SQL_VALOR`/`valorComSinal()`.
+- **Operação:** estadia por `App\Servicos\Estadias` (entrar, calcular, sair, cancelar); venda de lavagem/serviço por `Vendas::vender()`; divisão com convênio só por `Convenios::dividir()`; pagamento na hora por `Baixa::receberNaHora()`.
 - Rodar `php artisan test` antes de entregar; banco de teste `erp_teste`.
 - O Cauê roda os comandos (composer, npm, artisan) no PC dele; as bibliotecas do PHP chegam a este ambiente por um zip da pasta `vendor` quando mudam (o site de pacotes do PHP é bloqueado aqui).
 

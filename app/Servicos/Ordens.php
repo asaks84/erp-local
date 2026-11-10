@@ -67,26 +67,31 @@ class Ordens
     }
 
     /** Lavagem/serviço com adicionais: uma ordem por serviço, adicionais ligados à principal. */
+    /** preço do serviço pelo tipo do veículo na data; no modo "até", valida o valor informado */
+    public static function precoServico(Servico $s, int $tipoVeiculoId, ?int $unidade, Carbon $dia, ?float $informado = null): float
+    {
+        $tabela = Precos::servico($s->id, $tipoVeiculoId, $unidade, $dia);
+        if ($tabela === null) {
+            $tipo = \App\Models\TipoVeiculo::find($tipoVeiculoId)?->nome ?? 'este tipo de veículo';
+            self::erro('servico', "\"{$s->nome}\" não tem preço para {$tipo}. Cadastre em Configurações › Lavagens e serviços.");
+        }
+        // "até": o valor da tabela é o máximo; quem lança informa o valor cobrado
+        if ($s->preco_modo === 'ate' && $informado !== null) {
+            if ($informado <= 0 || $informado > $tabela) {
+                self::erro('valor', "O valor de \"{$s->nome}\" vai até ".Formato::moeda($tabela).'.');
+            }
+
+            return $informado;
+        }
+
+        return $tabela;
+    }
+
     public static function lancarServico(Veiculo $veiculo, Servico $principal, array $adicionais, ?string $data = null, ?float $valorPrincipal = null): array
     {
         $dia = Carbon::parse($data ?? now());
         $unidade = self::unidadePadrao();
-        $preco = function (Servico $s, ?float $informado) use ($veiculo, $unidade, $dia) {
-            $tabela = Precos::servico($s->id, $veiculo->tipo_veiculo_id, $unidade, $dia);
-            if ($tabela === null) {
-                self::erro('servico', "\"{$s->nome}\" não tem preço para ".($veiculo->tipo?->nome ?? 'este tipo de veículo').'. Cadastre em Configurações › Lavagens e serviços.');
-            }
-            // "até": o valor da tabela é o máximo; quem lança informa o valor cobrado
-            if ($s->preco_modo === 'ate' && $informado !== null) {
-                if ($informado <= 0 || $informado > $tabela) {
-                    self::erro('valor', "O valor de \"{$s->nome}\" vai até ".Formato::moeda($tabela).'.');
-                }
-
-                return $informado;
-            }
-
-            return $tabela;
-        };
+        $preco = fn (Servico $s, ?float $informado) => self::precoServico($s, $veiculo->tipo_veiculo_id, $unidade, $dia, $informado);
 
         return DB::transaction(function () use ($veiculo, $principal, $adicionais, $dia, $preco, $valorPrincipal) {
             $base = ['tipo' => 'servico', 'veiculo_id' => $veiculo->id, 'data' => $dia->toDateString(), 'vencimento' => $dia->toDateString()];

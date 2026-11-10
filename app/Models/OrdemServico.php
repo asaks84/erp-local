@@ -58,6 +58,21 @@ class OrdemServico extends Modelo
         return $this->belongsTo(Servico::class);
     }
 
+    public function tipoVeiculo(): BelongsTo
+    {
+        return $this->belongsTo(TipoVeiculo::class, 'tipo_veiculo_id');
+    }
+
+    public function estadia(): BelongsTo
+    {
+        return $this->belongsTo(Estadia::class);
+    }
+
+    public function convenio(): BelongsTo
+    {
+        return $this->belongsTo(Convenio::class);
+    }
+
     public function cobranca(): BelongsTo
     {
         return $this->belongsTo(Cobranca::class);

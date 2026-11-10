@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Anotacao;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,7 +38,7 @@ class InicioController extends Controller
             ];
         }
 
-        return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido]);
+        return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido, 'anotacoes' => Anotacao::doUsuario((int) $request->user()->id)]);
     }
 
     /** total baixado (soma dos itens dos pagamentos confirmados) e quantas contas, sem contar créditos */

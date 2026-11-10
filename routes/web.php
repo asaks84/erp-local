@@ -9,9 +9,12 @@ use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ConvenioController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\EstadiaController;
 use App\Http\Controllers\ExtratoController;
 use App\Http\Controllers\FormaPagamentoController;
+use App\Http\Controllers\AnotacaoController;
 use App\Http\Controllers\InicioController;
+use App\Http\Controllers\LavagemController;
 use App\Http\Controllers\MensalidadeController;
 use App\Http\Controllers\NivelController;
 use App\Http\Controllers\OrdemController;
@@ -46,6 +49,10 @@ Route::middleware('auth')->group(function () {
     // dia a dia: qualquer usuário logado
     Route::middleware('permissao:livre')->group(function () {
         Route::get('/', InicioController::class);
+        Route::post('/anotacoes', [AnotacaoController::class, 'store']);
+        Route::put('/anotacoes/{anotacao}', [AnotacaoController::class, 'update']);
+        Route::post('/anotacoes/{anotacao}/alternar', [AnotacaoController::class, 'alternar']);
+        Route::delete('/anotacoes/{anotacao}', [AnotacaoController::class, 'destroy']);
         Route::post('/sair', [LoginController::class, 'sair']);
         Route::get('/sessao/ping', [LoginController::class, 'ping']);
         Route::get('/busca/clientes', [ClienteController::class, 'buscar']);
@@ -89,6 +96,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/cobrancas/gerar', [CobrancaController::class, 'emitirLote']);
         Route::get('/cobrancas/imprimir', [CobrancaController::class, 'imprimir']);
         Route::get('/cobrancas/{cobranca}', [CobrancaController::class, 'show']);
+
+        // operação (etapa 4): estadias e venda de lavagens e serviços
+        Route::get('/estadias', [EstadiaController::class, 'index']);
+        Route::get('/estadias/historico', [EstadiaController::class, 'historico']);
+        Route::get('/estadias/placa', [EstadiaController::class, 'placa']);
+        Route::post('/estadias', [EstadiaController::class, 'store']);
+        Route::get('/estadias/{estadia}/calcular', [EstadiaController::class, 'calcular']);
+        Route::post('/estadias/{estadia}/saida', [EstadiaController::class, 'saida']);
+        Route::post('/estadias/{estadia}/cancelar', [EstadiaController::class, 'cancelar']);
+        Route::get('/lavagens', [LavagemController::class, 'index']);
+        Route::get('/lavagens/nova', [LavagemController::class, 'create']);
+        Route::get('/lavagens/placa', [LavagemController::class, 'placa']);
+        Route::post('/lavagens', [LavagemController::class, 'store']);
+        Route::post('/lavagens/{ordem}/etapa', [LavagemController::class, 'etapa']);
+        Route::post('/lavagens/{ordem}/receber', [LavagemController::class, 'receber']);
     });
 
     Route::middleware('permissao:contas_editar')->group(function () {

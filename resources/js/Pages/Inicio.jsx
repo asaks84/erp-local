@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react'
 import TituloPagina from '../Components/TituloPagina'
 import BuscaCliente from '../Components/BuscaCliente'
+import Anotacoes from '../Components/Anotacoes'
 import { competencia } from '../Components/Dinheiro'
 import { moeda } from '../lib/formato'
 import { usePode } from '../lib/permissoes'
@@ -16,7 +17,7 @@ function Numero({ rotulo, valor, detalhe, href, classe = '' }) {
     return <div className="col-6 col-lg-3">{href ? <Link href={href} className="text-reset text-decoration-none">{corpo}</Link> : corpo}</div>
 }
 
-export default function Inicio({ aberto, recebido }) {
+export default function Inicio({ aberto, recebido, anotacoes }) {
     const { auth, empresa } = usePage().props
     const pode = usePode()
     const primeiroNome = auth.usuario.nome.split(' ')[0]
@@ -29,7 +30,7 @@ export default function Inicio({ aberto, recebido }) {
                 Os números daqui vêm da última importação feita do sistema atual.
             </div>
 
-            <BuscaCliente className="mb-4" placeholder="Buscar cliente para receber ou lançar (nome, código ou placa)" />
+            <BuscaCliente className="mb-4 so-celular" placeholder="Buscar cliente para receber ou lançar (nome, código ou placa)" />
 
             {(aberto || recebido) && (
                 <div className="row g-3 mb-4">
@@ -40,16 +41,24 @@ export default function Inicio({ aberto, recebido }) {
                 </div>
             )}
 
-            {recebido?.por_categoria?.length > 0 && (
-                <div className="card mb-4" style={{ maxWidth: 520 }}>
-                    <div className="card-header">Recebido no mês, pelo que foi pago</div>
-                    <ul className="list-group list-group-flush">
-                        {recebido.por_categoria.map((c) => (
-                            <li key={c.tipo} className="list-group-item d-flex justify-content-between"><span>{c.rotulo}</span><strong className={c.total < 0 ? 'text-success' : ''}>{moeda(c.total)}</strong></li>
-                        ))}
-                    </ul>
+            {/* segunda linha no mesmo grid da primeira: cada bloco ocupa duas colunas */}
+            <div className="row g-3 mb-4">
+                {recebido?.por_categoria?.length > 0 && (
+                    <div className="col-lg-6">
+                        <div className="card h-100">
+                            <div className="card-header">Recebido no mês, pelo que foi pago</div>
+                            <ul className="list-group list-group-flush">
+                                {recebido.por_categoria.map((c) => (
+                                    <li key={c.tipo} className="list-group-item d-flex justify-content-between"><span>{c.rotulo}</span><strong className={c.total < 0 ? 'text-success' : ''}>{moeda(c.total)}</strong></li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+                <div className="col-lg-6">
+                    <Anotacoes anotacoes={anotacoes} />
                 </div>
-            )}
+            </div>
 
             <div className="d-flex flex-wrap gap-2">
                 <Link href="/mensalidades/gerar" className="btn btn-outline-secondary">Gerar mensalidades</Link>

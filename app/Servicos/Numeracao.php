@@ -13,7 +13,7 @@ use LogicException;
  */
 class Numeracao
 {
-    private const TABELAS = ['ordem' => 'ordens_servico', 'cobranca' => 'cobrancas'];
+    private const TABELAS = ['ordem' => 'ordens_servico', 'cobranca' => 'cobrancas', 'estadia' => 'estadias'];
 
     public static function proximo(string $tipo): int
     {

@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react'
 import { useState } from 'react'
+import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
@@ -28,7 +29,9 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
     const d = form.data
 
     return (
-        <div className="pagina" style={{ maxWidth: 900 }}>
+        <div className="pagina">
+            <AbasConfiguracoes />
+            <div style={{ maxWidth: 900 }}>
             <TituloPagina titulo="Formas de pagamento" descricao="Como os clientes pagam, em que conta o dinheiro entra, a taxa cobrada e em quantos dias cai. Nada é apagado: desative o que não usa mais." />
 
             <div className="card mb-4">
@@ -105,6 +108,7 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
                     <label className="form-check-label" htmlFor="conta-ativa">Ativa</label>
                 </div>
             </Janela>
+            </div>
         </div>
     )
 }

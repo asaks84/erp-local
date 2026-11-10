@@ -2,6 +2,7 @@ import { Link, router, useForm } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import CampoValor from '../../Components/CampoValor'
+import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import Icone from '../../Components/Icone'
@@ -109,6 +110,7 @@ export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, 
 
     return (
         <div className="pagina">
+            <AbasConfiguracoes />
             <TituloPagina titulo="Empresa e unidades" />
             <div className="row g-4">
                 <div className="col-lg-6">

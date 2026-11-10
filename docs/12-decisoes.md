@@ -44,6 +44,13 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 | 09/11/2026 | Extrato da conta do cliente na ficha: ordens, pagamentos e ajustes por data, com saldo; pode ser enviado ao cliente (comparativo, ponto 3) | Histórico de movimentação para conferência e discussões com cliente |
 | 09/11/2026 | Correções por documento de ajuste (crédito, débito, estorno, desconto) ligado à cobrança ou ao pagamento, sempre com motivo; botão "Ajustar" (comparativo, ponto 2) | Consequência da cobrança imutável; histórico completo de cada correção |
 | 09/11/2026 | Cobrança emitida é imutável: cópia dos itens na emissão; não pago vira "saldo anterior" na próxima (comparativo, ponto 1) | Histórico igual ao que o cliente recebeu; boleto e nota fiscal com valor fixo |
+| 10/11/2026 | Anotações do Início são pessoais (só quem anotou vê) e podem ser apagadas | São lembretes de trabalho, não registro de dinheiro |
+| 10/11/2026 | Fechamento de convênio = cobrança normal do cliente do convênio (a parte dele vira conta em aberto na saída da estadia ou na venda) | Mesmo fluxo de cobrança e baixa; nada novo para aprender |
+| 10/11/2026 | Convênio "por tempo" cobre só estadia; lavagens e serviços são pagos por quem usou | Limite de tempo não tem sentido para serviço |
+| 10/11/2026 | Mensalista vigente sai sem cobrança; estadia dentro da tolerância não gera conta | Não criar contas de valor zero |
+| 10/11/2026 | Estadia só pode ser cancelada enquanto está no pátio; depois da saída cancela-se ou estorna-se a conta gerada | Dinheiro nunca é apagado |
+| 10/11/2026 | Pagamento na hora (estadia e balcão) passa pela baixa com o valor exato, sem cliente quando for avulso | Todo dinheiro passa pela mesma baixa; aparece em Recebimentos |
+| 10/11/2026 | Avulso pode deixar a lavagem para pagar na entrega, recebida no quadro | Como o Local já trabalha |
 | 09/11/2026 | Contas a pagar com **uma permissão só** (`contas_pagar`: ver, lançar e pagar, inclusive folha); sem módulo de pedido de compra: a conta é lançada quando o material chega | Dono de estacionamento faz tudo sozinho; pedidos de material são por mensagem e pagos na entrega |
 | 09/11/2026 | Termos: **ordem de serviço** = todo item que o cliente deve (mensalidade, estadia, lavagem, ajustes); **cobrança** = agrupa as ordens em aberto e gera o boleto (no lugar de "fatura"). A etapa da lavagem fica na própria ordem, sem tabela separada | É como o Local já trabalha e fala |
 | 09/11/2026 | Cancelar uma ordem de serviço em aberto é permitido (ex.: mensalidade de quem deixou de ser mensalista), com permissão, motivo e registro | Resposta do Cauê |
@@ -68,4 +75,4 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 ## Em aberto
 
-Nenhuma decisão pendente para a etapa 3.
+Nenhuma decisão pendente para a etapa 4.

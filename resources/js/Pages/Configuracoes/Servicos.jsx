@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react'
+import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import { moeda } from '../../lib/formato'
@@ -6,6 +7,7 @@ import { moeda } from '../../lib/formato'
 export default function Servicos({ servicos, tipos }) {
     return (
         <div className="pagina">
+            <AbasConfiguracoes />
             <TituloPagina titulo="Lavagens e serviços" descricao="Serviços principais, adicionais e o preço de cada um por tipo de veículo (preços que valem hoje).">
                 <Link href="/configuracoes/servicos/novo" className="btn btn-primary d-inline-flex align-items-center gap-2"><Icone nome="mais" /> Novo serviço</Link>
             </TituloPagina>

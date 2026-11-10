@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react'
 import { useState } from 'react'
+import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 
@@ -39,7 +40,9 @@ function Linha({ tipo }) {
 export default function Tipos({ tipos }) {
     const novo = useForm({ nome: '', detalhe: '', ordem: tipos.length, ativo: true })
     return (
-        <div className="pagina" style={{ maxWidth: 900 }}>
+        <div className="pagina">
+            <AbasConfiguracoes />
+            <div style={{ maxWidth: 900 }}>
             <TituloPagina titulo="Tipos de veículo" descricao="Cada tipo tem seu preço nas lavagens e serviços e sua tabela de estadia. Tipo já usado não é excluído: desative." />
             <div className="card">
                 <div className="table-responsive">
@@ -58,6 +61,7 @@ export default function Tipos({ tipos }) {
                         <div className="col-sm-3 d-grid"><button className="btn btn-primary" disabled={novo.processing}>Adicionar</button></div>
                     </div>
                 </form>
+            </div>
             </div>
         </div>
     )

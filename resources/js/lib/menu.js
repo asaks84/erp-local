@@ -16,40 +16,42 @@ export const MENU = [
         ],
     },
     {
-        grupo: 'Contas',
+        grupo: 'Operação',
         itens: [
-            { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
+            { rotulo: 'Estadias', href: '/estadias', icone: 'relogio', acende: ['/estadias'] },
+            { rotulo: 'Lavagens e serviços', href: '/lavagens', icone: 'gota', acende: ['/lavagens'] },
             { rotulo: 'Gerar mensalidades', href: '/mensalidades/gerar', icone: 'calendario', acende: ['/mensalidades'] },
-            { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
             { rotulo: 'Ordens de serviço', href: '/ordens', icone: 'lista', acende: ['/ordens'] },
-            { rotulo: 'Extrato bancário', href: '/extrato', icone: 'banco', permissao: 'extrato', acende: ['/extrato'] },
         ],
     },
     {
         grupo: 'Gestão',
         itens: [
+            { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
+            { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
+            { rotulo: 'Extrato bancário', href: '/extrato', icone: 'banco', permissao: 'extrato', acende: ['/extrato'] },
             { rotulo: 'Recebimentos', href: '/relatorios/recebimentos', icone: 'grafico', permissao: 'faturamento', acende: ['/relatorios/recebimentos'] },
             { rotulo: 'Convênios', href: '/convenios', icone: 'aperto', permissao: 'convenios', acende: ['/convenios'] },
         ],
     },
     {
-        grupo: 'Configurações',
-        itens: [
-            { rotulo: 'Tipos de veículo', href: '/configuracoes/tipos', icone: 'carro', permissao: 'configuracoes', acende: ['/configuracoes/tipos'] },
-            { rotulo: 'Tabelas de estadia', href: '/configuracoes/tarifas', icone: 'relogio', permissao: 'configuracoes', acende: ['/configuracoes/tarifas'] },
-            { rotulo: 'Lavagens e serviços', href: '/configuracoes/servicos', icone: 'gota', permissao: 'configuracoes', acende: ['/configuracoes/servicos'] },
-            { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', icone: 'dinheiro', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
-        ],
-    },
-    {
         grupo: 'Sistema',
         itens: [
-            { rotulo: 'Empresa e unidades', href: '/empresa', icone: 'predio', permissao: 'configuracoes', acende: ['/empresa', '/unidades'] },
+            { rotulo: 'Configurações', href: '/empresa', icone: 'engrenagem', permissao: 'configuracoes', acende: ['/empresa', '/unidades', '/configuracoes'] },
             { rotulo: 'Níveis de acesso', href: '/niveis', icone: 'escudo', permissao: 'configuracoes', acende: ['/niveis'] },
             { rotulo: 'Usuários', href: '/usuarios', icone: 'cadeado', permissao: 'usuarios', acende: ['/usuarios'] },
             { rotulo: 'Registro de atividades', href: '/atividades', icone: 'lista', permissao: 'usuarios', acende: ['/atividades'] },
         ],
     },
+]
+
+// Abas de Sistema › Configurações da empresa (componente AbasConfiguracoes)
+export const CONFIGURACOES = [
+    { rotulo: 'Empresa e unidades', href: '/empresa', permissao: 'configuracoes', acende: ['/empresa', '/unidades'] },
+    { rotulo: 'Tipos de veículo', href: '/configuracoes/tipos', permissao: 'configuracoes', acende: ['/configuracoes/tipos'] },
+    { rotulo: 'Tabelas de estadia', href: '/configuracoes/tarifas', permissao: 'configuracoes', acende: ['/configuracoes/tarifas'] },
+    { rotulo: 'Lavagens e serviços', href: '/configuracoes/servicos', permissao: 'configuracoes', acende: ['/configuracoes/servicos'] },
+    { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
 ]
 
 /** item aceso: o endereço que mais combina com a página atual */

@@ -23,8 +23,8 @@ Durante as etapas 1 a 5, o sistema atual continua sendo o oficial e só recebe c
 |---|---|
 | 1. Fundação | pronta para conferência (09/11/2026) |
 | 2. Cadastros e configurações | pronta para conferência (10/11/2026) |
-| 3. Dinheiro | pronta para conferência (10/11/2026); falta o portão com os dados reais |
-| 4. Operação na gestão | não iniciada |
+| 3. Dinheiro | pronta para conferência (10/11/2026); portão cumprido com os dados reais (cópia local): ordens, em aberto e recebido mês a mês iguais |
+| 4. Operação na gestão | pronta para conferência (10/11/2026): estadias (entrada, saída pelo tarifador, convênio), lavagens e serviços com quadro de etapas, fechamento de convênio pela cobrança |
 | 5. Paralelo e virada | não iniciada |
 | 6. Gastos e contas a pagar | não iniciada |
 | 7. API e PDV | não iniciada |
