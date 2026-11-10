@@ -4,6 +4,15 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 10/11/2026 — Etapas da lavagem configuráveis
+
+- **Configurações › Etapas da lavagem** (aba nova): a empresa escolhe o que registra no quadro de lavagens. Aguardando (entrada) é sempre a primeira e Entregue a última (só mudam de nome); as do meio são criadas, renomeadas, reordenadas com as setas e desativadas. Etapa já usada não é apagada.
+- Padrão do Local: **Aguardando → Pronta → Entregue** ("Lavando" fica criada, desativada). Um detailer pode ter, por exemplo, Lavagem, Descontaminação, Polimento e Vitrificação.
+- **Histórico da lavagem:** cada mudança de etapa fica gravada com quem registrou e quando (base para ver o tempo de espera e de cada etapa). O quadro monta as colunas pelas etapas ativas; carro numa etapa desativada aparece na primeira coluna.
+- **PDV (decidido, entra na etapa 7):** identificação por PIN de 4 dígitos ou por operador de caixa, configurável; tempo de memória do PIN configurável; caixa único com turnos e conferência. Detalhes em `docs/07-pdv.md`.
+- **135 testes automáticos.**
+- Banco: migração `2026_11_14_000002_create_etapas_lavagem_tables` (rodar `php artisan migrate`).
+
 ## 10/11/2026 — Início: anotações e alinhamento
 
 - **Anotações** no Início: cada usuário anota as tarefas que precisa fazer (ex.: cobrar um cliente, ligar para a contabilidade), com data opcional (mostra "hoje" e "atrasada"), marca como feita, edita e apaga. Só quem anotou vê. As 10 últimas feitas ficam em "Ver as feitas".

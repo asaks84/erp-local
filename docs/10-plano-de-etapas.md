@@ -12,7 +12,7 @@ A migração vai em oito etapas, cada uma utilizável antes da próxima; o siste
 5. **Paralelo e virada:** sistema novo num subdomínio, usado lado a lado com o atual; depois da virada, o CodeIgniter fica só para consulta.
     - Portão: algumas semanas sem diferença nos relatórios; backup e plano de volta prontos.
 6. **Gestão de gastos e contas a pagar:** funcionários, holerites, fornecedores, contas a pagar, fluxo de caixa e resultado do mês.
-7. **API e PDV:** aparelhos, caixa, estadias e vendas pelo celular, modo de emergência.
+7. **API e PDV:** aparelhos, identificação por PIN ou operador de caixa (configurável), caixa com turnos e conferência, estadias e vendas pelo celular, modo de emergência.
 8. **Integrações:** boleto com Pix e baixa automática pelo Inter, avisos e link de pagamento pelo WhatsApp.
 
 Durante as etapas 1 a 5, o sistema atual continua sendo o oficial e só recebe correções.

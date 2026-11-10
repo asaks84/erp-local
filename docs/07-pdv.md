@@ -13,6 +13,21 @@ O PDV é online primeiro: o celular com 4G manda os eventos e o servidor calcula
 - Caixa: abrir, sangria, suprimento, fechar com saldo informado.
 - Consulta: veículos no pátio, mensalista ativo, convênio da placa.
 
+**Quem atendeu (identificação no PDV)**
+
+O jeito de identificar quem fez cada ação é uma configuração da empresa (ou da unidade):
+
+- **Por PIN** (o padrão do Local): o aparelho do balcão fica sempre conectado como aparelho, sem login de pessoa. Cada ação (entrada, saída, venda, recebimento, mudança de etapa da lavagem) pede o PIN de 4 dígitos de quem está atendendo, e a ação fica no nome dessa pessoa. Quem digitou é o responsável; cada um cuida do próprio PIN.
+- **Por operador de caixa**: uma pessoa abre o turno e tudo sai no nome dela até o fechamento.
+- **Tempo de memória do PIN**: configurável, de "a cada ação" (padrão) até alguns minutos; tocar em "trocar" pede o PIN de novo na hora.
+- **Regras do PIN**:
+  - a pessoa escolhe o próprio PIN; PINs óbvios (0000, 1234, 1111...) são recusados;
+  - PIN é único na empresa; se alguém escolher um PIN que já é de outra pessoa, o sistema responde só "PIN indisponível, escolha outro" e **cancela o PIN antigo** (que acabou de ser descoberto); o dono cadastra um novo no próximo uso;
+  - 5 PINs errados seguidos travam o aparelho por 1 minuto e vão para o registro de atividades;
+  - sem internet, o aparelho confere o PIN por uma cópia protegida (hash) guardada nele.
+- **Caixa**: uma gaveta só, do aparelho, dividida em turnos. Na troca de turno, quem fecha informa o dinheiro contado; o sistema mostra o esperado (troco inicial + recebido em dinheiro − sangrias) e guarda a diferença com o nome. Cada recebimento continua com o nome de quem digitou o PIN.
+- O sistema registra quem **digitou**: a regra de uso é "cada um registra o que fez". Se um dia precisar, a etapa da lavagem ganha um campo "executado por".
+
 **Modo de emergência (sem internet)**
 
 1. O PDV grava entrada, saída e pagamento no próprio aparelho, cada um com seu UUID e a hora do aparelho.

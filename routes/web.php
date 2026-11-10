@@ -10,6 +10,7 @@ use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ConvenioController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\EstadiaController;
+use App\Http\Controllers\EtapaLavagemController;
 use App\Http\Controllers\ExtratoController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\AnotacaoController;
@@ -171,6 +172,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/empresa/cobranca', [EmpresaController::class, 'cobranca']);
 
         Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
+        Route::get('/configuracoes/etapas', [EtapaLavagemController::class, 'index']);
+        Route::post('/configuracoes/etapas', [EtapaLavagemController::class, 'store']);
+        Route::put('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'update']);
+        Route::post('/configuracoes/etapas/{etapa}/mover', [EtapaLavagemController::class, 'mover']);
+        Route::delete('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'destroy']);
         Route::post('/configuracoes/formas', [FormaPagamentoController::class, 'storeForma']);
         Route::put('/configuracoes/formas/{forma}', [FormaPagamentoController::class, 'updateForma']);
         Route::post('/configuracoes/contas', [FormaPagamentoController::class, 'storeConta']);

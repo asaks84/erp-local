@@ -8,6 +8,7 @@ use App\Models\Servico;
 use App\Models\TipoVeiculo;
 use App\Servicos\Baixa;
 use App\Servicos\Estadias;
+use App\Servicos\EtapasLavagem;
 use App\Servicos\FormasPagamento;
 use App\Servicos\Ordens;
 use App\Servicos\Precos;
@@ -20,11 +21,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Lavagens e serviços: quadro das etapas (aguardando, lavando, pronta, entregue), nova venda e recebimento na entrega. */
+/** Lavagens e serviços: quadro das etapas (configuráveis em EtapasLavagem), nova venda e recebimento na entrega. */
 class LavagemController extends Controller
 {
     /** um cartão do quadro = uma venda (a ordem principal e seus adicionais) */
-    private static function cartao(OrdemServico $p, $adicionais): array
+    private static function cartao(OrdemServico $p, $adicionais, array $etapas): array
     {
         $todas = collect([$p])->merge($adicionais);
         $abertas = $todas->where('situacao', 'aberta');
@@ -44,7 +45,8 @@ class LavagemController extends Controller
             'pago' => $abertas->isEmpty(),
             // na conta: cliente cadastrado ou convênio pagam pela cobrança; avulso paga no balcão
             'paga_no_balcao' => $abertas->isNotEmpty() && $abertas->every(fn ($o) => ! $o->cliente_id),
-            'etapa' => $p->etapa,
+            // etapa desativada depois da venda: o cartão aparece na primeira coluna
+            'etapa' => array_key_exists($p->etapa, $etapas) ? $p->etapa : EtapasLavagem::PRIMEIRA,
             'data' => $p->data->format('Y-m-d'),
             'criado_em' => $p->criado_em?->format('Y-m-d H:i'),
         ];
@@ -56,14 +58,15 @@ class LavagemController extends Controller
         // em andamento (qualquer dia) e as entregues de hoje
         $principais = OrdemServico::with(['cliente:id,nome', 'tipoVeiculo:id,nome'])
             ->where('tipo', 'servico')->whereNull('principal_id')->whereNotNull('etapa')->where('situacao', '<>', 'cancelada')
-            ->where(fn ($q) => $q->where('etapa', '<>', 'entregue')->orWhere('atualizado_em', '>=', now()->startOfDay()))
+            ->where(fn ($q) => $q->where('etapa', '<>', EtapasLavagem::ULTIMA)->orWhere('atualizado_em', '>=', now()->startOfDay()))
             ->orderBy('criado_em')->limit(300)->get();
         $adicionais = OrdemServico::whereIn('principal_id', $principais->pluck('id'))->where('situacao', '<>', 'cancelada')->get()->groupBy('principal_id');
-        $cartoes = $principais->map(fn ($p) => self::cartao($p, $adicionais->get($p->id, collect())));
+        $etapas = EtapasLavagem::ativas();
+        $cartoes = $principais->map(fn ($p) => self::cartao($p, $adicionais->get($p->id, collect()), $etapas));
 
         return Inertia::render('Lavagens/Index', [
             'cartoes' => $cartoes->values(),
-            'etapas' => Vendas::ETAPAS,
+            'etapas' => $etapas,
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
         ]);
     }
@@ -134,7 +137,7 @@ class LavagemController extends Controller
 
     public function etapa(Request $request, OrdemServico $ordem): RedirectResponse
     {
-        $d = $request->validate(['etapa' => ['required', 'in:aguardando,lavando,pronta,entregue']]);
+        $d = $request->validate(['etapa' => ['required', 'string', 'max:30']]);
         Vendas::etapa($ordem, $d['etapa']);
 
         return back();

@@ -7,11 +7,15 @@ import Campo from '../../Components/Campo'
 import { moeda } from '../../lib/formato'
 import { telefone } from '../../lib/mascaras'
 
-const PROXIMA = { aguardando: ['lavando', 'Começar'], lavando: ['pronta', 'Pronta'], pronta: ['entregue', 'Entregar'] }
-const COR = { aguardando: '', lavando: 'selo-aviso', pronta: 'selo-ok', entregue: '' }
+// etapas vêm da configuração da empresa, na ordem: a primeira é a entrada e a última é a entrega
+const corDa = (i, total) => (i === 0 || i === total - 1 ? '' : i === total - 2 ? 'selo-ok' : 'selo-aviso')
 
-function Cartao({ c, onReceber }) {
-    const [prox, rot] = PROXIMA[c.etapa] || []
+function Cartao({ c, etapas, onReceber }) {
+    const chaves = Object.keys(etapas)
+    const i = chaves.indexOf(c.etapa)
+    const prox = chaves[i + 1]
+    const ant = i > 0 && i < chaves.length - 1 ? chaves[i - 1] : null
+    const rot = prox === 'entregue' ? 'Entregar' : etapas[prox]
     const mudar = (etapa) => router.post(`/lavagens/${c.id}/etapa`, { etapa }, { preserveScroll: true })
     return (
         <div className="card mb-2">
@@ -30,7 +34,7 @@ function Cartao({ c, onReceber }) {
                 <div className="d-flex flex-wrap gap-1">
                     {prox && <button type="button" className="btn btn-sm btn-primary" onClick={() => mudar(prox)}>{rot}</button>}
                     {c.paga_no_balcao && <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => onReceber(c)}>Receber {moeda(c.em_aberto)}</button>}
-                    {c.etapa !== 'aguardando' && c.etapa !== 'entregue' && <button type="button" className="btn btn-sm btn-link text-muted" onClick={() => mudar(c.etapa === 'pronta' ? 'lavando' : 'aguardando')}>Voltar etapa</button>}
+                    {ant && <button type="button" className="btn btn-sm btn-link text-muted" onClick={() => mudar(ant)}>Voltar para {etapas[ant].toLowerCase()}</button>}
                 </div>
             </div>
         </div>
@@ -49,16 +53,16 @@ export default function LavagensIndex({ cartoes, etapas, formas }) {
                 <Link href="/lavagens/nova" className="btn btn-primary d-inline-flex align-items-center gap-2"><Icone nome="mais" /> Nova venda</Link>
             </TituloPagina>
             <div className="row g-3">
-                {Object.entries(etapas).map(([k, r]) => {
+                {Object.entries(etapas).map(([k, r], idx, todas) => {
                     const lista = cartoes.filter((c) => c.etapa === k)
                     return (
-                        <div key={k} className="col-md-6 col-xl-3">
+                        <div key={k} className={`col-md-6 ${todas.length <= 3 ? 'col-xl-4' : todas.length === 4 ? 'col-xl-3' : 'col-xl'}`}>
                             <div className="d-flex align-items-center gap-2 mb-2">
-                                <span className={`selo ${COR[k]}`}>{r}</span>
+                                <span className={`selo ${corDa(idx, todas.length)}`}>{r}</span>
                                 <span className="text-muted small">{lista.length}{k === 'entregue' ? ' hoje' : ''}</span>
                             </div>
                             {lista.length === 0 && <p className="text-muted small">Nada aqui.</p>}
-                            {lista.map((c) => <Cartao key={c.id} c={c} onReceber={setRecebendo} />)}
+                            {lista.map((c) => <Cartao key={c.id} c={c} etapas={etapas} onReceber={setRecebendo} />)}
                         </div>
                     )
                 })}

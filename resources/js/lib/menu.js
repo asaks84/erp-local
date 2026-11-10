@@ -51,6 +51,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Tipos de veículo', href: '/configuracoes/tipos', permissao: 'configuracoes', acende: ['/configuracoes/tipos'] },
     { rotulo: 'Tabelas de estadia', href: '/configuracoes/tarifas', permissao: 'configuracoes', acende: ['/configuracoes/tarifas'] },
     { rotulo: 'Lavagens e serviços', href: '/configuracoes/servicos', permissao: 'configuracoes', acende: ['/configuracoes/servicos'] },
+    { rotulo: 'Etapas da lavagem', href: '/configuracoes/etapas', permissao: 'configuracoes', acende: ['/configuracoes/etapas'] },
     { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
 ]
 

@@ -3,6 +3,7 @@
 namespace App\Servicos;
 
 use App\Models\Convenio;
+use App\Models\OrdemEtapa;
 use App\Models\OrdemServico;
 use App\Models\Servico;
 use App\Models\TipoVeiculo;
@@ -10,18 +11,18 @@ use App\Models\Veiculo;
 use App\Support\Atividades;
 use App\Support\Formato;
 use App\Support\Placa;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Venda de lavagens e serviços no balcão: placa (veículo cadastrado ou avulso), serviço principal
  * e adicionais pelo preço da tabela do tipo do veículo, convênio, e na hora: pagar agora, pagar na
- * entrega ou deixar na conta do cliente. A etapa da lavagem fica na própria ordem.
+ * entrega ou deixar na conta do cliente. A etapa da lavagem fica na própria ordem (etapas configuráveis
+ * em EtapasLavagem) e cada mudança vai para o histórico (ordem_etapas), com quem registrou.
  */
 class Vendas
 {
-    public const ETAPAS = ['aguardando' => 'Aguardando', 'lavando' => 'Lavando', 'pronta' => 'Pronta', 'entregue' => 'Entregue'];
-
     private static function erro(string $campo, string $msg): never
     {
         throw ValidationException::withMessages([$campo => $msg]);
@@ -88,7 +89,7 @@ class Vendas
                 $base = [
                     'tipo' => 'servico', 'servico_id' => $s->id, 'principal_id' => $principalId, 'unidade_id' => $unidade,
                     'veiculo_id' => $veiculo?->id, 'placa' => $placa, 'tipo_veiculo_id' => $tipoId, 'celular' => $veiculo ? null : $celular,
-                    'data' => $dia->toDateString(), 'vencimento' => $dia->toDateString(), 'etapa' => 'aguardando',
+                    'data' => $dia->toDateString(), 'vencimento' => $dia->toDateString(), 'etapa' => EtapasLavagem::PRIMEIRA,
                 ];
                 if ($div['convenio'] > 0) {
                     // o convênio paga: a ordem vai para a conta do convênio, com a placa de quem usou
@@ -107,6 +108,7 @@ class Vendas
             if (! $ordens) {
                 self::erro('servico_id', 'Nada a cobrar nesta venda.');
             }
+            self::historico($ordens[0], EtapasLavagem::PRIMEIRA);
             $doCliente = array_values(array_filter($ordens, fn ($o) => ! in_array($o, $pagaConvenio, true)));
             $msg = count($ordens).' serviço(s) lançado(s) para '.Placa::formatar($placa);
             if ($doCliente && $destino === 'na_hora') {
@@ -134,19 +136,31 @@ class Vendas
         return OrdemServico::where('id', $principal->id)->orWhere('principal_id', $principal->id)->orderBy('id')->get();
     }
 
-    /** muda a etapa da lavagem de toda a venda */
+    private static function historico(OrdemServico $principal, string $etapa): void
+    {
+        OrdemEtapa::create(['ordem_id' => $principal->id, 'etapa' => $etapa, 'usuario_id' => Auth::id(), 'quando' => now()]);
+    }
+
+    /** muda a etapa da lavagem de toda a venda e registra no histórico */
     public static function etapa(OrdemServico $o, string $etapa): void
     {
-        if (! array_key_exists($etapa, self::ETAPAS)) {
-            self::erro('etapa', 'Etapa inválida.');
+        $etapas = EtapasLavagem::ativas();
+        if (! array_key_exists($etapa, $etapas)) {
+            self::erro('etapa', 'Etapa inválida ou desativada.');
         }
         $grupo = self::grupo($o);
         if ($grupo->every(fn ($x) => $x->situacao === 'cancelada')) {
             self::erro('etapa', 'Venda cancelada.');
         }
-        foreach ($grupo as $x) {
-            $x->update(['etapa' => $etapa]);
+        if ($grupo->first()->etapa === $etapa) {
+            return;
         }
-        Atividades::registrar('lavagem_etapa', Placa::formatar($grupo->first()->placa).' #'.$grupo->first()->numero.': '.self::ETAPAS[$etapa]);
+        DB::transaction(function () use ($grupo, $etapa) {
+            foreach ($grupo as $x) {
+                $x->update(['etapa' => $etapa]);
+            }
+            self::historico($grupo->first(), $etapa);
+        });
+        Atividades::registrar('lavagem_etapa', Placa::formatar($grupo->first()->placa).' #'.$grupo->first()->numero.': '.$etapas[$etapa]);
     }
 }

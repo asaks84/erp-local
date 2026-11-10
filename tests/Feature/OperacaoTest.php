@@ -239,8 +239,48 @@ class OperacaoTest extends TestCase
         $this->actingAs($this->a->operador)->post('/lavagens', ['placa' => 'AVU1L50', 'tipo_veiculo_id' => $this->a->tipo->id, 'servico_id' => $lav->id,
             'adicionais' => [$cera->id], 'destino' => 'entrega'])->assertSessionHasNoErrors();
         $o = OrdemServico::whereNull('principal_id')->firstOrFail();
-        $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/etapa", ['etapa' => 'lavando'])->assertSessionHasNoErrors();
+        // "Lavando" vem desativada no padrão: não pode ser usada
+        $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/etapa", ['etapa' => 'lavando'])->assertSessionHasErrors('etapa');
+        $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/etapa", ['etapa' => 'pronta'])->assertSessionHasNoErrors();
+        $this->assertSame(['aguardando', 'pronta'], \App\Models\OrdemEtapa::where('ordem_id', $o->id)->orderBy('id')->pluck('etapa')->all());
+        $this->assertSame($this->a->operador->id, \App\Models\OrdemEtapa::where('etapa', 'pronta')->value('usuario_id'));
         $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/receber", ['forma_pagamento_id' => $this->pix()])->assertSessionHasNoErrors();
         $this->assertSame(0, OrdemServico::abertas()->count());
+    }
+
+    public function test_etapas_da_lavagem_configuraveis(): void
+    {
+        [$lav] = $this->servicos();
+        $adm = $this->actingAs($this->a->admin);
+        $adm->get('/configuracoes/etapas')->assertOk()->assertInertia(fn ($p) => $p->has('etapas', 4));
+        $this->actingAs($this->a->operador)->get('/configuracoes/etapas')->assertForbidden();
+        $adm = $this->actingAs($this->a->admin);
+
+        // detailer: cria Polimento, ativa Lavando e coloca Polimento antes de Pronta
+        $adm->post('/configuracoes/etapas', ['nome' => 'Polimento'])->assertSessionHasNoErrors();
+        $adm->post('/configuracoes/etapas', ['nome' => 'polimento'])->assertSessionHasErrors('nome');
+        $lavando = \App\Models\EtapaLavagem::where('chave', 'lavando')->first();
+        $adm->put("/configuracoes/etapas/{$lavando->id}", ['nome' => 'Lavagem', 'ativa' => true])->assertSessionHasNoErrors();
+        $pol = \App\Models\EtapaLavagem::where('chave', 'polimento')->first();
+        $adm->post("/configuracoes/etapas/{$pol->id}/mover", ['direcao' => 'subir']);
+        $this->assertSame(['aguardando' => 'Aguardando', 'lavando' => 'Lavagem', 'polimento' => 'Polimento', 'pronta' => 'Pronta', 'entregue' => 'Entregue'], \App\Servicos\EtapasLavagem::ativas());
+
+        // fixas não desativam
+        $ent = \App\Models\EtapaLavagem::where('chave', 'entregue')->first();
+        $adm->put("/configuracoes/etapas/{$ent->id}", ['nome' => 'Retirado', 'ativa' => false]);
+        $this->assertTrue($ent->fresh()->ativa);
+        $this->assertSame('Retirado', $ent->fresh()->nome);
+
+        // etapa usada não é apagada; a não usada é
+        [$ordens] = Vendas::vender(['placa' => 'AVU1L51', 'tipo_veiculo_id' => $this->a->tipo->id, 'servico_id' => $lav->id, 'destino' => 'entrega']);
+        Vendas::etapa($ordens[0], 'polimento');
+        $adm->delete("/configuracoes/etapas/{$pol->id}");
+        $this->assertNotNull($pol->fresh());
+        $adm->delete("/configuracoes/etapas/{$lavando->id}");
+        $this->assertNull($lavando->fresh());
+
+        // desativar uma etapa com carro nela: o cartão volta para a primeira coluna
+        $adm->put("/configuracoes/etapas/{$pol->id}", ['nome' => 'Polimento', 'ativa' => false]);
+        $adm->get('/lavagens')->assertInertia(fn ($p) => $p->where('cartoes.0.etapa', 'aguardando')->has('etapas', 3));
     }
 }
