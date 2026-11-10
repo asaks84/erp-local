@@ -23,6 +23,7 @@ class Empresa extends Modelo
         'periodos' => ['Diurno', 'Noturno', '24 horas'],
         'pausa_taxa_tipo' => 'valor',
         'pausa_taxa_valor' => 0,
+        'cobranca_instrucoes' => '',
     ];
 
     public function config(string $chave): mixed

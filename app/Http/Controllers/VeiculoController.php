@@ -53,13 +53,17 @@ class VeiculoController extends Controller
             'unidade_id' => ['exclude_unless:mensalista,true', 'required', Rule::exists('unidades', 'id')->where('empresa_id', app(EmpresaAtual::class)->id())->where('ativa', true)],
         ]);
 
-        DB::transaction(function () use ($dados, $mensal, $cliente, $request) {
+        $contrato = DB::transaction(function () use ($dados, $mensal, $cliente, $request) {
             $veiculo = Veiculo::create($dados + ['cliente_id' => $cliente->id, 'criado_por' => $request->user()->id]);
             Atividades::registrar('veiculo_criado', $veiculo->rotulo().', cliente '.$cliente->id);
-            if (! empty($mensal['mensalista'])) {
-                Contratos::criar($veiculo, $mensal);
-            }
+
+            return ! empty($mensal['mensalista']) ? Contratos::criar($veiculo, $mensal) : null;
         });
+
+        // mensalista novo: escolher como fica a primeira cobrança
+        if ($contrato) {
+            return redirect("/mensalidades/{$contrato->id}/primeira-cobranca?de=veiculo")->with('sucesso', 'Veículo cadastrado.');
+        }
 
         return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Veículo cadastrado.');
     }

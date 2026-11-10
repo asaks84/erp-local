@@ -6,6 +6,17 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 10/11/2026 | Conta paga nos dois sistemas (baixa no ERP e no sistema atual): vale o pagamento do ERP; a importação não recria o do sistema atual | Evitar recebido em dobro durante o uso em paralelo |
+| 10/11/2026 | Ordem importada mantém o **mesmo número** do sistema atual (ord_id); as novas continuam a sequência. Ordem lançada só no ERP com número que coincida com um antigo ganha número novo na importação | Mesmo motivo do código do cliente; nunca dois documentos com o mesmo número |
+| 10/11/2026 | O sistema atual não guardava pagamentos: na importação, as ordens pagas de um cliente no **mesmo dia e hora** viram **um pagamento** com forma "não informada" e o valor das ordens (crédito usado abate) | Reconstrói o histórico sem inventar forma nem valor; "recebido no mês" bate centavo a centavo |
+| 10/11/2026 | Até a virada o sistema atual manda: pagamentos importados são refeitos a cada importação e **não podem ser estornados no ERP**; ordem apagada lá sai daqui (se não tiver sido usada no ERP); ordem recebida no ERP continua paga | Importação repetível sem duplicar; fase de paralelo segura |
+| 10/11/2026 | Créditos em aberto **sempre abatem** na baixa (igual ao sistema atual). Sobra: crédito ou serviço feito na hora (já pago); no extrato também "não lançar". Falta: débito para a próxima cobrança ou desconto (permissão `desconto`, com motivo). Pagar só parte = desmarcar as contas que ficam | Regras do sistema atual + registro do desconto (antes ficava sem rastro) |
+| 10/11/2026 | Estorno de pagamento (permissão `contas_editar`, com motivo): as ordens voltam a ficar em aberto e o crédito/débito nascido dele é cancelado; bloqueado se o crédito já foi usado em outro pagamento | Corrigir baixa errada sem apagar dinheiro |
+| 10/11/2026 | Cobrança tem situação **paga**, **parcialmente paga**, **levada para a próxima** (nada pago, tudo foi para a cobrança seguinte), **em aberto** e **cancelada**. Uma por cliente e mês; cancelar só sem nada pago, e as contas voltam para a cobrança anterior | Mostrar o que aconteceu com cada cobrança emitida |
+| 10/11/2026 | Geração do mês: valor da versão do contrato vigente no vencimento; mês pausado gera a taxa de reserva (taxa 0 não gera); contrato **novo no ERP** que começou no mês aparece desmarcado (a primeira cobrança decide); contrato importado segue a regra do sistema atual | Evitar cobrar o mês cheio de quem entrou no meio do mês |
+| 10/11/2026 | Primeira cobrança: depois de cadastrar mensalidade (veículo, ficha ou fila), a tela de opções abre sozinha. Sem a permissão `mensalidade_valor`: só proporcional, proporcional + próximo ou mês cheio, sem mudar o valor | Igual ao sistema atual |
+| 10/11/2026 | Fechamento de **convênio** passa para a etapa 4 (depende das estadias registradas no ERP) | Sem estadias no ERP não há o que fechar |
+| 10/11/2026 | Forma "não informada" existe só para os importados (inativa, não aparece ao receber). Formas e contas iniciais: Dinheiro → Caixa; Pix, débito, crédito, boleto e transferência → Banco (editáveis) | Começar usando sem configurar nada |
 | 10/11/2026 | Cliente importado mantém o **mesmo código** do sistema atual; os novos continuam a numeração | É como a equipe conhece e busca o cliente |
 | 10/11/2026 | "Remover" cliente ou veículo = desativar (encerra a mensalidade no dia, guarda histórico, pode reativar). Placa só não se repete entre veículos ativos | A partir da etapa 3 há dinheiro ligado ao cliente; apagar quebraria o histórico |
 | 10/11/2026 | Mensalidade é um contrato por veículo; reajuste = nova versão a partir de uma data; encerramento agendado = data de fim no contrato; pausa = meses inteiros com taxa (valor ou %) | Decisões do comparativo (vigência, pausa cobrada, cancelamento agendado) aplicadas |
@@ -57,4 +68,4 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 ## Em aberto
 
-Nenhuma decisão pendente para a etapa 2.
+Nenhuma decisão pendente para a etapa 3.

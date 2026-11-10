@@ -1,0 +1,151 @@
+import { Link, useForm } from '@inertiajs/react'
+import { useState } from 'react'
+import { Dropdown } from 'react-bootstrap'
+import Icone from './Icone'
+import Janela from './Janela'
+import Campo from './Campo'
+import CampoData from './CampoData'
+import CampoValor from './CampoValor'
+import { SeloCobranca, SeloOrdem, ValorOrdem, competencia, descricaoOrdem, quando } from './Dinheiro'
+import { data as fData, dataHora, moeda } from '../lib/formato'
+import { usePode } from '../lib/permissoes'
+
+/** Bloco "Contas" da ficha do cliente: em aberto, cobranças e pagamentos recentes. */
+export default function ContasCliente({ cliente, abertas, total, cobrancas, pagamentos, mesAtual }) {
+    const pode = usePode()
+    const editar = pode('contas_editar')
+    const [janela, setJanela] = useState(null) // {tipo: 'alterar'|'cancelar'|'estornar'|'cobranca', item}
+    const form = useForm({})
+    const temContas = abertas.some((o) => o.tipo !== 'credito')
+
+    function abrir(tipo, item = null) {
+        form.clearErrors()
+        if (tipo === 'alterar') form.setData({ valor: item.valor, vencimento: item.vencimento || '', descricao: item.descricao })
+        else if (tipo === 'cobranca') form.setData({ mes: mesAtual, vencimento: '' })
+        else form.setData({ motivo: '' })
+        setJanela({ tipo, item })
+    }
+    function enviar() {
+        const { tipo, item } = janela
+        const fim = { preserveScroll: true, onSuccess: () => setJanela(null) }
+        if (tipo === 'alterar') form.put(`/ordens/${item.id}`, fim)
+        if (tipo === 'cancelar') form.post(`/ordens/${item.id}/cancelar`, fim)
+        if (tipo === 'estornar') form.post(`/pagamentos/${item.id}/estornar`, fim)
+        if (tipo === 'cobranca') form.post(`/clientes/${cliente.id}/cobrancas`, fim)
+    }
+
+    return (
+        <div className="card mb-4" id="contas">
+            <div className="card-header d-flex flex-wrap align-items-center gap-2">
+                <span className="flex-grow-1">Contas</span>
+                <Link href={`/clientes/${cliente.id}/extrato`} className="btn btn-sm btn-outline-secondary">Extrato da conta</Link>
+                <Dropdown align="end">
+                    <Dropdown.Toggle size="sm" variant="outline-secondary">Lançar</Dropdown.Toggle>
+                    <Dropdown.Menu>
+                        <Dropdown.Item as={Link} href={`/clientes/${cliente.id}/lancar?tipo=servico`}>Lavagem ou serviço</Dropdown.Item>
+                        <Dropdown.Item as={Link} href={`/clientes/${cliente.id}/lancar?tipo=estadia`}>Estadia</Dropdown.Item>
+                        {editar && <Dropdown.Item as={Link} href={`/clientes/${cliente.id}/lancar?tipo=debito`}>Débito</Dropdown.Item>}
+                        {editar && <Dropdown.Item as={Link} href={`/clientes/${cliente.id}/lancar?tipo=credito`}>Crédito</Dropdown.Item>}
+                    </Dropdown.Menu>
+                </Dropdown>
+                {temContas && <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => abrir('cobranca')}>Emitir cobrança</button>}
+                {temContas && <Link href={`/clientes/${cliente.id}/receber`} className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"><Icone nome="dinheiro" tamanho={16} /> Receber</Link>}
+            </div>
+
+            <div className="card-body pb-0">
+                <div className="d-flex align-items-baseline gap-2 mb-2">
+                    <span className="text-muted">Em aberto</span>
+                    <strong className={`fs-4 ${total > 0 ? '' : 'text-success'}`}>{moeda(total)}</strong>
+                    {total < 0 && <span className="text-muted small">(crédito a favor do cliente)</span>}
+                </div>
+            </div>
+            {abertas.length === 0 ? (
+                <div className="card-body pt-0 text-muted">Nenhuma conta em aberto.</div>
+            ) : (
+                <div className="table-responsive">
+                    <table className="table align-middle mb-0">
+                        <thead><tr><th>Nº</th><th>Descrição</th><th className="d-none d-md-table-cell">Vencimento</th><th className="text-end">Valor</th><th /></tr></thead>
+                        <tbody>
+                            {abertas.map((o) => (
+                                <tr key={o.id}>
+                                    <td className="text-muted">{o.numero}</td>
+                                    <td>
+                                        <div>{descricaoOrdem(o)}</div>
+                                        <div className="small text-muted">{[o.placa, `lançada ${fData(o.data)}`].filter(Boolean).join(' · ')} <span className="d-md-none">· venc. {fData(o.vencimento || o.data)}</span></div>
+                                    </td>
+                                    <td className="d-none d-md-table-cell text-nowrap">{o.tipo === 'credito' ? '—' : fData(o.vencimento || o.data)} <SeloOrdem o={o} /></td>
+                                    <td className="text-end"><ValorOrdem o={o} /></td>
+                                    <td className="text-end text-nowrap">
+                                        {editar && o.tipo !== 'credito' && <button type="button" className="btn btn-sm btn-outline-secondary" aria-label={`Alterar ordem ${o.numero}`} onClick={() => abrir('alterar', o)}><Icone nome="lapis" tamanho={16} /></button>}
+                                        {editar && <button type="button" className="btn btn-sm btn-outline-secondary ms-1" aria-label={`Cancelar ordem ${o.numero}`} onClick={() => abrir('cancelar', o)}><Icone nome="lixeira" tamanho={16} /></button>}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {(cobrancas.length > 0 || pagamentos.length > 0) && (
+                <div className="card-body border-top">
+                    <div className="row g-4">
+                        <div className="col-md-6">
+                            <h3 className="fs-6 fw-semibold">Cobranças</h3>
+                            {cobrancas.length === 0 && <p className="text-muted small mb-0">Nenhuma cobrança emitida.</p>}
+                            <ul className="list-unstyled mb-0">
+                                {cobrancas.map((c) => (
+                                    <li key={c.id} className="d-flex flex-wrap gap-2 align-items-center py-1">
+                                        <Link href={`/cobrancas/${c.id}`}>Nº {c.numero} · {competencia(c.competencia)}</Link>
+                                        <span className="ms-auto">{moeda(c.total)}</span>
+                                        <SeloCobranca situacao={c.situacao} />
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="col-md-6">
+                            <h3 className="fs-6 fw-semibold">Pagamentos</h3>
+                            {pagamentos.length === 0 && <p className="text-muted small mb-0">Nenhum pagamento.</p>}
+                            <ul className="list-unstyled mb-0">
+                                {pagamentos.map((p) => (
+                                    <li key={p.id} className={`d-flex flex-wrap gap-2 align-items-center py-1 ${p.situacao === 'estornado' ? 'text-muted' : ''}`}>
+                                        <span>{quando(p.recebido_em)}</span>
+                                        <span className="small text-muted">{p.forma || 'Não informada'}</span>
+                                        <span className={`ms-auto ${p.situacao === 'estornado' ? 'text-decoration-line-through' : ''}`}>{moeda(p.valor)}</span>
+                                        {p.situacao === 'estornado' && <span className="selo" title={p.motivo_estorno || undefined}>Estornado</span>}
+                                        {editar && p.situacao === 'confirmado' && p.origem !== 'importacao' && (
+                                            <button type="button" className="btn btn-sm btn-link p-0" onClick={() => abrir('estornar', p)}>Estornar</button>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <Janela aberta={janela?.tipo === 'alterar'} titulo={`Alterar ordem ${janela?.item?.numero ?? ''}`} onFechar={() => setJanela(null)} onEnviar={enviar} ocupado={form.processing}>
+                <Campo rotulo="Descrição" value={form.data.descricao ?? ''} onChange={(e) => form.setData('descricao', e.target.value)} erro={form.errors.descricao} maxLength={80} />
+                <CampoValor rotulo="Valor" value={form.data.valor ?? ''} onChange={(v) => form.setData('valor', v)} erro={form.errors.valor} />
+                <CampoData rotulo="Vencimento" value={form.data.vencimento ?? ''} onChange={(v) => form.setData('vencimento', v)} erro={form.errors.vencimento} />
+                <p className="small text-muted mb-0">Fica registrado quem alterou e o valor anterior. Uma cobrança já emitida continua com o valor de quando foi emitida.</p>
+            </Janela>
+
+            <Janela aberta={janela?.tipo === 'cancelar'} titulo={`Cancelar ordem ${janela?.item?.numero ?? ''}`} perigo rotuloOk="Cancelar ordem" onFechar={() => setJanela(null)} onEnviar={enviar} ocupado={form.processing}>
+                <p>{janela?.item && `${descricaoOrdem(janela.item)} · ${moeda(janela.item.valor)}`}</p>
+                <Campo rotulo="Motivo" value={form.data.motivo ?? ''} onChange={(e) => form.setData('motivo', e.target.value)} erro={form.errors.motivo} maxLength={200} autoFocus />
+                <p className="small text-muted mb-0">A ordem não é apagada: fica cancelada no histórico, com o motivo.</p>
+            </Janela>
+
+            <Janela aberta={janela?.tipo === 'estornar'} titulo="Estornar pagamento" perigo rotuloOk="Estornar" onFechar={() => setJanela(null)} onEnviar={enviar} ocupado={form.processing}>
+                <p>{janela?.item && `${dataHora(janela.item.recebido_em)} · ${moeda(janela.item.valor)}`}. As contas pagas por ele voltam a ficar em aberto.</p>
+                <Campo rotulo="Motivo" value={form.data.motivo ?? ''} onChange={(e) => form.setData('motivo', e.target.value)} erro={form.errors.motivo} maxLength={200} autoFocus />
+            </Janela>
+
+            <Janela aberta={janela?.tipo === 'cobranca'} titulo="Emitir cobrança" rotuloOk="Emitir" onFechar={() => setJanela(null)} onEnviar={enviar} ocupado={form.processing}>
+                <p className="small text-muted">Entram todas as contas em aberto ({moeda(total)}). Depois de emitida, a cobrança não muda.</p>
+                <CampoData mes rotulo="Mês da cobrança" value={form.data.mes ?? ''} onChange={(v) => form.setData('mes', v)} erro={form.errors.mes || form.errors.competencia || form.errors.cliente} />
+                <CampoData rotulo="Vencimento (vazio = o da mensalidade)" value={form.data.vencimento ?? ''} onChange={(v) => form.setData('vencimento', v)} erro={form.errors.vencimento} />
+            </Janela>
+        </div>
+    )
+}

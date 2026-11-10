@@ -44,6 +44,23 @@ function PadroesMensalidade({ config }) {
     )
 }
 
+function InstrucoesCobranca({ texto }) {
+    const { data, setData, put, processing, errors } = useForm({ cobranca_instrucoes: texto || '' })
+    return (
+        <form className="card mt-4" noValidate onSubmit={(e) => { e.preventDefault(); put('/empresa/cobranca', { preserveScroll: true }) }}>
+            <div className="card-header">Cobrança impressa</div>
+            <div className="card-body">
+                <Campo as="textarea" rotulo="Como pagar (sai no pé da cobrança)" style={{ height: 110 }} maxLength={500} value={data.cobranca_instrucoes}
+                    onChange={(e) => setData('cobranca_instrucoes', e.target.value)} erro={errors.cobranca_instrucoes}
+                    ajuda="Ex.: chave Pix, banco e conta, recado para o cliente." className="mb-0" />
+            </div>
+            <div className="card-footer bg-transparent d-flex justify-content-end p-3">
+                <button type="submit" className="btn btn-primary" disabled={processing}>Salvar</button>
+            </div>
+        </form>
+    )
+}
+
 function LinkCadastro({ link }) {
     const [qr, setQr] = useState(null)
     useEffect(() => { if (link) QRCode.toDataURL(link, { width: 480, margin: 1 }).then(setQr) }, [link])
@@ -76,7 +93,7 @@ function LinkCadastro({ link }) {
     )
 }
 
-export default function EmpresaEdit({ empresa, unidades, config, link_cadastro }) {
+export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, cobranca_instrucoes }) {
     const { data, setData, put, processing, errors } = useForm({
         nome: empresa.nome || '',
         razao_social: empresa.razao_social || '',
@@ -120,6 +137,7 @@ export default function EmpresaEdit({ empresa, unidades, config, link_cadastro }
                         </div>
                     </form>
                     <PadroesMensalidade config={config} />
+                    <InstrucoesCobranca texto={cobranca_instrucoes} />
                 </div>
 
                 <div className="col-lg-6">

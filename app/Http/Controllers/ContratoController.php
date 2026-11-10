@@ -22,9 +22,9 @@ class ContratoController extends Controller
             'inicio' => ['required', 'date'],
             'unidade_id' => ['required', Rule::exists('unidades', 'id')->where('empresa_id', app(EmpresaAtual::class)->id())->where('ativa', true)],
         ]);
-        Contratos::criar($veiculo, $d);
+        $c = Contratos::criar($veiculo, $d);
 
-        return back()->with('sucesso', 'Mensalidade cadastrada.');
+        return redirect("/mensalidades/{$c->id}/primeira-cobranca?de=veiculo")->with('sucesso', 'Mensalidade cadastrada.');
     }
 
     public function reajustar(Request $request, MensalidadeContrato $contrato): RedirectResponse

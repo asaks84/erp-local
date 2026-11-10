@@ -56,9 +56,12 @@ class CadastrosTest extends TestCase
         $this->actingAs($a->operador)->post("/clientes/{$x->cliente->id}/veiculos", [
             'placa' => 'abc-1234', 'tipo_veiculo_id' => $a->tipo->id, 'modelo' => 'gol',
             'mensalista' => true, 'periodo' => 'Diurno', 'valor' => 180.5, 'inicio' => '2026-11-01', 'unidade_id' => $a->unidade->id,
-        ])->assertRedirect("/clientes/{$x->cliente->id}");
+        ]);
         app(EmpresaAtual::class)->definir($a->empresa->id);
         $v = Veiculo::where('placa', 'ABC1234')->firstOrFail();
+        // mensalista novo segue para a primeira cobrança
+        $r = MensalidadeContrato::where('veiculo_id', $v->id)->value('id');
+        $this->actingAs($a->operador)->get("/mensalidades/{$r}/primeira-cobranca?de=veiculo")->assertOk();
         $this->assertSame('GOL', $v->modelo);
         $this->assertSame('ABC-1234', $v->rotulo());
         $c = MensalidadeContrato::where('veiculo_id', $v->id)->firstOrFail();

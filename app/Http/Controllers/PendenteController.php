@@ -99,17 +99,20 @@ class PendenteController extends Controller
                 'tipo_veiculo_id' => $mensal['tipo_veiculo_id'],
                 'criado_por' => $request->user()->id,
             ]);
-            if (! empty($mensal['mensalista'])) {
-                Contratos::criar($veiculo, $mensal);
-            }
+            $contrato = ! empty($mensal['mensalista']) ? Contratos::criar($veiculo, $mensal) : null;
             Atividades::registrar($modo === 'vincular' ? 'cadastro_publico_vinculado' : 'cadastro_publico_aprovado',
                 'cliente '.$cliente->id.' - '.$cliente->nome.', '.$veiculo->rotulo());
             $pendente->delete();
 
-            return $cliente;
+            return [$cliente, $contrato];
         });
+        [$cliente, $contrato] = $cliente;
 
-        return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Cadastro aprovado. A primeira cobrança passa a ser gerada pelo sistema novo na etapa 3; até lá, use o sistema atual.');
+        if ($contrato) {
+            return redirect("/mensalidades/{$contrato->id}/primeira-cobranca?de=aprovacao")->with('sucesso', 'Cadastro aprovado.');
+        }
+
+        return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Cadastro aprovado.');
     }
 
     public function recusar(CadastroPendente $pendente): RedirectResponse

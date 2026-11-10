@@ -4,6 +4,27 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 10/11/2026 — Etapa 3: dinheiro
+
+- **Ordens de serviço:** todo valor do cliente (mensalidade, lavagem/serviço, estadia, débito, crédito) vira uma ordem com número da empresa. Ordem nunca é apagada: em aberto pode ser alterada ou cancelada com motivo (permissão "alterar contas"). Lista em Contas › Ordens de serviço.
+- **Lançar na conta do cliente:** lavagem/serviço com adicionais (preço da tabela pelo tipo do veículo; serviço "até" pede o valor), estadia, e débito/crédito com motivo (permissão "alterar contas").
+- **Gerar mensalidades do mês:** prévia com cada mensalista (vai gerar, já gerada, já coberta, pausado com taxa, começou no mês), marcar e gerar. Nunca duas do mesmo mês para o mesmo veículo.
+- **Primeira cobrança:** abre sozinha depois de cadastrar uma mensalidade (veículo novo, ficha do cliente ou aprovação da fila): proporcional, proporcional + próximo, mês cheio, cortesia ou não gerar.
+- **Receber:** marca as contas pagas, valor, data e forma de pagamento (com parcelas, taxa e data em que o dinheiro cai). Créditos abatem; sobra vira crédito ou serviço feito na hora; falta vira débito ou desconto. **Estorno** com motivo.
+- **Cobranças:** emissão por cliente (ficha) ou em lote no mês; cópia dos itens na emissão (não muda depois); o que não foi pago entra na próxima como saldo anterior; impressão na **via do cliente** do sistema atual (folha A4 deitada, duas cobranças lado a lado, seções Mensalidades, Lavagens e Estadias avulsas, subtotal, créditos, débitos e total), com número da cobrança, asterisco no que veio da cobrança anterior e o texto "como pagar" configurável em Empresa e unidades.
+- **Extrato bancário:** envia o CSV, o sistema sugere o cliente (pagador vinculado, CPF parcial ou nome), a equipe confere e dá baixa; o mesmo PIX não baixa duas vezes; dá para lembrar o pagador.
+- **Contas em aberto** (com "só vencidas" e planilha), **Recebimentos** por período (por forma e pelo que foi pago, com planilha), **extrato da conta** na ficha do cliente (com saldo linha a linha, para imprimir) e números no **Início**.
+- **Formas de pagamento e contas** em Configurações (Dinheiro, Pix, cartões, boleto, transferência já vêm cadastrados).
+- **Importação:** ordens com o mesmo número do sistema atual, pagamentos reconstruídos (forma "não informada") e extrato já importado; reimportar não duplica. **Comparação** do portão: ordens, em aberto por cliente e recebido mês a mês. Testado com 56 mil ordens (5 segundos).
+- **Correção na importação:** ordem com data de pagamento inválida no sistema atual (ex.: `0000-00-00`) entrava como em aberto; agora entra como paga, sem data, igual ao sistema atual (que só considera em aberto quando a data está vazia).
+- **Serviço feito na hora** (sobra no receber e no extrato): a lista inclui "Estadia avulsa", além das lavagens e serviços.
+- **Início:** "Recebido no mês" passa a somar as contas baixadas (crédito usado abate), igual ao Início do sistema atual; o dinheiro por forma de pagamento fica em Recebimentos.
+- **Importação na fase de paralelo:** conta paga nos dois sistemas não vira dois pagamentos (vale o pagamento feito no ERP). Novo `importar-legado.bat` na raiz: roda a importação e a comparação e grava o resultado em `storage/logs/importacao.txt`.
+- **Portão da etapa 3 cumprido** com a cópia local do sistema atual (banco do ERP recriado do zero): 20.911 ordens, 49 em aberto (R$ 10.050,00) e o recebido de todos os meses iguais. Novo `recriar-banco.bat` (apaga o banco do ERP e importa tudo de novo; só para antes da virada).
+- **Extrato da conta:** contas baixadas no sistema atual sem data de pagamento (`0000-00-00`) agora aparecem como "Baixada no sistema atual sem data de pagamento" e saem do saldo; antes o extrato terminava com um saldo que não existia (ex.: R$ 650 de um cliente sem nada em aberto). Pagamentos são buscados pelas contas do cliente. O saldo final do extrato bate com o em aberto em todos os clientes.
+- **119 testes automáticos.**
+- Banco: migração `2026_11_12_000001_create_dinheiro_tables` (rodar `php artisan migrate`).
+
 ## 10/11/2026
 
 - **Empresa e unidades:** campo "CNPJ" (empresa é sempre pessoa jurídica), com máscara e conferência dos dígitos; telefone com máscara na empresa e nas unidades. Os dois passam a ser guardados só com os números.

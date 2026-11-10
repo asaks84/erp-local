@@ -130,9 +130,86 @@ class ClienteController extends Controller
                 ]),
             ]),
             'pagadores' => $cliente->pagadores->map->only(['id', 'nome', 'documento', 'conta']),
+            // dinheiro (etapa 3)
+            'abertas' => \App\Servicos\Baixa::abertas($cliente)->map(fn ($o) => OrdemController::linha($o)),
+            'total_aberto' => \App\Servicos\Baixa::totalAberto($cliente),
+            'cobrancas' => \App\Models\Cobranca::where('cliente_id', $cliente->id)->orderByDesc('numero')->limit(6)->get()->map(fn ($c) => CobrancaController::resumo($c)),
+            'pagamentos' => \App\Models\Pagamento::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('recebido_em')->limit(8)->get()->map(fn ($p) => [
+                'id' => $p->id, 'recebido_em' => $p->recebido_em->format('Y-m-d H:i'), 'valor' => (float) $p->valor, 'forma' => $p->forma?->nome,
+                'situacao' => $p->situacao, 'origem' => $p->origem, 'motivo_estorno' => $p->motivo_estorno,
+            ]),
+            'mes_atual' => now()->format('Y-m'),
             'periodos' => Empresa::atual()->config('periodos'),
             'unidades' => \App\Models\Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
             'pausa_padrao' => ['tipo' => Empresa::atual()->config('pausa_taxa_tipo'), 'valor' => Empresa::atual()->config('pausa_taxa_valor')],
+        ]);
+    }
+
+    /**
+     * Extrato da conta: ordens, pagamentos, cancelamentos e estornos em ordem de data, com o saldo
+     * (quanto o cliente deve) linha a linha. Montado das tabelas existentes.
+     */
+    public function extrato(Request $request, Cliente $cliente): Response
+    {
+        $f = $request->validate(['de' => ['nullable', 'date_format:Y-m-d'], 'ate' => ['nullable', 'date_format:Y-m-d']]);
+        $de = $f['de'] ?? now()->subMonths(6)->startOfMonth()->toDateString();
+        $ate = $f['ate'] ?? now()->toDateString();
+
+        $mov = collect();
+        $ordens = \App\Models\OrdemServico::where('cliente_id', $cliente->id)->get();
+        $ids = $ordens->pluck('id')->all();
+        // ordens que um pagamento confirmado baixou (as demais pagas foram baixadas sem pagamento registrado)
+        $cobertas = \App\Models\PagamentoItem::whereIn('ordem_id', $ids ?: [0])
+            ->whereHas('pagamento', fn ($q) => $q->where('situacao', 'confirmado'))->pluck('ordem_id')->flip();
+        foreach ($ordens as $o) {
+            $mov->push(['quando' => $o->data->format('Y-m-d').' 00:00:00', 'ordem' => 1, 'descricao' => '#'.$o->numero.' '.$o->descricao.($o->competencia ? ' '.\Carbon\Carbon::parse($o->competencia.'-01')->format('m/Y') : '').($o->placa ? ' · '.\App\Support\Placa::formatar($o->placa) : ''),
+                'tipo' => $o->tipo, 'valor' => $o->valorComSinal()]);
+            if ($o->situacao === 'cancelada' && $o->cancelada_em) {
+                $mov->push(['quando' => $o->cancelada_em->format('Y-m-d H:i:s'), 'ordem' => 2, 'descricao' => 'Cancelada #'.$o->numero.' ('.$o->motivo_cancelamento.')', 'tipo' => 'cancelamento', 'valor' => -$o->valorComSinal()]);
+            }
+            if ($o->situacao === 'paga' && ! isset($cobertas[$o->id])) {
+                // ex.: data de pagamento "0000-00-00" no sistema atual: paga, mas sem data nem pagamento
+                $quando = $o->pago_em?->format('Y-m-d H:i:s') ?? ($o->vencimento ?? $o->data)->format('Y-m-d').' 00:00:01';
+                $mov->push(['quando' => $quando, 'ordem' => 3, 'descricao' => 'Baixada no sistema atual sem data de pagamento #'.$o->numero, 'tipo' => 'pagamento', 'valor' => -$o->valorComSinal()]);
+            }
+        }
+        $pagamentos = \App\Models\Pagamento::with(['forma:id,nome', 'itens.ordem:id,numero'])
+            ->where(fn ($q) => $q->where('cliente_id', $cliente->id)->orWhereHas('itens', fn ($i) => $i->whereIn('ordem_id', $ids ?: [0])))->get();
+        foreach ($pagamentos as $p) {
+            $itens = $p->itens->filter(fn ($i) => in_array($i->ordem_id, $ids));
+            $baixado = round((float) $itens->sum('valor'), 2);
+            $dif = round((float) $p->valor - round((float) $p->itens->sum('valor'), 2), 2);
+            $obs = $dif < 0 ? ' · desconto/débito de '.\App\Support\Formato::moeda(-$dif) : ($dif > 0 ? ' · '.\App\Support\Formato::moeda($dif).' a mais' : '');
+            $mov->push(['quando' => $p->recebido_em->format('Y-m-d H:i:s'), 'ordem' => 3, 'descricao' => 'Pagamento '.\App\Support\Formato::moeda($p->valor).' ('.($p->forma?->nome ?? 'forma não informada').') · ordens '.$itens->map(fn ($i) => '#'.$i->ordem->numero)->implode(', ').$obs,
+                'tipo' => 'pagamento', 'valor' => -$baixado]);
+            if ($p->situacao === 'estornado' && $p->estornado_em) {
+                $mov->push(['quando' => $p->estornado_em->format('Y-m-d H:i:s'), 'ordem' => 4, 'descricao' => 'Estorno do pagamento ('.$p->motivo_estorno.')', 'tipo' => 'estorno', 'valor' => $baixado]);
+            }
+        }
+        $mov = $mov->sortBy([['quando', 'asc'], ['ordem', 'asc']])->values();
+        $saldo = 0.0;
+        $anterior = 0.0;
+        $linhas = [];
+        foreach ($mov as $m) {
+            $saldo = round($saldo + $m['valor'], 2);
+            $dia = substr($m['quando'], 0, 10);
+            if ($dia < $de) {
+                $anterior = $saldo;
+
+                continue;
+            }
+            if ($dia > $ate) {
+                break;
+            }
+            $linhas[] = ['data' => $dia] + $m + ['saldo' => $saldo];
+        }
+
+        return Inertia::render('Clientes/Extrato', [
+            'cliente' => $cliente->only(['id', 'nome']) + ['documento' => Documento::formatar($cliente->documento)],
+            'filtros' => ['de' => $de, 'ate' => $ate],
+            'anterior' => $anterior,
+            'linhas' => $linhas,
+            'saldo_final' => $linhas ? end($linhas)['saldo'] : $anterior,
         ]);
     }
 

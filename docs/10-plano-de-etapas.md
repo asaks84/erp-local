@@ -6,9 +6,9 @@ A migração vai em oito etapas, cada uma utilizável antes da próxima; o siste
 
 1. **Fundação:** projeto Laravel, login, níveis de acesso, empresa e unidade, layout atual, script de migração dos dados com relatório de comparação.
 2. **Cadastros e configurações:** clientes, veículos, contratos de mensalidade, fila de cadastro, tipos de veículo, tarifas, serviços, convênios, usuários.
-3. **Dinheiro:** ordens de serviço, geração de mensalidades e primeira cobrança, baixa unificada com forma de pagamento, importação de extrato, cobranças, contas em aberto e relatórios.
+3. **Dinheiro:** ordens de serviço, geração de mensalidades e primeira cobrança, baixa unificada com forma de pagamento, importação de extrato, cobranças, contas em aberto e relatórios. (O fechamento de convênio foi para a etapa 4.)
     - Portão: totais em aberto e recebidos iguais aos do sistema atual.
-4. **Operação na gestão:** estadias com entrada e saída, venda de lavagens e serviços.
+4. **Operação na gestão:** estadias com entrada e saída, venda de lavagens e serviços (com etapa da lavagem), fechamento de convênio.
 5. **Paralelo e virada:** sistema novo num subdomínio, usado lado a lado com o atual; depois da virada, o CodeIgniter fica só para consulta.
     - Portão: algumas semanas sem diferença nos relatórios; backup e plano de volta prontos.
 6. **Gestão de gastos e contas a pagar:** funcionários, holerites, fornecedores, contas a pagar, fluxo de caixa e resultado do mês.
@@ -23,7 +23,7 @@ Durante as etapas 1 a 5, o sistema atual continua sendo o oficial e só recebe c
 |---|---|
 | 1. Fundação | pronta para conferência (09/11/2026) |
 | 2. Cadastros e configurações | pronta para conferência (10/11/2026) |
-| 3. Dinheiro | não iniciada |
+| 3. Dinheiro | pronta para conferência (10/11/2026); falta o portão com os dados reais |
 | 4. Operação na gestão | não iniciada |
 | 5. Paralelo e virada | não iniciada |
 | 6. Gastos e contas a pagar | não iniciada |

@@ -30,6 +30,7 @@ class EmpresaController extends Controller
                 'pausa_taxa_tipo' => $empresa->config('pausa_taxa_tipo'),
                 'pausa_taxa_valor' => (float) $empresa->config('pausa_taxa_valor'),
             ],
+            'cobranca_instrucoes' => $empresa->config('cobranca_instrucoes'),
             'link_cadastro' => $empresa->codigo_publico ? url('/cadastro/'.$empresa->codigo_publico) : null,
             'unidades' => Unidade::orderBy('nome')->get(['id', 'nome', 'endereco', 'ativa']),
         ]);
@@ -73,6 +74,18 @@ class EmpresaController extends Controller
         Atividades::registrar('empresa_config_alterada', 'vencimento dia '.$d['dia_vencimento_padrao'].'; períodos: '.implode(', ', $d['periodos']));
 
         return back()->with('sucesso', 'Padrões de mensalidade salvos.');
+    }
+
+    /** texto impresso no pé da cobrança (chave Pix, conta, recado) */
+    public function cobranca(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['cobranca_instrucoes' => ['nullable', 'string', 'max:500']]);
+        $empresa = $this->empresa();
+        $empresa->configuracoes = array_merge($empresa->configuracoes ?? [], ['cobranca_instrucoes' => trim((string) ($d['cobranca_instrucoes'] ?? ''))]);
+        $empresa->save();
+        Atividades::registrar('empresa_config_alterada', 'instruções de pagamento da cobrança');
+
+        return back()->with('sucesso', 'Instruções da cobrança salvas.');
     }
 
     /** cria (ou troca) o código do link público de cadastro; trocar invalida o QR Code antigo */

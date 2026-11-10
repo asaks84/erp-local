@@ -10,6 +10,7 @@ use App\Models\Usuario;
 use App\Support\EmpresaAtual;
 use App\Support\Legado;
 use App\Console\Commands\Concerns\ImportaCadastros;
+use App\Console\Commands\Concerns\ImportaDinheiro;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,12 +22,14 @@ use Illuminate\Support\Facades\DB;
  * Etapa 1: níveis de acesso, usuários e registro de atividades.
  * Etapa 2: tipos, tabelas de estadia, serviços, clientes, veículos, mensalidades, convênios,
  * fila do cadastro público e pagadores vinculados (Concerns\ImportaCadastros).
- * A etapa 3 acrescenta ordens de serviço e pagamentos.
+ * Etapa 3: ordens de serviço, pagamentos (um por cliente e data de pagamento, forma "não informada")
+ * e extrato importado (Concerns\ImportaDinheiro).
  * Ver docs/04-migracao-de-dados.md.
  */
 class LegadoImportar extends Command
 {
     use ImportaCadastros;
+    use ImportaDinheiro;
 
     protected $signature = 'legado:importar
         {--empresa= : Nome da empresa (só na primeira importação)}
@@ -55,6 +58,7 @@ class LegadoImportar extends Command
                     $this->atividades($legado, $usuarios);
                 }
                 $this->importarCadastros($legado);
+                $this->importarDinheiro($legado);
             });
         });
 

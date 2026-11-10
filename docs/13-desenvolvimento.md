@@ -20,12 +20,15 @@ Como o código da etapa 1 em diante está montado e as regras que cada tela nova
 ```
 app/
   Models/                 Empresa, Unidade, Nivel, Usuario, LogAtividade, Cliente, Veiculo, MensalidadeContrato, MensalidadePausa,
-                          TipoVeiculo, Tarifa (+ faixas, pacotes), Servico, ServicoPreco, Convenio, CadastroPendente, PagadorVinculado
+                          TipoVeiculo, Tarifa (+ faixas, pacotes), Servico, ServicoPreco, Convenio, CadastroPendente, PagadorVinculado,
+                          OrdemServico, Cobranca (+ itens), Pagamento (+ itens), Ajuste, FormaPagamento, ContaFinanceira, ExtratoLancamento
   Models/Concerns/        PertenceAEmpresa (filtro por empresa) e EmpresaScope
   Http/Controllers/       uma classe por tela (Usuario, Nivel, Empresa, Unidade, Atividade, Auth/Login)
   Http/Middleware/        Permissao, PermissaoDeclarada, Publica, HandleInertiaRequests, CabecalhosSeguranca
-  Servicos/               regras de negócio num lugar só: Tarifador (estadia), Precos (preço vigente), Contratos (mensalidade)
-  Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato
+  Servicos/               regras de negócio num lugar só: Tarifador (estadia), Precos (preço vigente), Contratos (mensalidade),
+                          Ordens (lançar/alterar/cancelar), Numeracao, Mensalidades (geração e primeira cobrança), Baixa (receber
+                          e estornar), Cobrancas (emitir, cancelar, situação), Extrato (CSV do banco), FormasPagamento
+  Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato, Csv
   Auth/UsuarioProvider    busca o usuário do login sem o filtro de empresa
   Console/Commands/       erp:instalar, legado:importar, legado:comparar
 config/erp.php            inatividade, faixas de IP do Cloudflare
@@ -37,9 +40,10 @@ resources/js/
   Layouts/AppLayout.jsx   menu lateral, menu de baixo no celular, tema, aviso de inatividade
   Pages/                  uma pasta por módulo (Usuarios/Index.jsx, Usuarios/Form.jsx...)
   Components/             Campo, CampoData (dd/mm/aaaa), CampoValor (R$ 1.234,56), BuscaCliente, Janela, Confirmar,
-                          CamposCliente, CamposVeiculo, CamposMensalidade, Paginacao, Icone, Avisos, TituloPagina
+                          CamposCliente, CamposVeiculo, CamposMensalidade, Paginacao, Icone, Avisos, TituloPagina,
+                          Dinheiro (rótulos e selos de ordem/cobrança), ContasCliente (bloco Contas da ficha), BuscaClienteCampo
   lib/                    formato.js (datas e R$ em pt-BR), mascaras.js (CPF, telefone, CEP, placa), menu.js, permissoes.js, inatividade.js
-resources/scss/           app.scss (cores, fonte, cantos, tema escuro) e _layout.scss
+resources/scss/           app.scss (cores, fonte, cantos, tema escuro), _layout.scss e _impressao.scss (cobrança e telas impressas)
 tests/Feature/            testes automáticos
 ```
 
@@ -71,15 +75,15 @@ tests/Feature/            testes automáticos
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 86 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, importação).
+- `php artisan test` roda todos. Hoje: 119 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; importação e comparação).
 - Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos
 
 | Comando | Para quê |
 |---|---|
-| `php artisan legado:importar` | Traz do sistema atual: níveis, usuários (as senhas continuam valendo) e registro de atividades. Pode rodar várias vezes. Na primeira, cria a empresa e a unidade principal |
-| `php artisan legado:comparar` | Compara os números dos dois sistemas e grava o relatório em `storage/app/private/relatorios/` |
+| `php artisan legado:importar` | Traz do sistema atual: níveis, usuários (as senhas continuam valendo), registro de atividades, cadastros, configurações, ordens, pagamentos e extrato. Pode rodar várias vezes (o sistema atual manda até a virada). Na primeira, cria a empresa e a unidade principal |
+| `php artisan legado:comparar` | Compara os números dos dois sistemas (inclusive em aberto por cliente e recebido mês a mês) e grava o relatório em `storage/app/private/relatorios/` |
 | `php artisan erp:instalar` | Banco novo sem sistema atual: cria empresa, unidade, nível de acesso total e o primeiro administrador |
 | `php artisan migrate --seed` | Banco de exemplo para desenvolvimento (login `admin`, senha `trocar123`) |
 | `npm run dev` | Telas com atualização automática enquanto edita |

@@ -16,8 +16,19 @@ export const MENU = [
         ],
     },
     {
+        grupo: 'Contas',
+        itens: [
+            { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
+            { rotulo: 'Gerar mensalidades', href: '/mensalidades/gerar', icone: 'calendario', acende: ['/mensalidades'] },
+            { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
+            { rotulo: 'Ordens de serviço', href: '/ordens', icone: 'lista', acende: ['/ordens'] },
+            { rotulo: 'Extrato bancário', href: '/extrato', icone: 'banco', permissao: 'extrato', acende: ['/extrato'] },
+        ],
+    },
+    {
         grupo: 'Gestão',
         itens: [
+            { rotulo: 'Recebimentos', href: '/relatorios/recebimentos', icone: 'grafico', permissao: 'faturamento', acende: ['/relatorios/recebimentos'] },
             { rotulo: 'Convênios', href: '/convenios', icone: 'aperto', permissao: 'convenios', acende: ['/convenios'] },
         ],
     },
@@ -27,6 +38,7 @@ export const MENU = [
             { rotulo: 'Tipos de veículo', href: '/configuracoes/tipos', icone: 'carro', permissao: 'configuracoes', acende: ['/configuracoes/tipos'] },
             { rotulo: 'Tabelas de estadia', href: '/configuracoes/tarifas', icone: 'relogio', permissao: 'configuracoes', acende: ['/configuracoes/tarifas'] },
             { rotulo: 'Lavagens e serviços', href: '/configuracoes/servicos', icone: 'gota', permissao: 'configuracoes', acende: ['/configuracoes/servicos'] },
+            { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', icone: 'dinheiro', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
         ],
     },
     {

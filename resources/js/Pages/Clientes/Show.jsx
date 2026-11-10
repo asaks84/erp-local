@@ -10,6 +10,7 @@ import CampoValor from '../../Components/CampoValor'
 import { data as fData, mesAno, moeda } from '../../lib/formato'
 import { cep as mCep, telefone } from '../../lib/mascaras'
 import { usePode } from '../../lib/permissoes'
+import ContasCliente from '../../Components/ContasCliente'
 
 const hoje = () => {
     const d = new Date()
@@ -116,7 +117,7 @@ function AcoesMensalidade({ veiculo, contrato, periodos, pausaPadrao, unidades }
     )
 }
 
-export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao }) {
+export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual }) {
     const pode = usePode()
     const { unidades = [] } = usePage().props
     const [confirmar, setConfirmar] = useState(null)
@@ -182,6 +183,7 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                 </div>
 
                 <div className="col-lg-8">
+                    <ContasCliente cliente={cliente} abertas={abertas} total={total_aberto} cobrancas={cobrancas} pagamentos={pagamentos} mesAtual={mes_atual} />
                     <div className="d-flex align-items-center mb-2">
                         <h2 className="fs-5 fw-semibold flex-grow-1 mb-0">Veículos</h2>
                         {cliente.ativo && <Link href={`/clientes/${cliente.id}/veiculos/novo`} className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"><Icone nome="mais" tamanho={16} /> Adicionar veículo</Link>}
@@ -243,9 +245,6 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                         )
                     })}
 
-                    <div className="card mt-4">
-                        <div className="card-body text-muted">Contas, pagamentos e extrato do cliente entram aqui na etapa 3.</div>
-                    </div>
                 </div>
             </div>
 

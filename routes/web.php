@@ -4,13 +4,20 @@ use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ConvenioController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\ExtratoController;
+use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\InicioController;
+use App\Http\Controllers\MensalidadeController;
 use App\Http\Controllers\NivelController;
+use App\Http\Controllers\OrdemController;
 use App\Http\Controllers\PagadorController;
 use App\Http\Controllers\PendenteController;
+use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ServicoController;
 use App\Http\Controllers\TarifaController;
 use App\Http\Controllers\TipoVeiculoController;
@@ -62,6 +69,50 @@ Route::middleware('auth')->group(function () {
         Route::delete('/pausas/{pausa}', [ContratoController::class, 'removerPausa']);
 
         Route::delete('/pagadores/{pagador}', [PagadorController::class, 'destroy']);
+
+        // dinheiro do dia a dia: receber, lançar, gerar mensalidades, emitir e imprimir cobranças
+        Route::get('/clientes/{cliente}/extrato', [ClienteController::class, 'extrato']);
+        Route::get('/clientes/{cliente}/receber', [ContaController::class, 'receber']);
+        Route::post('/clientes/{cliente}/receber', [ContaController::class, 'confirmarRecebimento']);
+        Route::get('/clientes/{cliente}/lancar', [OrdemController::class, 'create']);
+        Route::post('/clientes/{cliente}/lancar', [OrdemController::class, 'store']); // débito/crédito conferem "alterar contas"
+        Route::post('/clientes/{cliente}/cobrancas', [CobrancaController::class, 'emitir']);
+        Route::get('/ordens', [OrdemController::class, 'index']);
+
+        Route::get('/mensalidades/gerar', [MensalidadeController::class, 'gerar']);
+        Route::post('/mensalidades/gerar', [MensalidadeController::class, 'confirmarGeracao']);
+        Route::get('/mensalidades/{contrato}/primeira-cobranca', [MensalidadeController::class, 'primeira']);
+        Route::post('/mensalidades/{contrato}/primeira-cobranca', [MensalidadeController::class, 'confirmarPrimeira']);
+
+        Route::get('/cobrancas', [CobrancaController::class, 'index']);
+        Route::get('/cobrancas/gerar', [CobrancaController::class, 'gerar']);
+        Route::post('/cobrancas/gerar', [CobrancaController::class, 'emitirLote']);
+        Route::get('/cobrancas/imprimir', [CobrancaController::class, 'imprimir']);
+        Route::get('/cobrancas/{cobranca}', [CobrancaController::class, 'show']);
+    });
+
+    Route::middleware('permissao:contas_editar')->group(function () {
+        Route::put('/ordens/{ordem}', [OrdemController::class, 'update']);
+        Route::post('/ordens/{ordem}/cancelar', [OrdemController::class, 'cancelar']);
+        Route::post('/pagamentos/{pagamento}/estornar', [ContaController::class, 'estornar']);
+        Route::post('/cobrancas/{cobranca}/cancelar', [CobrancaController::class, 'cancelar']);
+    });
+
+    Route::middleware('permissao:contas_aberto')->group(function () {
+        Route::get('/contas/abertas', [ContaController::class, 'abertas']);
+    });
+
+    Route::middleware('permissao:faturamento')->group(function () {
+        Route::get('/relatorios/recebimentos', [RelatorioController::class, 'recebimentos']);
+    });
+
+    Route::middleware('permissao:extrato')->group(function () {
+        Route::get('/extrato', [ExtratoController::class, 'index']);
+        Route::post('/extrato', [ExtratoController::class, 'enviar']);
+        Route::get('/extrato/conferir/{token}', [ExtratoController::class, 'conferir']);
+        Route::post('/extrato/confirmar', [ExtratoController::class, 'confirmar']);
+        Route::get('/extrato/resultado/{token}', [ExtratoController::class, 'resultado']);
+        Route::get('/extrato/cliente/{cliente}', [ExtratoController::class, 'cliente']);
     });
 
     Route::middleware('permissao:mensalidade_valor')->group(function () {
@@ -95,6 +146,13 @@ Route::middleware('auth')->group(function () {
         Route::put('/empresa', [EmpresaController::class, 'update']);
         Route::put('/empresa/config', [EmpresaController::class, 'config']);
         Route::post('/empresa/link-cadastro', [EmpresaController::class, 'gerarLink']);
+        Route::put('/empresa/cobranca', [EmpresaController::class, 'cobranca']);
+
+        Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
+        Route::post('/configuracoes/formas', [FormaPagamentoController::class, 'storeForma']);
+        Route::put('/configuracoes/formas/{forma}', [FormaPagamentoController::class, 'updateForma']);
+        Route::post('/configuracoes/contas', [FormaPagamentoController::class, 'storeConta']);
+        Route::put('/configuracoes/contas/{conta}', [FormaPagamentoController::class, 'updateConta']);
 
         Route::get('/unidades/nova', [UnidadeController::class, 'create']);
         Route::post('/unidades', [UnidadeController::class, 'store']);

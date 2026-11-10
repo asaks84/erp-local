@@ -26,6 +26,12 @@ trait ImportaCadastros
     /** preços e tabelas importados valem desde sempre (o sistema atual não tem vigência) */
     private string $desde = '2000-01-01';
 
+    /** @var array<int,int> cliente antigo → novo */
+    private array $mapaClientes = [];
+
+    /** @var array<string,\App\Models\Veiculo> placa antiga → veículo novo */
+    private array $mapaVeiculos = [];
+
     private function texto($v, int $max = 255): ?string
     {
         $v = self::consertarAcentos(trim((string) $v));
@@ -64,6 +70,9 @@ trait ImportaCadastros
         $this->importarServicos($legado, $tipos);
         $clientes = $this->importarClientes($legado);
         $veiculos = $this->importarVeiculos($legado, $clientes, $tipos);
+        // usados pela importação das ordens (etapa 3)
+        $this->mapaClientes = $clientes;
+        $this->mapaVeiculos = $veiculos;
         $this->importarContratos($legado, $veiculos);
         $this->importarConvenios($legado, $clientes);
         $this->importarPendentes($legado, $tipos);
