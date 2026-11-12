@@ -1,9 +1,11 @@
 import { Link, useForm } from '@inertiajs/react'
+import { useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import CampoData from '../../Components/CampoData'
 import CampoValor from '../../Components/CampoValor'
 import { moeda } from '../../lib/formato'
+import LerDocumento from '../../Components/LerDocumento'
 import { CampoArquivo, CamposPagamento, hoje } from './Comum'
 
 export default function PagarForm({ despesa, contas, fornecedores, formas, contas_financeiras }) {
@@ -22,6 +24,22 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
     }
     const escolherVencimento = (v) => setData((d) => ({ ...d, vencimento: v, competencia: nova && v && d.competencia === hoje().slice(0, 7) ? v.slice(0, 7) : d.competencia }))
     const parcelas = Number(data.parcelas) || 1
+    const [anexo, setAnexo] = useState(null) // nome do arquivo lido, que já vai anexado
+
+    function preencher(r, arquivo) {
+        setData((d) => ({
+            ...d,
+            descricao: r.descricao || d.descricao,
+            fornecedor_id: r.fornecedor_id ?? d.fornecedor_id,
+            conta_id: r.conta_id ?? d.conta_id,
+            valor: r.valor ?? d.valor,
+            vencimento: r.vencimento ?? d.vencimento,
+            competencia: r.competencia ?? (r.vencimento ? r.vencimento.slice(0, 7) : d.competencia),
+            observacao: d.observacao || (r.codigo ? `Código: ${r.codigo}` : ''),
+            comprovante: arquivo ?? d.comprovante,
+        }))
+        setAnexo(arquivo ? arquivo.name : null)
+    }
 
     function salvar(e) {
         e.preventDefault()
@@ -33,6 +51,7 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
         <div className="estreito">
             <TituloPagina titulo={nova ? 'Nova conta a pagar' : 'Alterar conta a pagar'} descricao={nova ? 'Lance a conta quando ela chegar. Se já pagou, marque "Já está paga".' : null} />
             <form className="card" onSubmit={salvar} noValidate>
+                {nova && <div className="card-body border-bottom bg-body-tertiary"><LerDocumento aoLer={preencher} /></div>}
                 <div className="card-body">
                     <Campo rotulo="Descrição" value={data.descricao} onChange={(e) => setData('descricao', e.target.value)} erro={errors.descricao} maxLength={120} autoFocus={nova} placeholder="Ex.: Energia de novembro" />
                     <div className="row g-2">
@@ -66,7 +85,10 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
                         </div>
                     )}
                     <Campo rotulo="Observação" value={data.observacao} onChange={(e) => setData('observacao', e.target.value)} erro={errors.observacao} maxLength={255} />
-                    <CampoArquivo form={form} rotulo={nova ? 'Boleto, nota ou comprovante (PDF ou foto, até 5 MB)' : 'Trocar o arquivo anexado (PDF ou foto, até 5 MB)'} />
+                    {anexo && data.comprovante
+                        ? <div className="mb-3 small">Anexado: <strong>{anexo}</strong> <button type="button" className="btn btn-link btn-sm p-0 ms-1" onClick={() => { setAnexo(null); setData('comprovante', null) }}>trocar</button>
+                            {form.errors.comprovante && <div className="text-danger">{form.errors.comprovante}</div>}</div>
+                        : <CampoArquivo form={form} rotulo={nova ? 'Boleto, nota ou comprovante (PDF ou foto, até 5 MB)' : 'Trocar o arquivo anexado (PDF ou foto, até 5 MB)'} />}
 
                     {nova && (
                         <>

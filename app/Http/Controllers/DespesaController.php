@@ -8,7 +8,9 @@ use App\Models\FormaPagamento;
 use App\Models\Fornecedor;
 use App\Servicos\Despesas;
 use App\Servicos\FormasPagamento;
+use App\Servicos\LeitorDocumento;
 use App\Servicos\PlanoContas;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -122,6 +124,38 @@ class DespesaController extends Controller
         $msg = count($criadas) > 1 ? count($criadas).' parcelas lançadas' : (! empty($d['pago']) ? 'Conta lançada como paga' : 'Conta lançada');
 
         return redirect('/pagar')->with('sucesso', $msg.'.');
+    }
+
+    /**
+     * Lê boleto ou guia: PDF com texto (aqui), texto do OCR (feito no navegador) ou código colado.
+     * Devolve sugestões para preencher o formulário; não grava nada. PDF sem texto ou foto: precisa_ocr.
+     */
+    public function ler(Request $request): JsonResponse
+    {
+        $request->validate([
+            'arquivo' => ['nullable', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp'],
+            'texto' => ['nullable', 'string', 'max:200000'],
+        ]);
+        $texto = (string) $request->input('texto');
+        if ($texto === '' && $f = $request->file('arquivo')) {
+            $texto = strtolower($f->getClientOriginalExtension()) === 'pdf' ? LeitorDocumento::textoPdf($f->getRealPath()) : '';
+            if (trim($texto) === '') {
+                return response()->json(['precisa_ocr' => true]);
+            }
+        }
+        if (trim($texto) === '') {
+            return response()->json(['message' => 'Envie o PDF, a foto ou cole o código de barras.'], 422);
+        }
+        $r = LeitorDocumento::interpretar($texto);
+        $fornecedor = $r['documentos'] ? Fornecedor::where('ativo', true)->whereIn('documento', $r['documentos'])->first() : null;
+        $conta = $r['conta_chave'] ? PlanoContas::porChave($r['conta_chave']) : null;
+        $r['conta_id'] = $conta && PlanoContas::lancavel($conta->id) ? $conta->id : ($fornecedor?->conta_padrao_id);
+        $r['fornecedor_id'] = $fornecedor?->id;
+        $r['fornecedor'] = $fornecedor?->nome;
+        $r['descricao'] ??= $fornecedor?->nome;
+        unset($r['documentos']);
+
+        return response()->json($r);
     }
 
     public function edit(Despesa $despesa): Response

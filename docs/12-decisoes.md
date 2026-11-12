@@ -6,6 +6,10 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 12/11/2026 | Recibo de salário vira conta a pagar do **líquido** (Salários); as guias (FGTS, INSS/DARF, DAS) entram inteiras como contas a pagar comuns. O consignado que vem na guia do FGTS fica dentro dela | O total de Pessoal no mês fica certo (líquidos + guias = custo real) sem dividir cada guia em várias contas |
+| 12/11/2026 | Leitura de documento: 1º o texto do PDF no servidor; se for imagem ou foto, **OCR no navegador** (tesseract.js), não no servidor. Nada é lançado direto: os campos chegam preenchidos para conferir | A hospedagem compartilhada não instala programa de OCR; no navegador funciona também no celular (foto de boleto em papel) |
+| 12/11/2026 | Valor lido só vale como "conferido" quando o código de barras fecha os dígitos verificadores (ou, no FGTS, quando FGTS + consignado = total); senão a tela avisa para conferir | Erro de OCR num número não pode virar valor errado sem aviso |
+| 12/11/2026 | Avulsos recebem por diária: os dias são lançados e depois juntados num pagamento | Trabalham conforme o movimento, sem recibo de salário |
 | 10/11/2026 | Conta paga nos dois sistemas (baixa no ERP e no sistema atual): vale o pagamento do ERP; a importação não recria o do sistema atual | Evitar recebido em dobro durante o uso em paralelo |
 | 10/11/2026 | Ordem importada mantém o **mesmo número** do sistema atual (ord_id); as novas continuam a sequência. Ordem lançada só no ERP com número que coincida com um antigo ganha número novo na importação | Mesmo motivo do código do cliente; nunca dois documentos com o mesmo número |
 | 10/11/2026 | O sistema atual não guardava pagamentos: na importação, as ordens pagas de um cliente no **mesmo dia e hora** viram **um pagamento** com forma "não informada" e o valor das ordens (crédito usado abate) | Reconstrói o histórico sem inventar forma nem valor; "recebido no mês" bate centavo a centavo |

@@ -33,7 +33,7 @@ class PlanoContas
             ['Utilidades', null, [['Energia', null, []], ['Água', null, []], ['Internet e telefone', null, []]]],
             ['Lavagem', null, [['Produtos de lavagem', null, []], ['Equipamentos e manutenção', null, []]]],
             ['Administrativas', null, [['Contador', null, []], ['Sistemas e assinaturas', null, []], ['Tarifas bancárias', null, []], ['Material de escritório', null, []]]],
-            ['Impostos e taxas', null, [['Simples Nacional (DAS)', null, []], ['Taxas e licenças', null, []]]],
+            ['Impostos e taxas', null, [['Simples Nacional (DAS)', 'despesa_simples', []], ['Taxas e licenças', null, []]]],
             ['Manutenção do pátio', null, []],
             ['Outras despesas', 'despesa_outras', []],
         ]],

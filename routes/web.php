@@ -10,6 +10,7 @@ use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\DespesaController;
 use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\PlanoContaController;
 use App\Http\Controllers\RecorrenteController;
 use App\Http\Controllers\ConvenioController;
@@ -165,6 +166,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pagar', [DespesaController::class, 'index']);
         Route::get('/pagar/nova', [DespesaController::class, 'create']);
         Route::post('/pagar', [DespesaController::class, 'store']);
+        Route::post('/pagar/ler', [DespesaController::class, 'ler']);
         Route::get('/pagar/fixas', [RecorrenteController::class, 'index']);
         Route::post('/pagar/fixas', [RecorrenteController::class, 'store']);
         Route::put('/pagar/fixas/{recorrente}', [RecorrenteController::class, 'update']);
@@ -177,6 +179,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/fornecedores', [FornecedorController::class, 'index']);
         Route::post('/fornecedores', [FornecedorController::class, 'store']);
         Route::put('/fornecedores/{fornecedor}', [FornecedorController::class, 'update']);
+        Route::get('/funcionarios', [FuncionarioController::class, 'index']);
+        Route::post('/funcionarios', [FuncionarioController::class, 'store']);
+        Route::get('/funcionarios/recibos', [FuncionarioController::class, 'recibos']);
+        Route::post('/funcionarios/recibos/ler', [FuncionarioController::class, 'lerRecibos']);
+        Route::post('/funcionarios/recibos', [FuncionarioController::class, 'importarRecibos']);
+        Route::get('/funcionarios/diarias', [FuncionarioController::class, 'diarias']);
+        Route::post('/funcionarios/diarias', [FuncionarioController::class, 'lancarDiarias']);
+        Route::post('/funcionarios/diarias/pagar', [FuncionarioController::class, 'pagarDiarias']);
+        Route::delete('/funcionarios/diarias/{diaria}', [FuncionarioController::class, 'removerDiaria']);
+        Route::put('/funcionarios/{funcionario}', [FuncionarioController::class, 'update']);
     });
 
     Route::middleware('permissao:convenios')->group(function () {

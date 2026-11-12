@@ -4,6 +4,18 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Etapa 6 (parte 2): funcionários, recibos de salário, diárias e leitura de boleto/guia
+
+- **Ler boleto ou guia** (Contas a pagar › Nova conta): PDF, foto ou código de barras colado. Preenche descrição, fornecedor (pelo CPF/CNPJ do beneficiário), conta do plano, valor, vencimento e mês de referência, e já anexa o arquivo. Reconhece boleto de qualquer banco, DAS (Simples), DARF (INSS) e guia do FGTS Digital. O valor do código de barras é conferido pelos dígitos verificadores; o da guia do FGTS, pela soma FGTS + consignado. A pessoa confere antes de lançar.
+- **OCR no navegador:** quando o PDF é imagem (impressão em PDF, digitalização) ou é foto, o texto é lido no próprio navegador (tesseract.js, arquivos em `public/ocr`, português), sem depender do servidor. A guia do FGTS tem uma 2ª leitura com as cores invertidas, para o vencimento na caixa escura.
+- **Gestão › Funcionários:** cadastro de registrados (matrícula do recibo) e avulsos (valor da diária, Pix).
+- **Recibos de salário:** importa o PDF de recibos do contador; mostra bruto, descontos, líquido e FGTS de cada um para conferir; cada recibo vira uma conta a pagar do líquido em Salários, vencendo no 5º dia útil do mês seguinte (sábado conta), com o PDF anexado. Funcionário novo é cadastrado na importação. Recibo repetido não entra (só se a conta for cancelada).
+- **Diárias:** lança os dias trabalhados por avulso (vários dias de uma vez); na hora de pagar, junta as diárias marcadas num pagamento (já pago ou a pagar), que vira uma conta em Diárias e avulsos. Pagamento cancelado devolve as diárias para "a pagar".
+- Conta "Simples Nacional (DAS)" passou a ser do sistema (chave `despesa_simples`).
+- Dependências novas: `smalot/pdfparser` (Composer), `tesseract.js` e `pdfjs-dist` (npm). `public/.htaccess`: `.mjs` servido como JavaScript.
+- **148 testes automáticos.**
+- Banco: migração `2026_11_17_000001_create_funcionarios_tables` (no servidor, roda sozinha ao publicar).
+
 ## 12/11/2026 — Etapa 6 (parte 1): contas a pagar
 
 - **Gestão › Contas a pagar** (permissão `contas_pagar`): lançar a conta (descrição, fornecedor, conta do plano, valor, vencimento, mês de referência, observação, boleto/nota/comprovante em PDF ou foto), à vista ou em até 24 parcelas mensais, ou já paga. Resumo: atrasadas, vencem hoje, próximos 7 dias e pago no mês.
