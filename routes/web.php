@@ -8,6 +8,10 @@ use App\Http\Controllers\CobrancaController;
 use App\Http\Controllers\ConferenciaController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
+use App\Http\Controllers\DespesaController;
+use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\PlanoContaController;
+use App\Http\Controllers\RecorrenteController;
 use App\Http\Controllers\ConvenioController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\EstadiaController;
@@ -157,6 +161,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/pendentes/{pendente}/recusar', [PendenteController::class, 'recusar']);
     });
 
+    Route::middleware('permissao:contas_pagar')->group(function () {
+        Route::get('/pagar', [DespesaController::class, 'index']);
+        Route::get('/pagar/nova', [DespesaController::class, 'create']);
+        Route::post('/pagar', [DespesaController::class, 'store']);
+        Route::get('/pagar/fixas', [RecorrenteController::class, 'index']);
+        Route::post('/pagar/fixas', [RecorrenteController::class, 'store']);
+        Route::put('/pagar/fixas/{recorrente}', [RecorrenteController::class, 'update']);
+        Route::get('/pagar/{despesa}/editar', [DespesaController::class, 'edit']);
+        Route::put('/pagar/{despesa}', [DespesaController::class, 'update']);
+        Route::post('/pagar/{despesa}/pagar', [DespesaController::class, 'pagar']);
+        Route::post('/pagar/{despesa}/desfazer', [DespesaController::class, 'desfazer']);
+        Route::post('/pagar/{despesa}/cancelar', [DespesaController::class, 'cancelar']);
+        Route::get('/pagar/{despesa}/comprovante', [DespesaController::class, 'comprovante']);
+        Route::get('/fornecedores', [FornecedorController::class, 'index']);
+        Route::post('/fornecedores', [FornecedorController::class, 'store']);
+        Route::put('/fornecedores/{fornecedor}', [FornecedorController::class, 'update']);
+    });
+
     Route::middleware('permissao:convenios')->group(function () {
         Route::get('/convenios', [ConvenioController::class, 'index']);
         Route::get('/convenios/novo', [ConvenioController::class, 'create']);
@@ -174,6 +196,11 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
         Route::get('/conferencia', ConferenciaController::class);
+        Route::get('/configuracoes/plano-contas', [PlanoContaController::class, 'index']);
+        Route::post('/configuracoes/plano-contas', [PlanoContaController::class, 'store']);
+        Route::put('/configuracoes/plano-contas/{conta}', [PlanoContaController::class, 'update']);
+        Route::post('/configuracoes/plano-contas/{conta}/mover', [PlanoContaController::class, 'mover']);
+        Route::delete('/configuracoes/plano-contas/{conta}', [PlanoContaController::class, 'destroy']);
         Route::get('/configuracoes/etapas', [EtapaLavagemController::class, 'index']);
         Route::post('/configuracoes/etapas', [EtapaLavagemController::class, 'store']);
         Route::put('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'update']);

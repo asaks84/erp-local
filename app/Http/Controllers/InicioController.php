@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Anotacao;
+use App\Servicos\Despesas;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,7 +40,8 @@ class InicioController extends Controller
         }
 
         return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido, 'anotacoes' => Anotacao::doUsuario((int) $request->user()->id),
-            'conferencia' => ConferenciaController::resumo()]);
+            'conferencia' => ConferenciaController::resumo(),
+            'pagar' => $u->pode('contas_pagar') ? Despesas::resumo() : null]);
     }
 
     /** total baixado (soma dos itens dos pagamentos confirmados) e quantas contas, sem contar créditos */

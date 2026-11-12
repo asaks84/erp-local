@@ -9,5 +9,8 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('legado:espelhar')->hourly()->between('7:00', '23:00')
     ->when(fn () => config('erp.espelho_ativo'))->withoutOverlapping(30);
 
+// Contas fixas: gera as contas a pagar até o mês seguinte (também é feito ao abrir Contas a pagar).
+Schedule::command('pagar:gerar-fixas')->dailyAt('06:05');
+
 // Backup diário dos bancos às 3h10.
 Schedule::command('backup:banco')->dailyAt('03:10')->withoutOverlapping(60);

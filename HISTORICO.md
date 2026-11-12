@@ -4,6 +4,19 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Etapa 6 (parte 1): contas a pagar
+
+- **Gestão › Contas a pagar** (permissão `contas_pagar`): lançar a conta (descrição, fornecedor, conta do plano, valor, vencimento, mês de referência, observação, boleto/nota/comprovante em PDF ou foto), à vista ou em até 24 parcelas mensais, ou já paga. Resumo: atrasadas, vencem hoje, próximos 7 dias e pago no mês.
+- **Pagar:** data, valor pago de fato (com juros ou desconto), forma de pagamento e de onde saiu o dinheiro (caixa, banco...), com comprovante. **Desfazer pagamento** e **cancelar** sempre com motivo; nada é apagado; tudo no registro de atividades.
+- **Contas fixas** (aluguel, energia, contador...): geram uma conta a pagar por mês, até o mês seguinte ao atual, com o valor previsto (ajustável em cada mês). Vencimento no dia 31 cai no último dia do mês. Geradas ao abrir a tela e todo dia às 6h05.
+- **Fornecedores:** nome, CPF/CNPJ, contato, chave Pix e conta padrão (já vem escolhida ao lançar).
+- **Configurações › Plano de contas:** árvore de receitas (1) e despesas (2), com modelo pronto (Pessoal, Ocupação, Utilidades, Lavagem, Administrativas, Impostos...). Criar, renomear, reordenar e desativar; contas do sistema (receitas das ordens e folha) e contas com lançamentos não se apagam.
+- **Início:** aviso de contas atrasadas ou vencendo hoje para quem tem a permissão.
+- No celular, Contas a pagar vira uma lista com os botões embaixo de cada conta.
+- Como o sistema atual não tem contas a pagar, isto **já pode ser usado no ERP de produção** durante o paralelo (não entra na conferência).
+- **143 testes automáticos.**
+- Banco: migração `2026_11_16_000001_create_contas_pagar_tables` (no servidor, roda sozinha ao publicar).
+
 ## 12/11/2026 — Paralelo iniciado
 
 - **Primeira publicação** pelo botão Publicar: ERP no ar em `erp.localestacionamento.com.br` (Hostinger, pasta base `/home/u612820499/domains/localestacionamento.com.br/erp`).

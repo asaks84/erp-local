@@ -17,7 +17,7 @@ function Numero({ rotulo, valor, detalhe, href, classe = '' }) {
     return <div className="col-6 col-lg-3">{href ? <Link href={href} className="text-reset text-decoration-none">{corpo}</Link> : corpo}</div>
 }
 
-export default function Inicio({ aberto, recebido, anotacoes, conferencia }) {
+export default function Inicio({ aberto, recebido, anotacoes, conferencia, pagar }) {
     const { auth, empresa } = usePage().props
     const pode = usePode()
     const primeiroNome = auth.usuario.nome.split(' ')[0]
@@ -31,6 +31,16 @@ export default function Inicio({ aberto, recebido, anotacoes, conferencia }) {
                     ? <> Os números daqui vêm da importação de {dataHora(conferencia.quando)}{conferencia.situacao === 'ok' ? ', conferida sem diferenças.' : conferencia.situacao === 'diferente' ? ', com diferenças na conferência.' : ', que deu erro.'}{conferencia.situacao !== 'ok' && pode('configuracoes') && <> <Link href="/conferencia">Ver a conferência</Link>.</>}</>
                     : ' Os números daqui vêm da última importação feita do sistema atual.'}
             </div>
+
+            {pagar && (pagar.atrasadas.qtd > 0 || pagar.hoje.qtd > 0) && (
+                <div className={`alert ${pagar.atrasadas.qtd ? 'alert-danger' : 'alert-warning'} d-flex flex-wrap align-items-center gap-2`}>
+                    <span className="flex-grow-1">
+                        <strong>Contas a pagar:</strong>{' '}
+                        {[pagar.atrasadas.qtd && `${pagar.atrasadas.qtd} atrasada(s) (${moeda(pagar.atrasadas.valor)})`, pagar.hoje.qtd && `${pagar.hoje.qtd} vence(m) hoje (${moeda(pagar.hoje.valor)})`].filter(Boolean).join(' e ')}.
+                    </span>
+                    <Link href={pagar.atrasadas.qtd ? '/pagar?estado=atrasadas' : '/pagar?estado=hoje'} className="btn btn-sm btn-outline-dark">Ver contas</Link>
+                </div>
+            )}
 
             <BuscaCliente className="mb-4 so-celular" placeholder="Buscar cliente para receber ou lançar (nome, código ou placa)" />
 

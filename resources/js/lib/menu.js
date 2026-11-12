@@ -29,6 +29,7 @@ export const MENU = [
         itens: [
             { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
             { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
+            { rotulo: 'Contas a pagar', href: '/pagar', icone: 'documento', permissao: 'contas_pagar', acende: ['/pagar', '/fornecedores'] },
             { rotulo: 'Extrato bancário', href: '/extrato', icone: 'banco', permissao: 'extrato', acende: ['/extrato'] },
             { rotulo: 'Recebimentos', href: '/relatorios/recebimentos', icone: 'grafico', permissao: 'faturamento', acende: ['/relatorios/recebimentos'] },
             { rotulo: 'Convênios', href: '/convenios', icone: 'aperto', permissao: 'convenios', acende: ['/convenios'] },
@@ -53,6 +54,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Tabelas de estadia', href: '/configuracoes/tarifas', permissao: 'configuracoes', acende: ['/configuracoes/tarifas'] },
     { rotulo: 'Lavagens e serviços', href: '/configuracoes/servicos', permissao: 'configuracoes', acende: ['/configuracoes/servicos'] },
     { rotulo: 'Etapas da lavagem', href: '/configuracoes/etapas', permissao: 'configuracoes', acende: ['/configuracoes/etapas'] },
+    { rotulo: 'Plano de contas', href: '/configuracoes/plano-contas', permissao: 'configuracoes', acende: ['/configuracoes/plano-contas'] },
     { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
 ]
 

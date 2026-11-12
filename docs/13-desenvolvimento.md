@@ -28,10 +28,11 @@ app/
   Servicos/               regras de negócio num lugar só: Tarifador (estadia), Precos (preço vigente), Contratos (mensalidade),
                           Ordens (lançar/alterar/cancelar), Numeracao, Mensalidades (geração e primeira cobrança), Baixa (receber
                           e estornar), Cobrancas (emitir, cancelar, situação), Extrato (CSV do banco), FormasPagamento,
-                          Estadias (entrada, cálculo, saída), Vendas (lavagens e serviços, etapas), EtapasLavagem (etapas configuráveis), Convenios (divisão do valor)
+                          Estadias (entrada, cálculo, saída), Vendas (lavagens e serviços, etapas), EtapasLavagem (etapas configuráveis), Convenios (divisão do valor),
+                          PlanoContas (modelo, árvore, códigos), Despesas (contas a pagar: lançar, pagar, desfazer, cancelar, fixas)
   Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato, Csv
   Auth/UsuarioProvider    busca o usuário do login sem o filtro de empresa
-  Console/Commands/       erp:instalar, legado:importar, legado:comparar, legado:espelhar, backup:banco
+  Console/Commands/       erp:instalar, legado:importar, legado:comparar, legado:espelhar, backup:banco, pagar:gerar-fixas
 config/erp.php            inatividade, faixas de IP do Cloudflare
 config/permissoes.php     catálogo de permissões (grupo, chave, rótulo, descrição)
 database/migrations/      estrutura do banco
@@ -80,7 +81,7 @@ deploy/                   scripts que rodam no servidor na publicação (servido
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 139 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
+- `php artisan test` roda todos. Hoje: 143 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
 - Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos
