@@ -6,6 +6,9 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 12/11/2026 | Resultado do mês com dois olhares: por referência (competência) e pelo dinheiro (caixa). Débito e crédito de troco não são receita; taxa de cartão é despesa | Por referência mostra se o mês dá lucro; pelo dinheiro mostra o que de fato entrou e saiu |
+| 12/11/2026 | Fluxo de caixa sem saldo de banco guardado: saldo inicial opcional, informado na tela (fica no navegador) | O sistema não tem o saldo das contas; o extrato bancário só traz os PIX recebidos |
+| 12/11/2026 | Calendário próprio em pt-BR dentro do campo de data, não o do navegador | O do navegador sai no idioma do computador |
 | 12/11/2026 | Recibo de salário vira conta a pagar do **líquido** (Salários); as guias (FGTS, INSS/DARF, DAS) entram inteiras como contas a pagar comuns. O consignado que vem na guia do FGTS fica dentro dela | O total de Pessoal no mês fica certo (líquidos + guias = custo real) sem dividir cada guia em várias contas |
 | 12/11/2026 | Leitura de documento: 1º o texto do PDF no servidor; se for imagem ou foto, **OCR no navegador** (tesseract.js), não no servidor. Nada é lançado direto: os campos chegam preenchidos para conferir | A hospedagem compartilhada não instala programa de OCR; no navegador funciona também no celular (foto de boleto em papel) |
 | 12/11/2026 | Valor lido só vale como "conferido" quando o código de barras fecha os dígitos verificadores (ou, no FGTS, quando FGTS + consignado = total); senão a tela avisa para conferir | Erro de OCR num número não pode virar valor errado sem aviso |

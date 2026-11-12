@@ -19,6 +19,7 @@ return [
         'extrato' => ['Importar extrato bancário', null],
         'convenios' => ['Configurar convênios', null],
         'contas_pagar' => ['Contas a pagar', 'Lançar e pagar despesas, folha e holerites'],
+        'resultado' => ['Resultado do mês e fluxo de caixa', 'Receitas e despesas da empresa, lado a lado'],
     ],
     'Sistema' => [
         'configuracoes' => ['Configurações', 'Empresa, unidades, níveis de acesso, preços e serviços'],

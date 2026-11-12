@@ -28,6 +28,7 @@ use App\Http\Controllers\OrdemController;
 use App\Http\Controllers\PagadorController;
 use App\Http\Controllers\PendenteController;
 use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\ResultadoController;
 use App\Http\Controllers\ServicoController;
 use App\Http\Controllers\TarifaController;
 use App\Http\Controllers\TipoVeiculoController;
@@ -131,6 +132,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/contas/abertas', [ContaController::class, 'abertas']);
     });
 
+    Route::middleware('permissao:resultado')->group(function () {
+        Route::get('/resultado', [ResultadoController::class, 'mes']);
+        Route::get('/resultado/fluxo', [ResultadoController::class, 'fluxo']);
+    });
     Route::middleware('permissao:faturamento')->group(function () {
         Route::get('/relatorios/recebimentos', [RelatorioController::class, 'recebimentos']);
     });

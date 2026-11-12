@@ -30,6 +30,7 @@ export const MENU = [
             { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
             { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
             { rotulo: 'Contas a pagar', href: '/pagar', icone: 'documento', permissao: 'contas_pagar', acende: ['/pagar', '/fornecedores'] },
+            { rotulo: 'Resultado e caixa', href: '/resultado', icone: 'grafico', permissao: 'resultado', acende: ['/resultado'] },
             { rotulo: 'Funcionários', href: '/funcionarios', icone: 'pessoas', permissao: 'contas_pagar', acende: ['/funcionarios'] },
             { rotulo: 'Extrato bancário', href: '/extrato', icone: 'banco', permissao: 'extrato', acende: ['/extrato'] },
             { rotulo: 'Recebimentos', href: '/relatorios/recebimentos', icone: 'grafico', permissao: 'faturamento', acende: ['/relatorios/recebimentos'] },

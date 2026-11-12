@@ -4,6 +4,16 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Etapa 6 (parte 3): resultado do mês, fluxo de caixa e calendário nos campos de data
+
+- **Gestão › Resultado e caixa** (permissão nova `resultado`; o Administrador já tem):
+  - **Resultado do mês** em dois olhares: *por referência* (o que o mês faturou: mensalidades do mês de referência, estadias e serviços pela data, menos descontos; despesas do mês de referência, pagas ou não) e *pelo dinheiro* (recebimentos do mês e contas pagas no mês). Taxa de cartão/maquininha entra como despesa nos dois. Árvore do plano de contas com os grupos somados, quanto sobrou ou faltou, margem e os últimos 6 meses.
+  - Débitos (pagou a menos) e créditos (pagou a mais) não entram como receita: são resto ou adiantamento de conta já contada.
+  - **Fluxo de caixa** por dia: realizado até hoje (cartão no dia em que cai, já sem a taxa; contas pelo dia do pagamento) e previsto dos próximos dias (a receber pelo vencimento, contas a pagar em aberto), com saldo acumulado a partir de um saldo inicial opcional. Atrasados (a receber e a pagar) à parte. Clique no dia mostra o que entrou e saiu.
+- **Calendário em todos os campos de data:** o campo de data do sistema (`CampoData`) ganhou o botão de calendário próprio, em português (grade de meses nos campos de mês). Continua dando para digitar. Vale para todas as telas.
+- **152 testes automáticos.**
+- Sem migração nova.
+
 ## 12/11/2026 — Etapa 6 (parte 2): funcionários, recibos de salário, diárias e leitura de boleto/guia
 
 - **Ler boleto ou guia** (Contas a pagar › Nova conta): PDF, foto ou código de barras colado. Preenche descrição, fornecedor (pelo CPF/CNPJ do beneficiário), conta do plano, valor, vencimento e mês de referência, e já anexa o arquivo. Reconhece boleto de qualquer banco, DAS (Simples), DARF (INSS) e guia do FGTS Digital. O valor do código de barras é conferido pelos dígitos verificadores; o da guia do FGTS, pela soma FGTS + consignado. A pessoa confere antes de lançar.

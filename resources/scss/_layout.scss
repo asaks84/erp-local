@@ -226,3 +226,39 @@
 .ler-documento .ler-codigo { max-width: 26rem; flex: 1 1 16rem; }
 .recibos-lidos .form-floating > .form-control { height: calc(2.75rem + 2px); min-height: 0; padding-top: 1.1rem; padding-bottom: .2rem; }
 .recibos-lidos .form-floating > label { padding-top: .45rem; font-size: .8rem; }
+
+// campo de data: botão do calendário e o calendário próprio (pt-BR)
+.campo-data { position: relative; }
+.campo-data > .form-control { padding-right: 2.6rem; }
+.campo-data > label { max-width: calc(100% - 2.2rem); }
+.campo-data > .form-control.is-invalid { padding-right: 4.2rem; background-position: right 2.4rem center; }
+.campo-data-botao {
+    position: absolute; top: 0; right: 0; height: calc(3.5rem + 2px); width: 2.6rem; z-index: 3;
+    display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--bs-secondary-color);
+    &:hover { color: var(--bs-primary); }
+}
+.campo-data-calendario {
+    position: fixed; z-index: 1070; width: 17.5rem; padding: .5rem;
+    background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg);
+    box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .15);
+    .cabeca { display: flex; align-items: center; justify-content: space-between; margin-bottom: .25rem;
+        .btn { font-size: 1.25rem; line-height: 1; text-decoration: none; padding: .1rem .6rem; } }
+    .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+    .semana { font-size: .75rem; color: var(--bs-secondary-color); padding: .2rem 0; }
+    .dia { border: 0; background: none; border-radius: .4rem; padding: .35rem 0; font-size: .9rem; color: var(--bs-body-color);
+        &:hover { background: var(--bs-tertiary-bg); }
+        &.hoje { box-shadow: inset 0 0 0 1px var(--bs-primary); }
+        &.escolhido { background: var(--bs-primary); color: #fff; } }
+    .meses { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; .btn { text-transform: capitalize; } }
+    .rodape { text-align: right; .btn { text-decoration: none; } }
+}
+// campos de data pequenos (tabela de recibos): botão acompanha a altura
+.recibos-lidos .campo-data-botao { height: calc(2.75rem + 2px); }
+
+// resultado do mês: barras dos últimos meses; fluxo de caixa: dias previstos
+.barra-resultado { height: 6px; border-radius: 3px; margin-top: 3px; min-width: 2px;
+    &.receita { background: var(--bs-success); } &.despesa { background: var(--bs-danger); opacity: .75; } }
+.legenda { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; vertical-align: -1px;
+    &.receita { background: var(--bs-success); } &.despesa { background: var(--bs-danger); opacity: .75; } }
+.fluxo tr.previsto td { font-style: italic; color: var(--bs-secondary-color); }
+.fluxo tr.detalhe td { background: var(--bs-tertiary-bg); }
