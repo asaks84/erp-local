@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Paralelo iniciado
+
+- **Primeira publicação** pelo botão Publicar: ERP no ar em `erp.localestacionamento.com.br` (Hostinger, pasta base `/home/u612820499/domains/localestacionamento.com.br/erp`).
+- **Cron** criado (a cada minuto, `schedule:run`) e **primeira importação** feita: conferência igual ao sistema atual.
+- Senha do banco do sistema atual trocada (atualizada no `database.php` do sistema atual e no `.env` do ERP).
+- A partir daqui, a equipe segue só no sistema atual; nada é lançado no ERP de produção até a virada.
+
 ## 11/11/2026 — Etapa 5: publicação e paralelo
 
 - **Botão Publicar** (GitHub › Actions › Publicar): roda os testes, gera o build e envia a versão para a Hostinger por SSH; no servidor, cada publicação é uma pasta nova e a troca é instantânea. Ação **voltar para a versão anterior** para desfazer. Arquivos: `.github/workflows/publicar.yml`, `deploy/servidor.sh`, `deploy/voltar.sh`, `deploy/rsync-excluir.txt`, `deploy/env-producao.exemplo`.
