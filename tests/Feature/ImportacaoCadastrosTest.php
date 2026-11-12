@@ -141,7 +141,9 @@ class ImportacaoCadastrosTest extends TestCase
         $this->assertFalse(Cliente::where('legado_id', 6)->value('ativo'));
         $this->assertTrue(Cliente::where('legado_id', 5)->value('ativo'));
         $this->assertFalse(Veiculo::where('legado_id', 2)->value('ativo'));
-        $this->assertNotNull(MensalidadeContrato::where('legado_id', 10)->value('fim'));
+        // sem a mensalidade deste mês: termina no mês passado (não volta para "Gerar mensalidades")
+        $this->assertSame(now()->startOfMonth()->subDay()->toDateString(), MensalidadeContrato::where('legado_id', 10)->first()->fim->toDateString());
+        $this->assertFalse(\App\Servicos\Mensalidades::previa(now()->format('Y-m'))->contains('contrato_id', MensalidadeContrato::where('legado_id', 11)->value('id')));
         \Artisan::call('legado:comparar');
         $saida = \Artisan::output();
         $this->assertStringNotContainsString('DIFERENTE', $saida, $saida);   // excluídos e encerrados hoje não contam

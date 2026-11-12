@@ -4,6 +4,17 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Gerar mensalidades sem os clientes que saíram
+
+- **Gerar mensalidades** não lista mais contrato de cliente ou veículo inativo (removido no ERP ou excluído no sistema atual).
+- **Espelho:** mensalista que saiu do sistema atual e teve a mensalidade do mês apagada junto passa a terminar no fim do mês anterior (antes terminava no dia, e o mês aparecia como "vai gerar"). Se a mensalidade do mês continua lá, termina no dia.
+- Arquivos: `app/Servicos/Mensalidades.php`, `app/Console/Commands/Concerns/ImportaCadastros.php`, `app/Console/Commands/LegadoImportar.php`, `tests/Feature/ImportacaoCadastrosTest.php`.
+
+## 12/11/2026 — Imprimir lista de inadimplentes e recebimentos
+
+- **Contas em aberto** e **Recebimentos** ganharam o botão **Imprimir**, como os relatórios do sistema atual: A4 em pé, sem menu, filtros e botões; mostra todas as colunas (itens, mais antigo, forma, ordens) e, em Contas em aberto, o total no fim e a data de emissão. Com "Só vencidas", o título vira "Inadimplentes (contas vencidas)".
+- Arquivos: `resources/js/Pages/Contas/Abertas.jsx`, `resources/js/Pages/Relatorios/Recebimentos.jsx`, `resources/scss/_impressao.scss`.
+
 ## 12/11/2026 — Agendador e backup funcionando na Hostinger
 
 - **Causa do espelho parado:** o agendador abria cada tarefa como um processo separado, e a Hostinger desliga isso (`proc_open`). O cron rodava a cada minuto, mas o espelho (de hora em hora) e o backup (3h10) falhavam com "The Process class relies on proc_open". Agora as tarefas rodam dentro do próprio processo (`Schedule::call` + `Artisan::call`).

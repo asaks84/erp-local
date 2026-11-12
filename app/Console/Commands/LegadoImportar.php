@@ -59,6 +59,7 @@ class LegadoImportar extends Command
                 }
                 $this->importarCadastros($legado);
                 $this->importarDinheiro($legado);
+                $this->acertarFimDosEncerrados();
             });
         });
 

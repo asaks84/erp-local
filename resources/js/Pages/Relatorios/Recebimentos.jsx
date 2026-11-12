@@ -1,6 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react'
 import { useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
+import Icone from '../../Components/Icone'
 import CampoData from '../../Components/CampoData'
 import Campo from '../../Components/Campo'
 import Janela from '../../Components/Janela'
@@ -23,11 +24,12 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
     const csv = '/relatorios/recebimentos?csv=1&' + new URLSearchParams(Object.fromEntries(Object.entries(filtros).filter(([, v]) => v))).toString()
 
     return (
-        <div className="pagina">
+        <div className="pagina impressao-retrato">
             <TituloPagina titulo="Recebimentos" descricao={periodo}>
-                <a href={csv} className="btn btn-outline-secondary">Baixar planilha</a>
+                <button type="button" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2 nao-imprimir" onClick={() => window.print()}><Icone nome="impressora" tamanho={16} /> Imprimir</button>
+                <a href={csv} className="btn btn-outline-secondary nao-imprimir">Baixar planilha</a>
             </TituloPagina>
-            <div className="row g-2 mb-2">
+            <div className="row g-2 mb-2 nao-imprimir">
                 <div className="col-6 col-md-3"><CampoData rotulo="De" value={f.de} onChange={(v) => filtrar({ de: v })} /></div>
                 <div className="col-6 col-md-3"><CampoData rotulo="Até" value={f.ate} onChange={(v) => filtrar({ ate: v })} /></div>
                 <div className="col-md-3">
@@ -69,20 +71,20 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
             <div className="card">
                 <div className="table-responsive">
                     <table className="table align-middle mb-0">
-                        <thead><tr><th>Data</th><th>Cliente</th><th className="d-none d-md-table-cell">Forma</th><th className="d-none d-lg-table-cell">Ordens</th><th className="text-end">Valor</th><th /></tr></thead>
+                        <thead><tr><th>Data</th><th>Cliente</th><th className="d-none d-md-table-cell d-print-table-cell">Forma</th><th className="d-none d-lg-table-cell d-print-table-cell">Ordens</th><th className="text-end">Valor</th><th className="nao-imprimir" /></tr></thead>
                         <tbody>
                             {pagamentos.length === 0 && <tr><td colSpan="6" className="text-center text-muted py-4">Nenhum pagamento no período.</td></tr>}
                             {pagamentos.map((p) => (
                                 <tr key={p.id} className={p.situacao === 'estornado' ? 'text-muted' : undefined}>
                                     <td className="text-nowrap">{quando(p.recebido_em)}<div className="small text-muted">{ORIGEM[p.origem] || p.origem}</div></td>
                                     <td>{p.cliente ? <Link href={`/clientes/${p.cliente.id}`}>{p.cliente.nome}</Link> : '—'}</td>
-                                    <td className="d-none d-md-table-cell">{p.forma || 'Não informada'}{p.taxa > 0 && <div className="small text-muted">taxa {moeda(p.taxa)} · cai {fData(p.previsto_para)}</div>}</td>
-                                    <td className="d-none d-lg-table-cell small">{p.itens.map((i) => `#${i.numero} ${i.descricao}`).join(', ')}</td>
+                                    <td className="d-none d-md-table-cell d-print-table-cell">{p.forma || 'Não informada'}{p.taxa > 0 && <div className="small text-muted">taxa {moeda(p.taxa)} · cai {fData(p.previsto_para)}</div>}</td>
+                                    <td className="d-none d-lg-table-cell d-print-table-cell small">{p.itens.map((i) => `#${i.numero} ${i.descricao}`).join(', ')}</td>
                                     <td className="text-end text-nowrap">
                                         <span className={p.situacao === 'estornado' ? 'text-decoration-line-through' : ''}>{moeda(p.valor)}</span>
                                         {p.situacao === 'estornado' && <div><span className="selo" title={p.motivo_estorno || undefined}>Estornado</span></div>}
                                     </td>
-                                    <td className="text-end">{pode('contas_editar') && p.situacao === 'confirmado' && p.origem !== 'importacao' && <button type="button" className="btn btn-sm btn-link" onClick={() => { form.reset(); setEstornar(p) }}>Estornar</button>}</td>
+                                    <td className="text-end nao-imprimir">{pode('contas_editar') && p.situacao === 'confirmado' && p.origem !== 'importacao' && <button type="button" className="btn btn-sm btn-link" onClick={() => { form.reset(); setEstornar(p) }}>Estornar</button>}</td>
                                 </tr>
                             ))}
                         </tbody>

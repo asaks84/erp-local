@@ -89,7 +89,9 @@ class Mensalidades
         $ini = Carbon::parse($competencia.'-01')->startOfDay();
         $fim = $ini->copy()->endOfMonth()->startOfDay();
 
+        // cliente ou veículo removido (no ERP ou excluído no sistema atual) não gera mais mensalidade
         $versoes = MensalidadeContrato::with(['cliente', 'veiculo', 'pausas'])
+            ->whereHas('veiculo', fn ($q) => $q->where('ativo', true))->whereHas('cliente', fn ($q) => $q->where('ativo', true))
             ->where('inicio', '<=', $fim->toDateString())
             ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>=', $ini->toDateString()))
             ->get();

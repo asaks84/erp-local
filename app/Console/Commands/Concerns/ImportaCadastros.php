@@ -332,12 +332,33 @@ trait ImportaCadastros
             $contrato->save();
             $vistos[] = $m->vclms_id;
         }
-        // mensalista que deixou de ser no sistema atual: encerra aqui também
+        // mensalista que deixou de ser no sistema atual: encerra aqui também (o fim é acertado depois
+        // das contas, em acertarFimDosEncerrados)
         $encerrados = MensalidadeContrato::whereNotNull('legado_id')->whereNotIn('legado_id', $vistos ?: [0])->whereNull('fim')
-            ->update(['fim' => now()->toDateString(), 'motivo_fim' => 'Deixou de ser mensalista no sistema atual']);
+            ->update(['fim' => now()->toDateString(), 'motivo_fim' => self::MOTIVO_SAIU]);
         $this->contar('Mensalidades (contratos)', $n, $a, $ign);
         if ($encerrados) {
             $this->warn("{$encerrados} mensalidade(s) encerrada(s): não existem mais no sistema atual.");
+        }
+    }
+
+    private const MOTIVO_SAIU = 'Deixou de ser mensalista no sistema atual';
+
+    /**
+     * Depois de importar as contas: mensalidade encerrada hoje pelo espelho cuja mensalidade deste mês
+     * não existe (o sistema atual apagou junto) termina no fim do mês passado, para o "Gerar mensalidades"
+     * não cobrar de novo o mês que o sistema atual tirou. Se a do mês continua, termina hoje.
+     */
+    private function acertarFimDosEncerrados(): void
+    {
+        $mes = now()->format('Y-m');
+        $ontemDoMes = now()->startOfMonth()->subDay()->toDateString();
+        foreach (MensalidadeContrato::where('motivo_fim', self::MOTIVO_SAIU)->where('fim', now()->toDateString())->get() as $c) {
+            $temMes = \App\Models\OrdemServico::where('tipo', 'mensalidade')->where('veiculo_id', $c->veiculo_id)
+                ->where('competencia', $mes)->where('situacao', '<>', 'cancelada')->exists();
+            if (! $temMes) {
+                $c->update(['fim' => max($c->inicio->toDateString(), $ontemDoMes)]);
+            }
         }
     }
 

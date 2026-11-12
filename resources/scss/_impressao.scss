@@ -59,3 +59,16 @@
 	.card { box-shadow: none !important; }
 	html[data-bs-theme="dark"] body { background: #fff; color: #111; }
 }
+
+// listas e relatórios impressos em A4 em pé, com margem (a regra geral acima é das cobranças, A4 deitado e sem margem)
+@page retrato { size: A4 portrait; margin: 12mm; }
+@media print {
+	.impressao-retrato { page: retrato; }
+	.impressao-retrato .card-body, .impressao-retrato .table { font-size: 11px; }
+	.impressao-retrato .fs-4 { font-size: 15px !important; }
+	.impressao-retrato a { color: inherit; text-decoration: none; }
+	.impressao-retrato tr { break-inside: avoid; }
+	.impressao-retrato thead { display: table-header-group; }
+	.d-print-table-footer-group { display: table-footer-group !important; }
+	.impressao-retrato .text-danger { color: #b00 !important; }
+}
