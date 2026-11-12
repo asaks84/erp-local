@@ -4,6 +4,10 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Botão Publicar atualizado
+
+- `.github/workflows/publicar.yml`: `actions/checkout@v5` e `actions/setup-node@v5` (as v4 rodam em Node.js 20, que o GitHub está desativando) e máquina fixa `ubuntu-24.04` (a `ubuntu-latest` muda para o Ubuntu 26 em outubro de 2026).
+
 ## 12/11/2026 — Etapa 6 (parte 4): fatura do cartão de crédito — Etapa 6 concluída
 
 - **Contas a pagar › Cartões:** cadastro dos cartões (da empresa ou pessoal do sócio) e importação da fatura pelo arquivo do banco (**OFX**, padrão de quase todos os bancos, ou **CSV do Nubank**). O pagamento da fatura anterior é ignorado; estorno abate. Vencimento pelo nome do arquivo do Nubank (`Nubank_2026-10-23`), pelo dia do cartão ou informado. Arquivo de outro cartão e fatura repetida são recusados.
