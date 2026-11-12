@@ -4,6 +4,12 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Agendador e backup funcionando na Hostinger
+
+- **Causa do espelho parado:** o agendador abria cada tarefa como um processo separado, e a Hostinger desliga isso (`proc_open`). O cron rodava a cada minuto, mas o espelho (de hora em hora) e o backup (3h10) falhavam com "The Process class relies on proc_open". Agora as tarefas rodam dentro do próprio processo (`Schedule::call` + `Artisan::call`).
+- **Backup em PHP puro**, sem `mysqldump` (que também precisa abrir outro programa): estrutura e dados de todas as tabelas, compactado em `.sql.gz`; colunas geradas ficam fora do INSERT. Testado: restaurado num banco vazio, com as mesmas contagens.
+- Arquivos: `routes/console.php`, `app/Console/Commands/BackupBanco.php`, `tests/Feature/ParaleloTest.php`, `docs/14-publicacao.md`.
+
 ## 12/11/2026 — Espelho repassa exclusões; aviso quando a importação para
 
 - **Espelho:** cliente, veículo ou convênio **excluído no sistema atual** fica **inativo** no ERP (com o histórico), como o "Remover" do ERP. Antes ele continuava ativo e a conferência acusava diferença.

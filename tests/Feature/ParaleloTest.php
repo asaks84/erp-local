@@ -77,37 +77,35 @@ class ParaleloTest extends TestCase
     public function test_backup_dos_bancos(): void
     {
         Storage::fake('local');
-        Process::fake(function ($p) {
-            // simula o mysqldump gravando o arquivo
-            foreach ($p->command as $arg) {
-                if (str_starts_with($arg, '--result-file=')) {
-                    file_put_contents(substr($arg, 14), "-- dump\nCREATE TABLE x (id int);\n");
-                }
-            }
-
-            return Process::result('');
-        });
+        $a = $this->criarEmpresa('a');
+        $this->criarCliente($a);
         $velho = 'backups/erp-2020-01-01-0310.sql.gz';
         Storage::disk('local')->put($velho, 'x');
         touch(Storage::disk('local')->path($velho), now()->subDays(30)->getTimestamp());
 
+        // em PHP puro (a hospedagem não deixa rodar mysqldump)
         $this->artisan('backup:banco')->assertSuccessful();
-        $arquivos = Storage::disk('local')->files('backups');
+        $arquivos = collect(Storage::disk('local')->files('backups'));
         $this->assertCount(2, $arquivos);   // erp + sistema atual; o de 30 dias saiu
         $this->assertNotContains($velho, $arquivos);
-        $this->assertStringContainsString('CREATE TABLE', gzdecode(Storage::disk('local')->get($arquivos[0])));
-        // senha vai pela variável de ambiente, nunca nos argumentos
-        Process::assertRan(fn ($p) => is_array($p->command) && $p->command[0] === 'mysqldump'
-            && array_key_exists('MYSQL_PWD', $p->environment) && ! collect($p->command)->contains(fn ($a) => str_starts_with($a, '-p') || str_starts_with($a, '--password')));
+        $sql = gzdecode(Storage::disk('local')->get($arquivos->first(fn ($f) => str_starts_with(basename($f), 'erp-'))));
+        $this->assertStringContainsString('CREATE TABLE `empresas`', $sql);
+        $this->assertStringContainsString("'Empresa a'", $sql);
+        $this->assertMatchesRegularExpression('/INSERT INTO `veiculos` \(([^)]*)\) VALUES/', $sql);
+        preg_match('/INSERT INTO `veiculos` \(([^)]*)\) VALUES/', $sql, $m);
+        $this->assertStringNotContainsString('placa_ativa', $m[1]);          // coluna gerada fica fora do INSERT
 
-        // falha do mysqldump: comando falha e não deixa arquivo vazio
-        Process::fake(['*' => Process::result('', 'acesso negado', 2)]);
+        // banco inacessível: comando falha e não deixa arquivo
+        config(['database.connections.legado.database' => 'banco_que_nao_existe']);
+        \DB::purge('legado');
         $this->artisan('backup:banco')->assertFailed();
+        $this->assertCount(0, collect(Storage::disk('local')->files('backups'))->filter(fn ($f) => str_contains($f, 'sistema-atual') && filesize(Storage::disk('local')->path($f)) === 0));
     }
 
     public function test_agendamento(): void
     {
-        $eventos = collect(app(Schedule::class)->events())->map(fn ($e) => $e->command);
+        // tarefas rodam no mesmo processo (sem proc_open): identificadas pelo nome
+        $eventos = collect(app(Schedule::class)->events())->map(fn ($e) => $e->description);
         $this->assertTrue($eventos->contains(fn ($c) => str_contains($c, 'legado:espelhar')));
         $this->assertTrue($eventos->contains(fn ($c) => str_contains($c, 'backup:banco')));
     }

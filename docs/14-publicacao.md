@@ -49,7 +49,9 @@ No Local, a pasta base é `/home/u612820499/domains/localestacionamento.com.br/e
 | de hora em hora, 7h às 23h (só com `ERP_ESPELHO_ATIVO=true`) | `legado:espelhar`: importa do sistema atual e compara; grava em Sistema › Conferência |
 | todo dia às 3h10 | `backup:banco`: backup compactado do banco do ERP e do sistema atual em `storage/app/private/backups`, 14 dias |
 
-A Hostinger também faz backup semanal da conta. Para restaurar um backup do ERP: phpMyAdmin › Importar o `.sql.gz`.
+A Hostinger também faz backup semanal da conta. Para restaurar um backup do ERP: phpMyAdmin › Importar o `.sql.gz`, ou pelo SSH: `gunzip < arquivo.sql.gz | mysql -u USUARIO -p BANCO`.
+
+As tarefas agendadas rodam dentro do próprio `schedule:run` (`Schedule::call`), e o backup é feito em PHP, sem `mysqldump`: a hospedagem compartilhada desliga o `proc_open`, e um comando separado não roda pelo cron (erro "The Process class relies on proc_open" no log). Para conferir se o agendador está rodando: o "Ver resultado" do cron no hPanel e o log em `storage/logs/laravel-AAAA-MM-DD.log`.
 
 ## Portão da virada
 

@@ -3,12 +3,16 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Backup dos bancos (ERP e, enquanto existir, o do sistema atual) com mysqldump, compactado,
- * em storage/app/private/backups (fora da pasta pública). Guarda os últimos N dias (config erp.backup_dias).
+ * Backup dos bancos (ERP e, enquanto existir, o do sistema atual), compactado, em
+ * storage/app/private/backups (fora da pasta pública). Guarda os últimos N dias (config erp.backup_dias).
+ *
+ * Feito em PHP puro (sem mysqldump): a hospedagem compartilhada não deixa abrir outros
+ * programas (proc_open desligado). Gera um .sql.gz que se restaura com
+ * "gunzip < arquivo.sql.gz | mysql banco" ou pelo phpMyAdmin.
  */
 class BackupBanco extends Command
 {
@@ -26,39 +30,60 @@ class BackupBanco extends Command
             if (! $c || empty($c['database'])) {
                 continue;
             }
-            $base = 'backups/'.$nome.'-'.now()->format('Y-m-d-Hi');
-            $sql = $disco->path($base.'.sql');
-            // senha pela variável de ambiente, para não aparecer na lista de processos
-            $r = Process::env(['MYSQL_PWD' => (string) $c['password']])->timeout(600)->run([
-                'mysqldump', '--single-transaction', '--quick', '--skip-lock-tables', '--no-tablespaces',
-                '-h', (string) $c['host'], '-P', (string) $c['port'], '-u', (string) $c['username'],
-                '--result-file='.$sql, (string) $c['database'],
-            ]);
-            if (! $r->successful() || ! is_file($sql) || filesize($sql) === 0) {
-                @unlink($sql);
-                $this->error("Backup de {$nome} falhou: ".trim($r->errorOutput()));
+            $arquivo = $disco->path('backups/'.$nome.'-'.now()->format('Y-m-d-Hi').'.sql.gz');
+            try {
+                $linhas = $this->despejar($conexao, $arquivo);
+                $this->info("Backup de {$nome}: ".basename($arquivo).' ('.round(filesize($arquivo) / 1024)." KB, {$linhas} registros)");
+            } catch (\Throwable $e) {
+                @unlink($arquivo);
+                $this->error("Backup de {$nome} falhou: ".$e->getMessage());
+                report($e);
                 $ok = false;
-
-                continue;
             }
-            $this->compactar($sql, $disco->path($base.'.sql.gz'));
-            $this->info("Backup de {$nome}: {$base}.sql.gz (".round(filesize($disco->path($base.'.sql.gz')) / 1024).' KB)');
         }
         $this->limpar();
 
         return $ok ? self::SUCCESS : self::FAILURE;
     }
 
-    private function compactar(string $origem, string $destino): void
+    /** grava estrutura e dados de todas as tabelas; devolve quantos registros */
+    private function despejar(string $conexao, string $arquivo): int
     {
-        $in = fopen($origem, 'rb');
-        $out = gzopen($destino, 'wb6');
-        while (! feof($in)) {
-            gzwrite($out, fread($in, 1 << 20));
+        $db = DB::connection($conexao);
+        $pdo = $db->getPdo();
+        $banco = $db->getDatabaseName();
+        $gz = gzopen($arquivo, 'wb6');
+        $total = 0;
+        try {
+            gzwrite($gz, "-- Backup de {$banco} em ".now()->format('d/m/Y H:i')."\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+            $tabelas = array_map(fn ($r) => array_values((array) $r)[0], $db->select("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"));
+            foreach ($tabelas as $t) {
+                $criar = array_values((array) $db->selectOne("SHOW CREATE TABLE `{$t}`"))[1];
+                gzwrite($gz, "DROP TABLE IF EXISTS `{$t}`;\n{$criar};\n");
+                // colunas geradas (ex.: placa_ativa) não entram no INSERT
+                $colunas = array_map(fn ($r) => $r->COLUMN_NAME, $db->select(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND EXTRA NOT LIKE '%GENERATED%' ORDER BY ORDINAL_POSITION", [$banco, $t]));
+                $lista = implode(', ', array_map(fn ($c) => "`{$c}`", $colunas));
+                $lote = [];
+                foreach ($db->cursor("SELECT {$lista} FROM `{$t}`") as $linha) {
+                    $lote[] = '('.implode(', ', array_map(fn ($v) => $v === null ? 'NULL' : (is_int($v) || is_float($v) ? $v : $pdo->quote((string) $v)), array_values((array) $linha))).')';
+                    $total++;
+                    if (count($lote) === 200) {
+                        gzwrite($gz, "INSERT INTO `{$t}` ({$lista}) VALUES\n".implode(",\n", $lote).";\n");
+                        $lote = [];
+                    }
+                }
+                if ($lote) {
+                    gzwrite($gz, "INSERT INTO `{$t}` ({$lista}) VALUES\n".implode(",\n", $lote).";\n");
+                }
+                gzwrite($gz, "\n");
+            }
+            gzwrite($gz, "SET FOREIGN_KEY_CHECKS=1;\n");
+        } finally {
+            gzclose($gz);
         }
-        fclose($in);
-        gzclose($out);
-        unlink($origem);
+
+        return $total;
     }
 
     private function limpar(): void
