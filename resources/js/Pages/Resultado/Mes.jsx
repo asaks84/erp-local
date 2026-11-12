@@ -19,6 +19,7 @@ export default function Mes({ resultado: r, historico, atual }) {
     const ir = (dados) => router.get('/resultado', { mes: r.mes, regime: r.regime, ...dados }, { preserveScroll: true, preserveState: true })
     const maior = Math.max(1, ...historico.flatMap((h) => [h.receitas, h.despesas]))
     const positivo = r.resultado >= 0
+    const extras = r.total_investimentos > 0 || r.fora_empresa > 0
     return (
         <div className="pagina">
             <AbasResultado />
@@ -44,7 +45,8 @@ export default function Mes({ resultado: r, historico, atual }) {
                     {r.a_pagar > 0 && <div className="small text-muted">{moeda(r.a_pagar)} ainda a pagar</div>}</div></div></div>
                 <div className="col-sm-4"><div className="card h-100"><div className="card-body"><div className="small text-muted">{positivo ? 'Sobrou' : 'Faltou'}</div>
                     <div className={`fs-4 fw-semibold ${positivo ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado)}</div>
-                    {r.margem !== null && <div className="small text-muted">{r.margem.toLocaleString('pt-BR')}% {r.regime === 'caixa' ? 'do que entrou' : 'das receitas'}</div>}</div></div></div>
+                    {r.margem !== null && <div className="small text-muted">{r.margem.toLocaleString('pt-BR')}% {r.regime === 'caixa' ? 'do que entrou' : 'das receitas'}</div>}
+                    {extras && <div className="small">No fim: <strong className={r.resultado_final >= 0 ? 'text-success' : 'text-danger'}>{moeda(r.resultado_final)}</strong></div>}</div></div></div>
             </div>
             {atual && <div className="alert alert-info py-2 small">O mês ainda está em andamento: os números mudam até o fim do mês.</div>}
 
@@ -57,7 +59,14 @@ export default function Mes({ resultado: r, historico, atual }) {
                                 <tbody><Linhas linhas={r.receitas} vazio="Nada no mês." /></tbody>
                                 <thead><tr><th>{r.regime === 'caixa' ? 'Saídas' : 'Despesas'}</th><th className="text-end">{moeda(r.total_despesas)}</th></tr></thead>
                                 <tbody><Linhas linhas={r.despesas} vazio="Nenhuma despesa no mês." /></tbody>
-                                <tfoot><tr className="fw-bold"><td>Resultado</td><td className={`text-end ${positivo ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado)}</td></tr></tfoot>
+                                <tfoot>
+                                    <tr className="fw-bold"><td>{extras ? 'Resultado da operação' : 'Resultado'}</td><td className={`text-end ${positivo ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado)}</td></tr>
+                                    {r.investimentos.map((l) => (
+                                        <tr key={`i${l.id}`} className={l.nivel === 1 ? '' : 'small'}><td style={{ paddingLeft: `${0.75 + (l.nivel - 1) * 1.25}rem` }}>(−) {l.nome}</td><td className="text-end text-nowrap">{moeda(-l.valor)}</td></tr>
+                                    ))}
+                                    {r.fora_empresa > 0 && <tr><td>(−) Compras no cartão que não são da empresa</td><td className="text-end text-nowrap">{moeda(-r.fora_empresa)}</td></tr>}
+                                    {extras && <tr className="fw-bold"><td>Sobrou no fim</td><td className={`text-end ${r.resultado_final >= 0 ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado_final)}</td></tr>}
+                                </tfoot>
                             </table>
                         </div>
                     </div>

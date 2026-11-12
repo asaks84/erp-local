@@ -100,6 +100,9 @@ class Despesas
         if ($x->situacao !== 'aberta') {
             self::erro('valor', 'Só dá para alterar conta a pagar. Para conta paga, desfaça o pagamento antes.');
         }
+        if ($x->fatura_id) {
+            self::erro('valor', 'Esta conta é de uma fatura de cartão: o valor vem das compras da fatura (Contas a pagar › Cartões).');
+        }
         self::validarRefs($d);
         $antes = Formato::moeda($x->valor).' venc. '.$x->vencimento->format('d/m/Y');
         $arquivo = self::guardarComprovante($comprovante);

@@ -50,7 +50,7 @@ export default function PagarIndex({ despesas, filtros, resumo, fornecedores, fo
             {x.comprovante && <a href={`/pagar/${x.id}/comprovante`} target="_blank" rel="noreferrer" className="btn btn-sm btn-link">Comprovante</a>}
             {x.situacao === 'aberta' && <>
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => abrirPagar(x)}>Pagar</button>
-                <Link href={`/pagar/${x.id}/editar`} className="btn btn-sm btn-outline-secondary ms-1" aria-label={`Editar ${x.descricao}`}><Icone nome="lapis" tamanho={16} /></Link>
+                <Link href={x.fatura_id ? `/pagar/faturas/${x.fatura_id}` : `/pagar/${x.id}/editar`} className="btn btn-sm btn-outline-secondary ms-1" aria-label={`Editar ${x.descricao}`}><Icone nome="lapis" tamanho={16} /></Link>
                 <button type="button" className="btn btn-sm btn-link text-muted" onClick={() => { mt.reset(); setAcao({ tipo: 'cancelar', x }) }}>Cancelar</button>
             </>}
             {x.situacao === 'paga' && <button type="button" className="btn btn-sm btn-link text-muted" onClick={() => { mt.reset(); setAcao({ tipo: 'desfazer', x }) }}>Desfazer pagamento</button>}

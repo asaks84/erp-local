@@ -87,18 +87,45 @@ class Resultado
             ->whereBetween('recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])->sum('taxa'), 2);
     }
 
-    /** despesas do mês por conta do plano (id) */
+    /**
+     * despesas do mês por conta do plano (id). A conta a pagar de uma fatura de cartão não entra:
+     * entram as compras dela, cada uma na sua conta (sem conta: "Cartão de crédito (a classificar)").
+     * Devolve também o que, nas faturas, não é da empresa.
+     *
+     * @return array{0: array<int,float>, 1: float}
+     */
     private static function despesas(string $ym, string $regime): array
     {
         [$de, $ate] = self::limites($ym);
-        $q = DB::table('despesas')->where('empresa_id', self::empresa());
+        $q = DB::table('despesas')->where('empresa_id', self::empresa())->whereNull('fatura_id');
         if ($regime === 'caixa') {
             $q->where('situacao', 'paga')->whereBetween('pago_em', [$de, $ate])->selectRaw('conta_id, SUM(COALESCE(valor_pago, valor)) AS total');
         } else {
             $q->where('situacao', '<>', 'cancelada')->where('competencia', $de)->selectRaw("conta_id, SUM(CASE WHEN situacao = 'paga' THEN COALESCE(valor_pago, valor) ELSE valor END) AS total");
         }
+        $porConta = $q->groupBy('conta_id')->pluck('total', 'conta_id')->map(fn ($v) => (float) $v)->all();
 
-        return $q->groupBy('conta_id')->pluck('total', 'conta_id')->map(fn ($v) => (float) $v)->all();
+        $semConta = PlanoContas::porChave('despesa_cartao')?->id;
+        $itens = DB::table('fatura_itens as i')->join('faturas_cartao as f', 'f.id', '=', 'i.fatura_id')->join('despesas as d', 'd.id', '=', 'f.despesa_id')
+            ->join('cartoes as c', 'c.id', '=', 'f.cartao_id')
+            ->where('f.empresa_id', self::empresa())
+            // no cartão pessoal do sócio, o que não é da empresa não é assunto da empresa
+            ->where(fn ($w) => $w->where('i.da_empresa', true)->orWhere('c.tipo', 'empresa'))
+            ->when($regime === 'caixa', fn ($w) => $w->where('d.situacao', 'paga')->whereBetween('d.pago_em', [$de, $ate]),
+                fn ($w) => $w->where('d.situacao', '<>', 'cancelada')->where('d.competencia', $de))
+            ->groupBy('i.conta_id', 'i.da_empresa')->selectRaw('i.conta_id, i.da_empresa, SUM(i.valor) AS total')->get();
+        $fora = 0.0;
+        foreach ($itens as $i) {
+            if (! $i->da_empresa) {
+                $fora += (float) $i->total;
+
+                continue;
+            }
+            $id = $i->conta_id ?? $semConta;
+            $porConta[$id] = ($porConta[$id] ?? 0) + (float) $i->total;
+        }
+
+        return [$porConta, round($fora, 2)];
     }
 
     /**
@@ -110,7 +137,7 @@ class Resultado
     {
         PlanoContas::garantirPadrao();
         $porChave = self::receitas($ym, $regime);
-        $porConta = self::despesas($ym, $regime);
+        [$porConta, $fora] = self::despesas($ym, $regime);
         $contas = PlanoConta::where('ativa', true)->orWhereIn('id', array_keys($porConta))->orderBy('ordem')->get();
         $chaves = $contas->whereNotNull('chave')->pluck('id', 'chave');
         $valores = $porConta;
@@ -125,7 +152,22 @@ class Resultado
         if ($desconto > 0 && $regime === 'referencia') {
             $receitas[] = ['id' => 'descontos', 'codigo' => '', 'nome' => '(−) Descontos dados', 'nivel' => 1, 'valor' => -$desconto, 'tem_filhas' => false];
         }
-        $despesas = self::arvore($contas, 'despesa', $valores);
+        $todas = self::arvore($contas, 'despesa', $valores);
+        // investimentos (equipamentos) ficam abaixo do resultado da operação
+        $inv = $chaves['despesa_investimentos'] ?? null;
+        $despesas = [];
+        $investimentos = [];
+        $dentro = false;
+        foreach ($todas as $l) {
+            if ($l['nivel'] <= 1) {
+                $dentro = $l['id'] === $inv;
+            }
+            if ($dentro) {
+                $investimentos[] = $l;
+            } else {
+                $despesas[] = $l;
+            }
+        }
         $taxas = self::taxas($ym);
         if ($taxas > 0) {
             $despesas[] = ['id' => 'taxas', 'codigo' => '', 'nome' => 'Taxas de cartão e maquininha', 'nivel' => 1, 'valor' => $taxas, 'tem_filhas' => false];
@@ -141,6 +183,10 @@ class Resultado
             'total_receitas' => $totRec, 'total_despesas' => $totDesp,
             'resultado' => round($totRec - $totDesp, 2),
             'margem' => $totRec > 0 ? round(($totRec - $totDesp) / $totRec * 100, 1) : null,
+            'investimentos' => $investimentos,
+            'total_investimentos' => $totInv = round(array_sum(array_column(array_filter($investimentos, fn ($l) => $l['nivel'] === 1), 'valor')), 2),
+            'fora_empresa' => $fora,
+            'resultado_final' => round($totRec - $totDesp - $totInv - $fora, 2),
             // no olhar de referência, quanto das despesas do mês ainda não foi pago
             'a_pagar' => $regime === 'referencia' ? round((float) DB::table('despesas')->where('empresa_id', self::empresa())->where('situacao', 'aberta')->where('competencia', $de)->sum('valor'), 2) : 0.0,
         ];
@@ -220,8 +266,10 @@ class Resultado
         }
 
         // saídas realizadas
-        $pagas = DB::table('despesas as d')->leftJoin('plano_contas as c', 'c.id', '=', 'd.conta_id')
+        // pagas pelo sócio (cartão pessoal) não saíram do caixa da empresa
+        $pagas = DB::table('despesas as d')->leftJoin('formas_pagamento as fp', 'fp.id', '=', 'd.forma_pagamento_id')
             ->where('d.empresa_id', $e)->where('d.situacao', 'paga')->whereBetween('d.pago_em', [$de, $ate])
+            ->where(fn ($w) => $w->whereNull('fp.tipo')->orWhere('fp.tipo', '<>', 'socio'))
             ->get(['d.pago_em', 'd.descricao', 'd.valor', 'd.valor_pago']);
         foreach ($pagas as $d) {
             $add((string) $d->pago_em, 'saidas', $d->descricao, (float) ($d->valor_pago ?? $d->valor), false);

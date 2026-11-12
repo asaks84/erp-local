@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AtividadeController;
+use App\Http\Controllers\CartaoController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
@@ -172,6 +173,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/pagar/nova', [DespesaController::class, 'create']);
         Route::post('/pagar', [DespesaController::class, 'store']);
         Route::post('/pagar/ler', [DespesaController::class, 'ler']);
+        Route::get('/pagar/cartoes', [CartaoController::class, 'index']);
+        Route::post('/pagar/cartoes', [CartaoController::class, 'store']);
+        Route::put('/pagar/cartoes/{cartao}', [CartaoController::class, 'update']);
+        Route::post('/pagar/cartoes/importar', [CartaoController::class, 'importar']);
+        Route::get('/pagar/faturas/{fatura}', [CartaoController::class, 'fatura']);
+        Route::put('/pagar/faturas/{fatura}', [CartaoController::class, 'classificar']);
+        Route::post('/pagar/faturas/{fatura}/desfazer', [CartaoController::class, 'desfazer']);
+        Route::get('/pagar/faturas/{fatura}/arquivo', [CartaoController::class, 'arquivo']);
         Route::get('/pagar/fixas', [RecorrenteController::class, 'index']);
         Route::post('/pagar/fixas', [RecorrenteController::class, 'store']);
         Route::put('/pagar/fixas/{recorrente}', [RecorrenteController::class, 'update']);

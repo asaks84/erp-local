@@ -37,4 +37,10 @@ class FormasPagamento
     {
         return FormaPagamento::firstOrCreate(['tipo' => 'nao_informada'], ['nome' => 'Não informada', 'ativa' => false, 'ordem' => 99]);
     }
+
+    /** despesa paga pelo sócio com o cartão pessoal: conta no resultado, mas não sai do caixa da empresa */
+    public static function socio(): FormaPagamento
+    {
+        return FormaPagamento::firstOrCreate(['tipo' => 'socio'], ['nome' => 'Pago pelo sócio (cartão pessoal)', 'ativa' => false, 'ordem' => 98]);
+    }
 }

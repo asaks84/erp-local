@@ -6,6 +6,11 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 12/11/2026 | Fatura de cartão: uma conta a pagar pelo total (o que o banco cobra), e as **compras** é que contam no resultado, cada uma na sua conta | O caixa vê uma saída só no vencimento; o resultado mostra no que o dinheiro foi gasto |
+| 12/11/2026 | Importação por OFX (padrão dos bancos) e CSV do Nubank; PDF de fatura não | PDF de fatura muda de layout e de banco para banco |
+| 12/11/2026 | Regras por estabelecimento: "sempre a mesma conta" ou "perguntar"; marketplaces sempre perguntados; loja classificada de dois jeitos passa a perguntar; parcela herda a anterior | Mercado Livre e afins vendem de insumo a equipamento e material de obra |
+| 12/11/2026 | Compra da empresa no cartão pessoal do sócio: conta no resultado como paga pelo sócio, sem sair do caixa | O sócio usa o cartão do Mercado Livre pelos pontos |
+| 12/11/2026 | Investimentos (equipamentos) abaixo do resultado da operação | Uma compra grande não deve parecer prejuízo da operação no mês |
 | 12/11/2026 | Resultado do mês com dois olhares: por referência (competência) e pelo dinheiro (caixa). Débito e crédito de troco não são receita; taxa de cartão é despesa | Por referência mostra se o mês dá lucro; pelo dinheiro mostra o que de fato entrou e saiu |
 | 12/11/2026 | Fluxo de caixa sem saldo de banco guardado: saldo inicial opcional, informado na tela (fica no navegador) | O sistema não tem o saldo das contas; o extrato bancário só traz os PIX recebidos |
 | 12/11/2026 | Calendário próprio em pt-BR dentro do campo de data, não o do navegador | O do navegador sai no idioma do computador |

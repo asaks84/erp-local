@@ -36,12 +36,19 @@ class PlanoContas
             ['Impostos e taxas', null, [['Simples Nacional (DAS)', 'despesa_simples', []], ['Taxas e licenças', null, []]]],
             ['Manutenção do pátio', null, []],
             ['Outras despesas', 'despesa_outras', []],
+            ['Investimentos e equipamentos', 'despesa_investimentos', []],
+            ['Cartão de crédito (a classificar)', 'despesa_cartao', []],
         ]],
     ];
+
+    /** contas do sistema que entraram depois do modelo inicial: criadas no fim das despesas */
+    private const NOVAS = [['Investimentos e equipamentos', 'despesa_investimentos'], ['Cartão de crédito (a classificar)', 'despesa_cartao']];
 
     public static function garantirPadrao(): void
     {
         if (PlanoConta::exists()) {
+            self::garantirNovas();
+
             return;
         }
         DB::transaction(function () {
@@ -51,6 +58,24 @@ class PlanoContas
             }
             self::renumerar();
         });
+    }
+
+    private static function garantirNovas(): void
+    {
+        if (PlanoConta::whereIn('chave', array_column(self::NOVAS, 1))->count() === count(self::NOVAS)) {
+            return;
+        }
+        $faltam = array_filter(self::NOVAS, fn ($n) => ! PlanoConta::where('chave', $n[1])->exists());
+        $raiz = $faltam ? PlanoConta::where('chave', 'raiz_despesa')->first() : null;
+        if ($raiz) {
+            DB::transaction(function () use ($faltam, $raiz) {
+                $ordem = (int) PlanoConta::where('pai_id', $raiz->id)->max('ordem');
+                foreach ($faltam as [$nome, $chave]) {
+                    PlanoConta::create(['tipo' => 'despesa', 'pai_id' => $raiz->id, 'nome' => $nome, 'chave' => $chave, 'ordem' => ++$ordem, 'codigo' => '']);
+                }
+                self::renumerar();
+            });
+        }
     }
 
     private static function criar(string $tipo, ?int $pai, string $nome, ?string $chave, array $filhas, int $ordem): void

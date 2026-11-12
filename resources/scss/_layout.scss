@@ -262,3 +262,8 @@
     &.receita { background: var(--bs-success); } &.despesa { background: var(--bs-danger); opacity: .75; } }
 .fluxo tr.previsto td { font-style: italic; color: var(--bs-secondary-color); }
 .fluxo tr.detalhe td { background: var(--bs-tertiary-bg); }
+
+// fatura do cartão: compra que não é da empresa fica apagada; barra de salvar presa embaixo
+.fatura-itens .fora { opacity: .55; }
+.barra-salvar { position: sticky; bottom: 0; background: var(--bs-body-bg); z-index: 2; }
+@media (max-width: 900px) { .barra-salvar { bottom: 64px; } }

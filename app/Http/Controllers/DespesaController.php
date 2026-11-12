@@ -34,6 +34,7 @@ class DespesaController extends Controller
             'valor' => (float) $x->valor,
             'parcela' => $x->parcela ? $x->parcela.'/'.$x->parcelas : null,
             'recorrente' => (bool) $x->recorrente_id,
+            'fatura_id' => $x->fatura_id,
             'situacao' => $x->situacao,
             'estado' => $x->estado(),
             'pago_em' => $x->pago_em?->format('Y-m-d'),

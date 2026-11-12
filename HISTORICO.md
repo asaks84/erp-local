@@ -4,6 +4,18 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Etapa 6 (parte 4): fatura do cartão de crédito — Etapa 6 concluída
+
+- **Contas a pagar › Cartões:** cadastro dos cartões (da empresa ou pessoal do sócio) e importação da fatura pelo arquivo do banco (**OFX**, padrão de quase todos os bancos, ou **CSV do Nubank**). O pagamento da fatura anterior é ignorado; estorno abate. Vencimento pelo nome do arquivo do Nubank (`Nubank_2026-10-23`), pelo dia do cartão ou informado. Arquivo de outro cartão e fatura repetida são recusados.
+- **A fatura vira uma conta a pagar só**, no vencimento, pelo valor que o banco cobra. Paga-se por Contas a pagar, como qualquer conta; o valor não se altera por lá (vem das compras).
+- **Classificação das compras:** cada compra numa conta do plano, com "o que foi" (ex.: "Telhas da cobertura") e a chave "Da empresa". No resultado do mês conta a compra, na sua conta, e não a fatura; compra sem conta aparece em "Cartão de crédito (a classificar)".
+- **O sistema aprende:** loja classificada numa conta passa a vir classificada nas próximas faturas; se for classificada em outra conta, passa a ser perguntada. Marketplaces (Mercado Livre, Amazon, Shopee, Magalu...) são sempre perguntados. Parcela seguinte herda conta e descrição da anterior.
+- **Cartão pessoal do sócio:** só entram as compras marcadas como da empresa; viram uma conta "paga pelo sócio": contam no resultado, mas não saem do caixa da empresa (fluxo de caixa). Para se reembolsar, é só desfazer o pagamento dessa conta e pagá-la pela empresa.
+- **Resultado do mês:** grupo novo **Investimentos e equipamentos** e compras do cartão da empresa que não são da empresa ficam abaixo do "Resultado da operação", com "Sobrou no fim". Contas novas no plano (criadas sozinhas no plano existente): *Investimentos e equipamentos* e *Cartão de crédito (a classificar)*.
+- **Desfazer importação** (arquivo errado): cancela a conta da fatura e apaga a classificação, enquanto ela não foi paga.
+- **156 testes automáticos.**
+- Banco: migração `2026_11_18_000001_create_cartoes_tables` (no servidor, roda sozinha ao publicar).
+
 ## 12/11/2026 — Etapa 6 (parte 3): resultado do mês, fluxo de caixa e calendário nos campos de data
 
 - **Gestão › Resultado e caixa** (permissão nova `resultado`; o Administrador já tem):
