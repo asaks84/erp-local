@@ -237,6 +237,13 @@ trait ImportaCadastros
             $mapa[(int) $c->cli_id] = $cliente->id;
         }
         $this->contar('Clientes', $n, $a);
+        // excluído no sistema atual: fica inativo aqui (com o histórico), como o "Remover" do ERP
+        $saiu = Cliente::whereNotNull('legado_id')->whereNotIn('legado_id', array_keys($mapa) ?: [0])->where('ativo', true)->pluck('id');
+        if ($saiu->isNotEmpty()) {
+            Cliente::whereIn('id', $saiu)->update(['ativo' => false]);
+            Veiculo::whereIn('cliente_id', $saiu)->update(['ativo' => false]);
+            $this->warn($saiu->count().' cliente(s) excluído(s) no sistema atual: inativos aqui.');
+        }
 
         return $mapa;
     }
@@ -245,6 +252,7 @@ trait ImportaCadastros
     private function importarVeiculos(Legado $legado, array $clientes, array $tipos): array
     {
         $mapa = [];
+        $vistos = [];
         $n = $a = $sem = 0;
         $tipoPadrao = reset($tipos);
         foreach ($legado->conexao()->table($legado->exige('VEICULOS'))->orderBy('vcl_id')->get() as $v) {
@@ -279,8 +287,14 @@ trait ImportaCadastros
             $veiculo->save();
             $veiculo->periodo_legado = $this->texto($v->vcl_periodo, 30);
             $mapa[strtoupper($original)] = $veiculo;
+            $vistos[] = $v->vcl_id;
         }
         $this->contar('Veículos ('.$sem.' sem placa)', $n, $a);
+        // excluído no sistema atual: inativo aqui (a mensalidade dele é encerrada na importação dos contratos)
+        $saiu = Veiculo::whereNotNull('legado_id')->whereNotIn('legado_id', $vistos ?: [0])->where('ativo', true)->update(['ativo' => false]);
+        if ($saiu) {
+            $this->warn("{$saiu} veículo(s) excluído(s) no sistema atual: inativos aqui.");
+        }
 
         return $mapa;
     }
@@ -333,6 +347,7 @@ trait ImportaCadastros
             return;
         }
         $n = $a = 0;
+        $vistos = [];
         foreach ($legado->conexao()->table($t)->get() as $c) {
             if (! isset($clientes[(int) $c->cnv_cli_id])) {
                 continue;
@@ -352,8 +367,11 @@ trait ImportaCadastros
                 'ativo' => (bool) $c->cnv_ativo,
             ]);
             $conv->save();
+            $vistos[] = $conv->id;
         }
         $this->contar('Convênios', $n, $a);
+        // convênio (ou cliente) excluído no sistema atual: desativado aqui
+        Convenio::whereNotIn('id', $vistos ?: [0])->where('ativo', true)->update(['ativo' => false]);
     }
 
     private function importarPendentes(Legado $legado, array $tipos): void

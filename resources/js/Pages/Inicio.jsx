@@ -32,6 +32,10 @@ export default function Inicio({ aberto, recebido, anotacoes, conferencia, pagar
                     : ' Os números daqui vêm da última importação feita do sistema atual.'}
             </div>
 
+            {conferencia?.atrasada && pode('configuracoes') && (
+                <div className="alert alert-warning">A importação do sistema atual parou (a última foi às {dataHora(conferencia.quando)}): os números do ERP estão desatualizados. <Link href="/conferencia">Ver a conferência</Link>.</div>
+            )}
+
             {pagar && (pagar.atrasadas.qtd > 0 || pagar.hoje.qtd > 0) && (
                 <div className={`alert ${pagar.atrasadas.qtd ? 'alert-danger' : 'alert-warning'} d-flex flex-wrap align-items-center gap-2`}>
                     <span className="flex-grow-1">

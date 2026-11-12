@@ -59,6 +59,21 @@ class ParaleloTest extends TestCase
         $this->actingAs($a->admin)->get('/')->assertInertia(fn ($p) => $p->where('conferencia.situacao', 'ok'));
     }
 
+    public function test_aviso_quando_a_importacao_para(): void
+    {
+        $a = $this->criarEmpresa('a');
+        app(EmpresaAtual::class)->definir($a->empresa->id);
+        config(['erp.espelho_ativo' => true]);
+        \Carbon\Carbon::setTestNow('2026-11-12 17:00:00');
+        $c = Conferencia::create(['executada_em' => '2026-11-12 00:43:00', 'situacao' => 'ok', 'linhas' => []]);
+        $this->actingAs($a->admin)->get('/conferencia')->assertInertia(fn ($p) => $p->where('atrasada', true));
+        $this->actingAs($a->admin)->get('/')->assertInertia(fn ($p) => $p->where('conferencia.atrasada', true));
+        $c->update(['executada_em' => '2026-11-12 16:00:00']);
+        $this->actingAs($a->admin)->get('/conferencia')->assertInertia(fn ($p) => $p->where('atrasada', false));
+        \Carbon\Carbon::setTestNow('2026-11-13 07:30:00');   // antes das 9h ainda não avisa (a 1ª importação é às 7h)
+        $this->actingAs($a->admin)->get('/conferencia')->assertInertia(fn ($p) => $p->where('atrasada', false));
+    }
+
     public function test_backup_dos_bancos(): void
     {
         Storage::fake('local');

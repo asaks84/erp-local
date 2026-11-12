@@ -127,6 +127,26 @@ class ImportacaoCadastrosTest extends TestCase
         $this->assertSame(1, Tarifa::count());
     }
 
+    public function test_exclusoes_e_mensalidade_zero_no_sistema_atual(): void
+    {
+        $this->importar();
+        $db = DB::connection('legado');
+        $db->table('CONVENIOS')->delete();
+        $db->table('CLIENTES')->where('cli_id', 6)->delete();                         // cliente excluído
+        $db->table('VEICULOS_MENSALISTA')->where('vclms_id', 11)->delete();
+        $db->table('VEICULOS')->where('vcl_id', 2)->delete();                          // veículo excluído
+        $db->table('VEICULOS_MENSALISTA')->where('vclms_id', 10)->update(['vclms_mensalidade' => 0]);   // licença: mensalidade 0
+        $this->importar();
+
+        $this->assertFalse(Cliente::where('legado_id', 6)->value('ativo'));
+        $this->assertTrue(Cliente::where('legado_id', 5)->value('ativo'));
+        $this->assertFalse(Veiculo::where('legado_id', 2)->value('ativo'));
+        $this->assertNotNull(MensalidadeContrato::where('legado_id', 10)->value('fim'));
+        \Artisan::call('legado:comparar');
+        $saida = \Artisan::output();
+        $this->assertStringNotContainsString('DIFERENTE', $saida, $saida);   // excluídos e encerrados hoje não contam
+    }
+
     public function test_comparacao_bate(): void
     {
         $this->importar();

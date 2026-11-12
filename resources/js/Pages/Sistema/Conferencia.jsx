@@ -9,7 +9,7 @@ function duracao(s) {
 }
 
 /** Sistema › Conferência com o sistema atual (paralelo da etapa 5). */
-export default function Conferencia({ ultima, historico, dias_ok, espelho_ativo, situacoes }) {
+export default function Conferencia({ ultima, historico, dias_ok, espelho_ativo, atrasada, situacoes }) {
     return (
         <div className="pagina">
             <TituloPagina titulo="Conferência com o sistema atual"
@@ -33,6 +33,7 @@ export default function Conferencia({ ultima, historico, dias_ok, espelho_ativo,
                 </div>
             </div>
 
+            {atrasada && <div className="alert alert-warning"><strong>A importação parou:</strong> a última foi há mais de 2 horas, e ela deveria rodar de hora em hora. Os números do ERP estão desatualizados. Verifique o cron no hPanel (Avançado › Cron Jobs › Ver resultado) ou rode à mão pelo SSH: <code>php artisan legado:espelhar</code>.</div>}
             {ultima?.mensagem && <div className="alert alert-danger"><strong>Erro na última importação:</strong> <span className="text-break">{ultima.mensagem}</span></div>}
 
             {ultima?.linhas?.length > 0 && (

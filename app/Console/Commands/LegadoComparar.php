@@ -98,16 +98,18 @@ class LegadoComparar extends Command
         $srv = $legado->exige('SERVICOS');
         $x = (int) $db->selectOne("SELECT COUNT(*) n FROM `{$srv}` WHERE srv_papel <> 'sistema' AND srv_codigo NOT IN ('MEN','EST','CDT','DBT')")->n;
         $linhas[] = ['Serviços', $x, $n = Servico::whereNotNull('legado_codigo')->count(), $igual($x, $n)];
-        $linhas[] = ['Clientes', $x = $legado->contar('CLIENTES'), $n = Cliente::whereNotNull('legado_id')->count(), $igual($x, $n)];
-        $linhas[] = ['Veículos', $x = $legado->contar('VEICULOS'), $n = Veiculo::whereNotNull('legado_id')->count(), $igual($x, $n)];
+        // excluídos no sistema atual ficam inativos aqui: compara só os ativos
+        $linhas[] = ['Clientes', $x = $legado->contar('CLIENTES'), $n = Cliente::whereNotNull('legado_id')->where('ativo', true)->count(), $igual($x, $n)];
+        $linhas[] = ['Veículos', $x = $legado->contar('VEICULOS'), $n = Veiculo::whereNotNull('legado_id')->where('ativo', true)->count(), $igual($x, $n)];
         $vm = $legado->exige('VEICULOS_MENSALISTA');
         $vc = $legado->exige('VEICULOS');
         $mens = $db->selectOne("SELECT COUNT(*) n, COALESCE(SUM(m.vclms_mensalidade),0) total FROM `{$vm}` m JOIN `{$vc}` v ON v.vcl_placa = m.vclms_vcl_placa WHERE m.vclms_mensalidade > 0");
-        $ativos = MensalidadeContrato::whereNotNull('legado_id')->ativos()->get();
+        // mensalidade encerrada pelo espelho (fim = hoje) já não é mensalista no sistema atual
+        $ativos = MensalidadeContrato::whereNotNull('legado_id')->whereNull('fim')->get();
         $linhas[] = ['Mensalistas (veículos)', (int) $mens->n, $ativos->count(), $igual((int) $mens->n, $ativos->count())];
         $linhas[] = ['Soma das mensalidades (R$)', $this->moeda($mens->total), $this->moeda($ativos->sum('valor')), $igual($this->moeda($mens->total), $this->moeda($ativos->sum('valor')))];
         if ($legado->tabela('CONVENIOS')) {
-            $linhas[] = ['Convênios', $x = $legado->contar('CONVENIOS'), $n = Convenio::count(), $igual($x, $n)];
+            $linhas[] = ['Convênios ativos', $x = $legado->contar('CONVENIOS', 'cnv_ativo = 1'), $n = Convenio::where('ativo', true)->count(), $igual($x, $n)];
         }
         if ($legado->tabela('CADASTROS_PENDENTES')) {
             $linhas[] = ['Fila de espera', $x = $legado->contar('CADASTROS_PENDENTES'), $n = CadastroPendente::whereNotNull('legado_id')->count(), $igual($x, $n)];

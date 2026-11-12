@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Espelho repassa exclusões; aviso quando a importação para
+
+- **Espelho:** cliente, veículo ou convênio **excluído no sistema atual** fica **inativo** no ERP (com o histórico), como o "Remover" do ERP. Antes ele continuava ativo e a conferência acusava diferença.
+- **Conferência:** compara só clientes, veículos e convênios ativos; mensalidade encerrada pelo espelho no dia (mensalista que saiu ou mensalidade 0, como licença-maternidade) já não conta como mensalista.
+- **Aviso** no Início e na Conferência quando a última importação tem mais de 2 horas (das 9h às 23h59): sinal de que o cron parou.
+- **158 testes automáticos.**
+- Arquivos: `app/Console/Commands/Concerns/ImportaCadastros.php`, `app/Console/Commands/LegadoComparar.php`, `app/Http/Controllers/ConferenciaController.php`, `resources/js/Pages/Sistema/Conferencia.jsx`, `resources/js/Pages/Inicio.jsx`.
+
 ## 12/11/2026 — Botão Publicar atualizado
 
 - `.github/workflows/publicar.yml`: `actions/checkout@v5` e `actions/setup-node@v5` (as v4 rodam em Node.js 20, que o GitHub está desativando) e máquina fixa `ubuntu-24.04` (a `ubuntu-latest` muda para o Ubuntu 26 em outubro de 2026).

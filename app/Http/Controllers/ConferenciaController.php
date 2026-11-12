@@ -36,8 +36,17 @@ class ConferenciaController extends Controller
             ]),
             'dias_ok' => $diasOk,
             'espelho_ativo' => (bool) config('erp.espelho_ativo'),
+            'atrasada' => self::atrasada($ultima),
             'situacoes' => Conferencia::SITUACOES,
         ]);
+    }
+
+    /** espelho ligado, horário de funcionamento (9h às 23h59) e a última importação tem mais de 2 horas: o cron parou */
+    public static function atrasada(?Conferencia $c): bool
+    {
+        $agora = now();
+
+        return config('erp.espelho_ativo') && $agora->hour >= 9 && (! $c || $c->executada_em->lt($agora->copy()->subHours(2)));
     }
 
     /** resumo para o aviso do Início */
@@ -45,6 +54,6 @@ class ConferenciaController extends Controller
     {
         $c = Conferencia::latest('id')->first();
 
-        return $c ? ['quando' => $c->executada_em->format('Y-m-d H:i'), 'situacao' => $c->situacao] : null;
+        return $c ? ['quando' => $c->executada_em->format('Y-m-d H:i'), 'situacao' => $c->situacao, 'atrasada' => self::atrasada($c)] : null;
     }
 }

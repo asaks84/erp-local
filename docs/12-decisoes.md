@@ -6,6 +6,7 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 12/11/2026 | Exclusão no sistema atual vira "inativo" no ERP pelo espelho (nunca apaga); a conferência compara ativos | No ERP nada se apaga; o histórico do cliente fica |
 | 12/11/2026 | Fatura de cartão: uma conta a pagar pelo total (o que o banco cobra), e as **compras** é que contam no resultado, cada uma na sua conta | O caixa vê uma saída só no vencimento; o resultado mostra no que o dinheiro foi gasto |
 | 12/11/2026 | Importação por OFX (padrão dos bancos) e CSV do Nubank; PDF de fatura não | PDF de fatura muda de layout e de banco para banco |
 | 12/11/2026 | Regras por estabelecimento: "sempre a mesma conta" ou "perguntar"; marketplaces sempre perguntados; loja classificada de dois jeitos passa a perguntar; parcela herda a anterior | Mercado Livre e afins vendem de insumo a equipamento e material de obra |
