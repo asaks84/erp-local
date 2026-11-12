@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Paginacao from '../../Components/Paginacao'
+import AbasClientes from '../../Components/AbasClientes'
 import { telefone } from '../../lib/mascaras'
 
 export default function ClientesIndex({ clientes, filtros }) {
@@ -22,6 +23,7 @@ export default function ClientesIndex({ clientes, filtros }) {
 
     return (
         <div className="pagina">
+            <AbasClientes />
             <TituloPagina titulo="Clientes">
                 <Link href="/clientes/novo" className="btn btn-primary d-inline-flex align-items-center gap-2"><Icone nome="mais" /> Novo cliente</Link>
             </TituloPagina>

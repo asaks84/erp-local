@@ -3,6 +3,7 @@
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\CartaoController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\MensalistasController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
@@ -67,6 +68,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/busca/clientes', [ClienteController::class, 'buscar']);
 
         Route::get('/clientes', [ClienteController::class, 'index']);
+        Route::get('/clientes/mensalistas', [MensalistasController::class, 'index'])->middleware('permissao:rel_mensalistas');
         Route::get('/clientes/novo', [ClienteController::class, 'create']);
         Route::post('/clientes', [ClienteController::class, 'store']);
         Route::get('/clientes/{cliente}', [ClienteController::class, 'show']);

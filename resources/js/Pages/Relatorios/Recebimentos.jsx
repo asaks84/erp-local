@@ -2,6 +2,7 @@ import { Link, router, useForm } from '@inertiajs/react'
 import { useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
+import CabecalhoImpressao from '../../Components/CabecalhoImpressao'
 import CampoData from '../../Components/CampoData'
 import Campo from '../../Components/Campo'
 import Janela from '../../Components/Janela'
@@ -25,6 +26,7 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
 
     return (
         <div className="pagina impressao-retrato">
+            <CabecalhoImpressao titulo="Recebimentos" detalhe={`Período: ${periodo}`} />
             <TituloPagina titulo="Recebimentos" descricao={periodo}>
                 <button type="button" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2 nao-imprimir" onClick={() => window.print()}><Icone nome="impressora" tamanho={16} /> Imprimir</button>
                 <a href={csv} className="btn btn-outline-secondary nao-imprimir">Baixar planilha</a>

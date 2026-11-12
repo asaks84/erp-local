@@ -2,7 +2,8 @@ import { Link, router } from '@inertiajs/react'
 import { useEffect, useRef, useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
-import { data as fData, dataHora, moeda } from '../../lib/formato'
+import CabecalhoImpressao from '../../Components/CabecalhoImpressao'
+import { data as fData, moeda } from '../../lib/formato'
 import { telefone } from '../../lib/mascaras'
 
 export default function Abertas({ linhas, resumo, filtros }) {
@@ -23,9 +24,29 @@ export default function Abertas({ linhas, resumo, filtros }) {
                 <button type="button" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2 nao-imprimir" onClick={() => window.print()}><Icone nome="impressora" tamanho={16} /> Imprimir</button>
                 <a href={csv} className="btn btn-outline-secondary nao-imprimir">Baixar planilha</a>
             </TituloPagina>
-            <p className="d-none d-print-block small mb-2">Emitido em {dataHora(new Date())}{q ? ` · busca: "${q}"` : ''}</p>
+            <CabecalhoImpressao titulo={filtros.ver === 'vencidas' ? 'Inadimplência' : 'Contas em aberto'} detalhe={q ? `Busca: "${q}"` : null} />
+            <div className="imp-resumo d-none">
+                <div>Vencido<strong>{moeda(resumo.vencido)}</strong>{resumo.inadimplentes} cliente(s) com conta vencida</div>
+                <div>Total em aberto<strong>{moeda(resumo.total)}</strong>{resumo.clientes} cliente(s), vencido ou a vencer</div>
+            </div>
+            <table className="imp-tabela d-none d-print-table">
+                <thead><tr><th>Cliente</th><th>Situação</th><th>Vencido desde</th><th className="num">Contas</th><th className="num">Vencido</th><th className="num">Total em aberto</th></tr></thead>
+                <tbody>
+                    {linhas.map((l) => (
+                        <tr key={l.id}>
+                            <td><strong>{l.nome}</strong><small>{l.placas || `Cód. ${l.id}`}</small></td>
+                            <td className="fw-semibold">{l.dias > 0 ? `${l.dias} dia(s) de atraso` : 'A vencer'}</td>
+                            <td>{l.vencido > 0 ? fData(l.mais_antigo) : '—'}</td>
+                            <td className="num">{l.qtd}</td>
+                            <td className="num">{l.vencido > 0 ? moeda(l.vencido) : '—'}</td>
+                            <td className="num fw-semibold">{moeda(l.total)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+                <tfoot><tr><td colSpan="4">Total</td><td className="num">{moeda(resumo.vencido)}</td><td className="num">{moeda(resumo.total)}</td></tr></tfoot>
+            </table>
 
-            <div className="row g-3 mb-3">
+            <div className="row g-3 mb-3 nao-imprimir">
                 <div className="col-6 col-md-3"><div className="card card-body"><div className="text-muted small">Em aberto</div><div className="fs-4 fw-bold">{moeda(resumo.total)}</div></div></div>
                 <div className="col-6 col-md-3"><div className="card card-body"><div className="text-muted small">Já venceu</div><div className="fs-4 fw-bold text-danger">{moeda(resumo.vencido)}</div></div></div>
                 <div className="col-6 col-md-3"><div className="card card-body"><div className="text-muted small">Clientes devendo</div><div className="fs-4 fw-bold">{resumo.clientes}</div></div></div>
@@ -45,7 +66,7 @@ export default function Abertas({ linhas, resumo, filtros }) {
                 </div>
             </div>
 
-            <div className="card">
+            <div className="card nao-imprimir">
                 <div className="table-responsive">
                     <table className="table table-hover align-middle mb-0">
                         <thead><tr><th>Cliente</th><th className="d-none d-lg-table-cell d-print-table-cell">Itens</th><th className="d-none d-md-table-cell d-print-table-cell">Mais antigo</th><th className="text-end">Vencido</th><th className="text-end">Total</th><th className="d-none d-md-table-cell nao-imprimir" /></tr></thead>
@@ -65,9 +86,6 @@ export default function Abertas({ linhas, resumo, filtros }) {
                                 </tr>
                             ))}
                         </tbody>
-                        {linhas.length > 1 && (
-                            <tfoot className="d-none d-print-table-footer-group"><tr className="fw-semibold"><td>{linhas.length} cliente(s)</td><td /><td /><td className="text-end text-nowrap">{moeda(resumo.vencido)}</td><td className="text-end text-nowrap">{moeda(resumo.total)}</td></tr></tfoot>
-                        )}
                     </table>
                 </div>
             </div>

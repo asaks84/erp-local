@@ -43,8 +43,11 @@
 	.via-instrucoes { font-size: 10.5px; white-space: pre-line; border-top: 1px solid #999; padding-top: 1.5mm; }
 	.via-rodape { font-size: 9px; text-align: center; color: #555; margin-top: auto; }
 }
+// A4 deitada sem margem só nas folhas da cobrança (página nomeada); o resto imprime em A4 em pé com margem
+@page cobranca { size: A4 landscape; margin: 0; }
+@page { size: A4 portrait; margin: 12mm; }
 @media print {
-	@page { size: A4 landscape; margin: 0; }
+	.imp-folha { page: cobranca; }
 	body { background: #fff !important; }
 	.imp { background: #fff; padding: 0; .imp-barra { display: none; } }
 	.imp-folha { box-shadow: none; margin: 0; break-after: page; }
@@ -61,9 +64,8 @@
 }
 
 // listas e relatórios impressos em A4 em pé, com margem (a regra geral acima é das cobranças, A4 deitado e sem margem)
-@page retrato { size: A4 portrait; margin: 12mm; }
 @media print {
-	.impressao-retrato { page: retrato; }
+	.impressao-retrato .table-responsive { overflow: visible !important; }
 	.impressao-retrato .card-body, .impressao-retrato .table { font-size: 11px; }
 	.impressao-retrato .fs-4 { font-size: 15px !important; }
 	.impressao-retrato a { color: inherit; text-decoration: none; }
@@ -71,4 +73,22 @@
 	.impressao-retrato thead { display: table-header-group; }
 	.d-print-table-footer-group { display: table-footer-group !important; }
 	.impressao-retrato .text-danger { color: #b00 !important; }
+}
+
+// cabeçalho e tabelas dos relatórios impressos (padrão do sistema atual)
+@media print {
+	.imp-topo { justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #111; padding-bottom: 3mm; margin-bottom: 5mm; }
+	.imp-topo img { height: 14mm; width: auto; }
+	.imp-topo strong { display: block; font-size: 17px; color: #111; }
+	.imp-topo span { display: block; font-size: 10px; color: #333; }
+	.impressao-retrato .titulo-pagina, .impressao-retrato .pagina-titulo { display: none !important; }
+	.imp-resumo { display: flex !important; gap: 4mm; margin-bottom: 5mm; }
+	.imp-resumo > div { border: 1px solid #bbb; border-radius: 3mm; padding: 2.5mm 4mm; min-width: 40mm; font-size: 10.5px; }
+	.imp-resumo strong { display: block; font-size: 14px; }
+	table.imp-tabela { width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #bbb; }
+	table.imp-tabela th { text-align: left; font-weight: 600; border-bottom: 1px solid #bbb; padding: 1.6mm 2mm; background: #f2f2f2 !important; }
+	table.imp-tabela td { border-bottom: 1px solid #ddd; padding: 1.6mm 2mm; vertical-align: middle; }
+	table.imp-tabela .num { text-align: right; white-space: nowrap; }
+	table.imp-tabela tfoot td { font-weight: 600; border-top: 1px solid #999; }
+	table.imp-tabela small { display: block; font-size: 9.5px; color: #333; }
 }

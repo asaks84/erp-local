@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Relatório de mensalistas e impressão no padrão do sistema atual
+
+- **Clientes › Mensalistas** (permissão "Relatórios de mensalistas"), no lugar de Relatórios › Controle e Lista de mensalistas do sistema atual: resumo com receita mensal e quantidade de carros, motos e caminhões; tabela por tipo e período (Diurno, Noturno, 24 horas) com quantidade e receita; lista dos mensalistas (cliente, veículo, tipo, período, mensalidade) com filtro por tipo de veículo; planilha e **Imprimir**. A receita só aparece para quem tem a permissão de faturamento.
+- **Impressão no padrão do sistema atual** (logo, título e "Emitido em", linha grossa, quadros de resumo, tabela com bordas e total) em Mensalistas, Contas em aberto (com "Só vencidas" sai como "Inadimplência": cliente e placas, situação, vencido desde, contas, vencido e total) e Recebimentos.
+- Impressão: A4 em pé com margem é o padrão; só as folhas da cobrança usam A4 deitada sem margem (antes a regra da cobrança valia para tudo e a lista virava folha deitada a partir da 3ª página).
+- **159 testes automáticos.**
+- Arquivos: `app/Http/Controllers/MensalistasController.php`, `app/Http/Controllers/ContaController.php`, `routes/web.php`, `resources/js/Pages/Clientes/Mensalistas.jsx`, `resources/js/Pages/Clientes/Index.jsx`, `resources/js/Components/AbasClientes.jsx`, `resources/js/Components/CabecalhoImpressao.jsx`, `resources/js/Pages/Contas/Abertas.jsx`, `resources/js/Pages/Relatorios/Recebimentos.jsx`, `resources/scss/_impressao.scss`, `tests/Feature/MensalistasTest.php`.
+
 ## 12/11/2026 — Gerar mensalidades sem os clientes que saíram
 
 - **Gerar mensalidades** não lista mais contrato de cliente ou veículo inativo (removido no ERP ou excluído no sistema atual).

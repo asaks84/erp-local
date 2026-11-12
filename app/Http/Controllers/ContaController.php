@@ -66,6 +66,7 @@ class ContaController extends Controller
                 'total' => $total,
                 'vencido' => $vencido,
                 'itens' => implode(' · ', $p),
+                'qtd' => (int) $l->n_mensalidade + (int) $l->n_servico + (int) $l->n_estadia + (int) $l->n_debito,
                 'placas' => collect(explode(' · ', (string) $l->placas))->filter()->map(fn ($p) => \App\Support\Placa::formatar($p))->implode(' · '),
                 'mais_antigo' => $l->mais_antigo,
                 'dias' => $vencido > 0 && $l->mais_antigo ? (int) \Carbon\Carbon::parse($l->mais_antigo)->diffInDays($hoje) : 0,
