@@ -38,7 +38,8 @@ class InicioController extends Controller
             ];
         }
 
-        return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido, 'anotacoes' => Anotacao::doUsuario((int) $request->user()->id)]);
+        return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido, 'anotacoes' => Anotacao::doUsuario((int) $request->user()->id),
+            'conferencia' => ConferenciaController::resumo()]);
     }
 
     /** total baixado (soma dos itens dos pagamentos confirmados) e quantas contas, sem contar créditos */

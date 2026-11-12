@@ -1,0 +1,18 @@
+# o que NÃO vai para o servidor na publicação (deploy/servidor.sh)
+.git/
+.github/
+node_modules/
+tests/
+storage/
+.env
+.env.*
+*.bat
+docs/
+HISTORICO.md
+CLAUDE.md
+README.md
+phpunit.xml
+public/hot
+resources/js/
+resources/scss/
+deploy/

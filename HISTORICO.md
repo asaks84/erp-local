@@ -4,6 +4,16 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 11/11/2026 — Etapa 5: publicação e paralelo
+
+- **Botão Publicar** (GitHub › Actions › Publicar): roda os testes, gera o build e envia a versão para a Hostinger por SSH; no servidor, cada publicação é uma pasta nova e a troca é instantânea. Ação **voltar para a versão anterior** para desfazer. Arquivos: `.github/workflows/publicar.yml`, `deploy/servidor.sh`, `deploy/voltar.sh`, `deploy/rsync-excluir.txt`, `deploy/env-producao.exemplo`.
+- **Espelho do sistema atual:** `php artisan legado:espelhar` importa e compara; roda sozinho de hora em hora (7h às 23h) quando `ERP_ESPELHO_ATIVO=true`. Cada execução (igual, com diferença ou erro) fica registrada.
+- **Sistema › Conferência:** última conferência com os números lado a lado, dias seguidos sem diferença e histórico. O aviso do Início mostra a hora da última importação e se bateu.
+- **Backup diário** (3h10): `php artisan backup:banco` grava os bancos do ERP e do sistema atual compactados em `storage/app/private/backups`, guardando 14 dias.
+- **Passo a passo da primeira publicação** em `docs/14-publicacao.md`.
+- **139 testes automáticos.**
+- Banco: migração `2026_11_15_000001_create_conferencias_table` (rodar `php artisan migrate`).
+
 ## 10/11/2026 — Anotações em destaque
 
 - No Início, as anotações vêm primeiro e em destaque (texto maior e em negrito); o campo de adicionar ficou menor, embaixo do bloco.

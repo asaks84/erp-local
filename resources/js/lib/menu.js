@@ -40,6 +40,7 @@ export const MENU = [
             { rotulo: 'Configurações', href: '/empresa', icone: 'engrenagem', permissao: 'configuracoes', acende: ['/empresa', '/unidades', '/configuracoes'] },
             { rotulo: 'Níveis de acesso', href: '/niveis', icone: 'escudo', permissao: 'configuracoes', acende: ['/niveis'] },
             { rotulo: 'Usuários', href: '/usuarios', icone: 'cadeado', permissao: 'usuarios', acende: ['/usuarios'] },
+            { rotulo: 'Conferência', href: '/conferencia', icone: 'lista', permissao: 'configuracoes', acende: ['/conferencia'] },
             { rotulo: 'Registro de atividades', href: '/atividades', icone: 'lista', permissao: 'usuarios', acende: ['/atividades'] },
         ],
     },

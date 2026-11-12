@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\CadastroPendente;
 use App\Models\Cliente;
+use App\Models\Conferencia;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\MensalidadeContrato;
@@ -55,6 +56,10 @@ class LegadoComparar extends Command
         $this->info('Relatório gravado em storage/app/private/'.$arquivo);
 
         $diferencas = collect($linhas)->where(3, 'DIFERENTE')->count();
+        Conferencia::create([
+            'executada_em' => now(), 'situacao' => $diferencas ? 'diferente' : 'ok',
+            'diferencas' => $diferencas, 'linhas' => $linhas,
+        ]);
         if ($diferencas) {
             $this->error("{$diferencas} diferença(s) encontrada(s).");
 

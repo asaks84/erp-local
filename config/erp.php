@@ -9,6 +9,13 @@ return [
     // Conexão com o banco do sistema atual (CodeIgniter), usada só pela importação.
     'legado_conexao' => 'legado',
 
+    // Paralelo (etapa 5): nome da empresa na primeira importação automática e se o espelho roda.
+    'empresa_nome' => env('ERP_EMPRESA_NOME', 'Local Estacionamento'),
+    'espelho_ativo' => (bool) env('ERP_ESPELHO_ATIVO', false),
+
+    // Backup diário dos bancos (ERP e sistema atual): quantos dias guardar.
+    'backup_dias' => (int) env('ERP_BACKUP_DIAS', 14),
+
     // Faixas de IP do Cloudflare: só destes endereços o IP real do cliente é aceito
     // (cabeçalho CF-Connecting-IP / X-Forwarded-For). Lista oficial: https://www.cloudflare.com/ips/
     'proxies_confiaveis' => array_filter(explode(',', (string) env('ERP_PROXIES_CONFIAVEIS',

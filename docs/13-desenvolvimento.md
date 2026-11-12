@@ -31,7 +31,7 @@ app/
                           Estadias (entrada, cálculo, saída), Vendas (lavagens e serviços, etapas), EtapasLavagem (etapas configuráveis), Convenios (divisão do valor)
   Support/                EmpresaAtual, Atividades (registro), Senha, Legado (banco atual), Placa, Documento (CPF/CNPJ), Formato, Csv
   Auth/UsuarioProvider    busca o usuário do login sem o filtro de empresa
-  Console/Commands/       erp:instalar, legado:importar, legado:comparar
+  Console/Commands/       erp:instalar, legado:importar, legado:comparar, legado:espelhar, backup:banco
 config/erp.php            inatividade, faixas de IP do Cloudflare
 config/permissoes.php     catálogo de permissões (grupo, chave, rótulo, descrição)
 database/migrations/      estrutura do banco
@@ -47,6 +47,9 @@ resources/js/
   lib/                    formato.js (datas e R$ em pt-BR), mascaras.js (CPF, telefone, CEP, placa), menu.js, permissoes.js, inatividade.js
 resources/scss/           app.scss (cores, fonte, cantos, tema escuro), _layout.scss e _impressao.scss (cobrança e telas impressas)
 tests/Feature/            testes automáticos
+routes/console.php        agendamentos (espelho de hora em hora, backup diário)
+deploy/                   scripts que rodam no servidor na publicação (servidor.sh, voltar.sh), o que não vai ao servidor e o modelo do .env
+.github/workflows/        publicar.yml: o botão Publicar (testes, build, envio por SSH)
 ```
 
 ## Regras para cada tela nova
@@ -77,7 +80,7 @@ tests/Feature/            testes automáticos
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 135 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
+- `php artisan test` roda todos. Hoje: 139 testes (isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
 - Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos
@@ -86,6 +89,8 @@ tests/Feature/            testes automáticos
 |---|---|
 | `php artisan legado:importar` | Traz do sistema atual: níveis, usuários (as senhas continuam valendo), registro de atividades, cadastros, configurações, ordens, pagamentos e extrato. Pode rodar várias vezes (o sistema atual manda até a virada). Na primeira, cria a empresa e a unidade principal |
 | `php artisan legado:comparar` | Compara os números dos dois sistemas (inclusive em aberto por cliente e recebido mês a mês) e grava o relatório em `storage/app/private/relatorios/` |
+| `php artisan legado:espelhar` | Importa e compara de uma vez, registrando o resultado em Sistema › Conferência (é o que o agendador roda de hora em hora no paralelo) |
+| `php artisan backup:banco` | Backup compactado do banco do ERP e do sistema atual em `storage/app/private/backups` (guarda 14 dias) |
 | `php artisan erp:instalar` | Banco novo sem sistema atual: cria empresa, unidade, nível de acesso total e o primeiro administrador |
 | `php artisan migrate --seed` | Banco de exemplo para desenvolvimento (login `admin`, senha `trocar123`) |
 | `npm run dev` | Telas com atualização automática enquanto edita |

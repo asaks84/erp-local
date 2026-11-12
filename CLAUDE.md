@@ -42,7 +42,8 @@ Organização, versões e o passo a passo de cada tela nova: `docs/13-desenvolvi
 
 ## Infraestrutura
 
-- Produção: hospedagem compartilhada Hostinger (sem processos contínuos, sem WebSocket, sem webhook mTLS). Filas e agendas pelo cron. Inter por consulta periódica.
+- Produção: Hostinger Premium (compartilhada, sem processos contínuos, sem WebSocket, sem webhook mTLS), em erp.localestacionamento.com.br. Filas e agendas pelo cron (`schedule:run` a cada minuto). Inter por consulta periódica.
+- Publicação só pelo botão **Publicar** do GitHub (`.github/workflows/publicar.yml` + `deploy/`); nunca enviar arquivos à mão. O `.env` do servidor só existe lá (`~/erp/compartilhado/.env`). Passo a passo: `docs/14-publicacao.md`.
 - Local: WAMP em `C:\wamp64\www\erplocal` (Apache 2.4, PHP 8.3, MySQL 8.4).
 - Nunca versionar `.env`, dumps de banco com dados de clientes (LGPD) ou chaves.
 

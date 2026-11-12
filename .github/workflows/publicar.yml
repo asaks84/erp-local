@@ -1,0 +1,93 @@
+# Botão "Publicar" do ERP (GitHub › Actions › Publicar › Run workflow).
+# Publicar: roda os testes, gera o build e envia a versão para a Hostinger (deploy/servidor.sh).
+# Voltar: devolve o ERP para a versão anterior (deploy/voltar.sh). Nada vai ao ar sem alguém clicar.
+# Configuração (Settings › Secrets and variables › Actions), passo a passo em docs/14-publicacao.md:
+#   secrets: SSH_HOST, SSH_PORT, SSH_USER, SSH_CHAVE
+#   variables: ERP_DOCROOT (pasta pública do subdomínio), PHP_BIN (opcional), ERP_DIR (opcional)
+name: Publicar
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: 'O que fazer'
+        type: choice
+        options: [publicar, voltar para a versão anterior]
+        default: publicar
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -proot" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      ERP_DIR: ${{ vars.ERP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chave SSH do servidor
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_CHAVE }}" > ~/.ssh/id_erp
+          chmod 600 ~/.ssh/id_erp
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "SSH=ssh -i $HOME/.ssh/id_erp -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Voltar para a versão anterior
+        if: inputs.acao != 'publicar'
+        run: $SSH "ERP_DIR='${ERP_DIR}' bash -s" < deploy/voltar.sh
+
+      - uses: shivammathur/setup-php@v2
+        if: inputs.acao == 'publicar'
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, intl, zip, bcmath
+          coverage: none
+
+      - name: Testes
+        if: inputs.acao == 'publicar'
+        run: |
+          mysql -h127.0.0.1 -uroot -proot -e "CREATE DATABASE erp_teste; CREATE DATABASE erp_teste_legado;"
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
+      - uses: actions/setup-node@v4
+        if: inputs.acao == 'publicar'
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build
+        if: inputs.acao == 'publicar'
+        run: |
+          npm ci
+          npm run build
+          rm .env
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+
+      - name: Enviar para o servidor
+        if: inputs.acao == 'publicar'
+        run: |
+          VERSAO="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          BASE="${ERP_DIR:-\$HOME/erp}"
+          $SSH "mkdir -p $BASE/releases/$VERSAO"
+          rsync -az --delete --exclude-from=deploy/rsync-excluir.txt \
+            -e "ssh -i $HOME/.ssh/id_erp -p ${{ secrets.SSH_PORT }}" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${ERP_DIR:-erp}/releases/$VERSAO/"
+          $SSH "ERP_DIR='${ERP_DIR}' bash -s -- '$VERSAO' '${{ vars.ERP_DOCROOT }}' '${{ vars.PHP_BIN || 'php' }}'" < deploy/servidor.sh

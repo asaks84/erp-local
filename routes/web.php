@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\ConferenciaController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\ConvenioController;
@@ -172,6 +173,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/empresa/cobranca', [EmpresaController::class, 'cobranca']);
 
         Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
+        Route::get('/conferencia', ConferenciaController::class);
         Route::get('/configuracoes/etapas', [EtapaLavagemController::class, 'index']);
         Route::post('/configuracoes/etapas', [EtapaLavagemController::class, 'store']);
         Route::put('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'update']);

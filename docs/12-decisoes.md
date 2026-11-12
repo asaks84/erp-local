@@ -44,6 +44,10 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 | 09/11/2026 | Extrato da conta do cliente na ficha: ordens, pagamentos e ajustes por data, com saldo; pode ser enviado ao cliente (comparativo, ponto 3) | Histórico de movimentação para conferência e discussões com cliente |
 | 09/11/2026 | Correções por documento de ajuste (crédito, débito, estorno, desconto) ligado à cobrança ou ao pagamento, sempre com motivo; botão "Ajustar" (comparativo, ponto 2) | Consequência da cobrança imutável; histórico completo de cada correção |
 | 09/11/2026 | Cobrança emitida é imutável: cópia dos itens na emissão; não pago vira "saldo anterior" na próxima (comparativo, ponto 1) | Histórico igual ao que o cliente recebeu; boleto e nota fiscal com valor fixo |
+| 11/11/2026 | Paralelo por espelho automático: o ERP importa o sistema atual de hora em hora (7h às 23h) e compara; a equipe não lança nos dois | Sem trabalho dobrado e sem diferença por erro de digitação; o portão fica medido em Sistema › Conferência |
+| 11/11/2026 | Publicação só pelo botão "Publicar" do GitHub (testes + build + envio por SSH), com versões guardadas e ação de voltar | Nada vai ao ar sem querer nem sem passar nos testes; voltar atrás em segundos |
+| 11/11/2026 | ERP em erp.localestacionamento.com.br, só com o login do próprio ERP (sem Cloudflare Access) | Decisão do Cauê; a tranca extra pode ser ligada depois sem mexer no código |
+| 11/11/2026 | Backup diário dos bancos do ERP e do sistema atual, 14 dias, fora da pasta pública | O backup semanal da Hostinger é pouco para dinheiro |
 | 10/11/2026 | PDV identifica quem atendeu por PIN de 4 dígitos (padrão do Local) ou por operador de caixa, configurável; memória do PIN configurável, padrão "a cada ação" | Ninguém fica fixo no balcão; ligar e desligar usuário seria trabalhoso |
 | 10/11/2026 | A pessoa escolhe o PIN; PIN repetido é recusado sem dizer de quem é e o PIN antigo é cancelado | Quem tentou acabou de descobrir o PIN do colega |
 | 10/11/2026 | Caixa do PDV é um só, do aparelho, com turnos e conferência na troca | Uma gaveta, sem operador fixo |
