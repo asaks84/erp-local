@@ -114,6 +114,21 @@ class ImportacaoDinheiroTest extends TestCase
             ->assertOk()->assertInertia(fn ($p) => $p->where('saldo_final', 170));
     }
 
+    public function test_cliente_excluido_no_sistema_atual_continua_dono_das_ordens(): void
+    {
+        $this->importar();
+        DB::connection('legado')->table('CLIENTES')->where('cli_id', 6)->delete();   // a OS 105 (em aberto) fica para trás lá
+        $this->importar();
+
+        $maria = Cliente::where('legado_id', 6)->first();
+        $this->assertFalse($maria->ativo);
+        $this->assertSame($maria->id, OrdemServico::where('numero', 105)->value('cliente_id'));
+        $this->assertSame($maria->id, OrdemServico::where('numero', 106)->value('cliente_id'));
+        // o resultado avisa: receita em aberto de cliente excluído
+        $r = \App\Servicos\Resultado::mes('2026-11');
+        $this->assertSame(['qtd' => 1, 'valor' => 25.0], $r['excluidos']);
+    }
+
     public function test_reimportar_nao_duplica_e_segue_o_sistema_atual(): void
     {
         $this->importar();

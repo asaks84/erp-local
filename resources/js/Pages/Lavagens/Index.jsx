@@ -49,7 +49,7 @@ export default function LavagensIndex({ cartoes, etapas, formas }) {
 
     return (
         <div className="pagina">
-            <TituloPagina titulo="Lavagens e serviços">
+            <TituloPagina titulo="Lavagens">
                 <Link href="/lavagens/nova" className="btn btn-primary d-inline-flex align-items-center gap-2"><Icone nome="mais" /> Nova venda</Link>
             </TituloPagina>
             <div className="row g-3">

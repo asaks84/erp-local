@@ -6,6 +6,8 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 12/11/2026 | Remover cliente com conta em aberto pergunta: Excluir (cancela as contas a receber, com o motivo "Cliente removido"; créditos ficam), Manter (continuam a receber) ou Receber (vai para Receber, sem remover) | Pedido do Cauê: cliente que sai não pode deixar mensalidade esquecida na inadimplência e no resultado |
+| 12/11/2026 | O ERP não tira sozinho do resultado a conta de cliente excluído: só avisa | Cliente que sai pode ainda pagar; quem decide é o dono, cancelando a conta |
 | 12/11/2026 | Tarefas agendadas rodam no mesmo processo (`Schedule::call`), e o backup é em PHP puro, sem `mysqldump` | A Hostinger compartilhada desliga o `proc_open`: comando separado e programas externos não rodam pelo cron |
 | 12/11/2026 | Exclusão no sistema atual vira "inativo" no ERP pelo espelho (nunca apaga); a conferência compara ativos | No ERP nada se apaga; o histórico do cliente fica |
 | 12/11/2026 | Fatura de cartão: uma conta a pagar pelo total (o que o banco cobra), e as **compras** é que contam no resultado, cada uma na sua conta | O caixa vê uma saída só no vencimento; o resultado mostra no que o dinheiro foi gasto |

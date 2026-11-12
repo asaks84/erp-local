@@ -130,6 +130,38 @@ class CadastrosTest extends TestCase
         $this->assertSame(now()->toDateString(), MensalidadeContrato::first()->fim->toDateString());
     }
 
+    public function test_remover_cliente_com_conta_em_aberto_pergunta_o_que_fazer(): void
+    {
+        $a = $this->criarEmpresa('a');
+        $x = $this->criarCliente($a);
+        $y = $this->criarCliente($a, 'PEDRO', 'PQR1S23');
+        $o = app(EmpresaAtual::class)->como($a->empresa->id, function () use ($a, $x, $y) {
+            \Illuminate\Support\Facades\Auth::login($a->admin);
+            $o = \App\Servicos\Ordens::lancarNaConta($x->cliente, 'debito', 80, 'Débito', now()->toDateString(), 'teste');
+            \App\Servicos\Ordens::lancarNaConta($x->cliente, 'credito', 10, 'Crédito', now()->toDateString(), 'teste');
+            \App\Servicos\Ordens::lancarNaConta($y->cliente, 'debito', 50, 'Débito', now()->toDateString(), 'teste');
+
+            return $o;
+        });
+        // sem escolher: não remove
+        $this->actingAs($a->admin)->post("/clientes/{$x->cliente->id}/remover")->assertSessionHasErrors('contas');
+        app(EmpresaAtual::class)->definir($a->empresa->id);
+        $this->assertTrue($x->cliente->fresh()->ativo);
+
+        // excluir: as contas a receber são canceladas; o crédito fica
+        $this->actingAs($a->admin)->post("/clientes/{$x->cliente->id}/remover", ['contas' => 'cancelar'])->assertRedirect('/clientes');
+        $this->assertFalse($x->cliente->fresh()->ativo);
+        $this->assertSame('cancelada', $o->fresh()->situacao);
+        $this->assertSame('Cliente removido', $o->fresh()->motivo_cancelamento);
+        $this->assertSame(1, \App\Models\OrdemServico::where('cliente_id', $x->cliente->id)->where('tipo', 'credito')->where('situacao', 'aberta')->count());
+
+        // manter: removido e a conta continua em aberto, marcada em Contas em aberto
+        $this->actingAs($a->admin)->post("/clientes/{$y->cliente->id}/remover", ['contas' => 'manter'])->assertRedirect('/clientes');
+        $this->assertFalse($y->cliente->fresh()->ativo);
+        $this->assertSame(50.0, \App\Servicos\Baixa::totalAberto($y->cliente->fresh()));
+        $this->actingAs($a->admin)->get('/contas/abertas')->assertInertia(fn ($p) => $p->where('linhas.0.ativo', false));
+    }
+
     public function test_ficha_e_lista_abrem(): void
     {
         $a = $this->criarEmpresa('a');

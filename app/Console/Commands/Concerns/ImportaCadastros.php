@@ -71,7 +71,10 @@ trait ImportaCadastros
         $clientes = $this->importarClientes($legado);
         $veiculos = $this->importarVeiculos($legado, $clientes, $tipos);
         // usados pela importação das ordens (etapa 3)
-        $this->mapaClientes = $clientes;
+        // + os excluídos no sistema atual (inativos aqui): as ordens, pagamentos e extrato
+        // deles continuam com o cliente certo, em vez de virarem "sem cliente"
+        $this->mapaClientes = $clientes + Cliente::whereNotNull('legado_id')->whereNotIn('legado_id', array_keys($clientes) ?: [0])
+            ->pluck('id', 'legado_id')->mapWithKeys(fn ($id, $legado) => [(int) $legado => (int) $id])->all();
         $this->mapaVeiculos = $veiculos;
         $this->importarContratos($legado, $veiculos);
         $this->importarConvenios($legado, $clientes);

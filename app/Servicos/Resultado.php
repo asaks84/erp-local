@@ -70,6 +70,23 @@ class Resultado
         return $tot;
     }
 
+    /**
+     * receitas do mês (por referência) que ainda estão em aberto e são de cliente excluído
+     * (ou sem cliente): a tela avisa, porque provavelmente não vão ser recebidas
+     */
+    private static function abertoDeExcluidos(string $ym): array
+    {
+        [$de, $ate] = self::limites($ym);
+        $l = DB::table('ordens_servico as o')->leftJoin('clientes as c', 'c.id', '=', 'o.cliente_id')
+            ->where('o.empresa_id', self::empresa())->where('o.situacao', 'aberta')->whereIn('o.tipo', array_keys(self::RECEITA_POR_TIPO))
+            ->where(fn ($w) => $w->whereNull('o.cliente_id')->orWhere('c.ativo', false))
+            ->where(fn ($w) => $w->where(fn ($m) => $m->where('o.tipo', 'mensalidade')->where('o.competencia', $ym))
+                ->orWhere(fn ($o) => $o->where('o.tipo', '<>', 'mensalidade')->whereBetween('o.data', [$de, $ate])))
+            ->selectRaw('COUNT(*) AS qtd, COALESCE(SUM(o.valor), 0) AS valor')->first();
+
+        return ['qtd' => (int) $l->qtd, 'valor' => round((float) $l->valor, 2)];
+    }
+
     /** descontos dados no mês (pelo dia do pagamento) */
     private static function descontos(string $ym): float
     {
@@ -188,6 +205,7 @@ class Resultado
             'fora_empresa' => $fora,
             'resultado_final' => round($totRec - $totDesp - $totInv - $fora, 2),
             // no olhar de referência, quanto das despesas do mês ainda não foi pago
+            'excluidos' => $regime === 'referencia' ? self::abertoDeExcluidos($ym) : ['qtd' => 0, 'valor' => 0.0],
             'a_pagar' => $regime === 'referencia' ? round((float) DB::table('despesas')->where('empresa_id', self::empresa())->where('situacao', 'aberta')->where('competencia', $de)->sum('valor'), 2) : 0.0,
         ];
     }

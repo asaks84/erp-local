@@ -4,6 +4,7 @@ import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Confirmar from '../../Components/Confirmar'
+import { Modal, Button } from 'react-bootstrap'
 import Campo from '../../Components/Campo'
 import CampoData from '../../Components/CampoData'
 import CampoValor from '../../Components/CampoValor'
@@ -124,9 +125,24 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
     const endereco = [cliente.logradouro, cliente.numero, cliente.complemento].filter(Boolean).join(', ')
     const cidade = [cliente.bairro, cliente.cidade && `${cliente.cidade}${cliente.uf ? '/' + cliente.uf : ''}`, cliente.cep && mCep(cliente.cep)].filter(Boolean).join(' · ')
 
+    const [remover, setRemover] = useState(false)
+    const [removendo, setRemovendo] = useState(false)
+    const aReceber = abertas.filter((o) => o.tipo !== 'credito')
+    const totalReceber = aReceber.reduce((s, o) => s + o.valor, 0)
+
     function executar() {
         const { url } = confirmar
         router.post(url, {}, { preserveScroll: true, onFinish: () => setConfirmar(null) })
+    }
+
+    /** com conta em aberto: excluir (cancelar), manter, ou ir receber */
+    function removerCom(contas) {
+        if (contas === 'receber') {
+            router.visit(`/clientes/${cliente.id}/receber`)
+            return
+        }
+        setRemovendo(true)
+        router.post(`/clientes/${cliente.id}/remover`, { contas }, { preserveScroll: true, onFinish: () => { setRemovendo(false); setRemover(false) } })
     }
 
     return (
@@ -176,7 +192,7 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                     {pode('excluir_cadastro') && (
                         <div className="mt-3">
                             {cliente.ativo
-                                ? <button type="button" className="btn btn-link text-danger px-0" onClick={() => setConfirmar({ url: `/clientes/${cliente.id}/remover`, titulo: 'Remover cliente', texto: 'O cliente e os veículos saem das listas e as mensalidades são encerradas hoje. O histórico continua guardado e ele pode ser reativado.' })}>Remover cliente</button>
+                                ? <button type="button" className="btn btn-link text-danger px-0" onClick={() => (aReceber.length ? setRemover(true) : setConfirmar({ url: `/clientes/${cliente.id}/remover`, titulo: 'Remover cliente', texto: 'O cliente e os veículos saem das listas e as mensalidades são encerradas hoje. O histórico continua guardado e ele pode ser reativado.' }))}>Remover cliente</button>
                                 : <button type="button" className="btn btn-link px-0" onClick={() => router.post(`/clientes/${cliente.id}/reativar`, {}, { preserveScroll: true })}>Reativar cliente</button>}
                         </div>
                     )}
@@ -247,6 +263,33 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
 
                 </div>
             </div>
+
+            <Modal show={remover} onHide={() => !removendo && setRemover(false)} centered>
+                <Modal.Header closeButton><Modal.Title as="h2" className="fs-5">Remover cliente com conta em aberto</Modal.Title></Modal.Header>
+                <Modal.Body>
+                    <p>{cliente.nome} tem {aReceber.length} conta(s) em aberto, somando <strong>{moeda(totalReceber)}</strong>:</p>
+                    <ul className="list-unstyled small border rounded p-2 mb-3" style={{ maxHeight: 180, overflowY: 'auto' }}>
+                        {aReceber.map((o) => (
+                            <li key={o.id} className="d-flex justify-content-between gap-2 py-1">
+                                <span>#{o.numero} {o.descricao}{o.placa && <span className="text-muted"> · {o.placa}</span>}{o.vencida && <span className="selo selo-erro ms-1">Vencida</span>}</span>
+                                <span className="num text-nowrap">{moeda(o.valor)}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="mb-1 fw-semibold">O que fazer com essas contas?</p>
+                    <ul className="small text-muted mb-0 ps-3">
+                        {pode('contas_editar') && <li><strong>Excluir</strong>: as contas são canceladas (motivo "Cliente removido") e saem da inadimplência e do resultado. Ficam no histórico como canceladas.</li>}
+                        <li><strong>Manter</strong>: o cliente é removido e as contas continuam em aberto, para receber depois.</li>
+                        <li><strong>Receber</strong>: vai para a tela de receber. O cliente não é removido agora; remova depois de receber.</li>
+                    </ul>
+                </Modal.Body>
+                <Modal.Footer className="flex-wrap">
+                    <Button variant="outline-secondary" onClick={() => setRemover(false)} disabled={removendo} className="me-auto">Voltar</Button>
+                    {pode('contas_editar') && <Button variant="danger" onClick={() => removerCom('cancelar')} disabled={removendo}>Excluir</Button>}
+                    <Button variant="outline-danger" onClick={() => removerCom('manter')} disabled={removendo}>Manter</Button>
+                    <Button variant="primary" onClick={() => removerCom('receber')} disabled={removendo}>Receber</Button>
+                </Modal.Footer>
+            </Modal>
 
             <Confirmar aberto={!!confirmar} titulo={confirmar?.titulo} perigo rotuloOk="Remover" onOk={executar} onCancelar={() => setConfirmar(null)}>
                 {confirmar?.texto}

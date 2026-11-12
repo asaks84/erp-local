@@ -49,6 +49,12 @@ export default function Mes({ resultado: r, historico, atual }) {
                     {extras && <div className="small">No fim: <strong className={r.resultado_final >= 0 ? 'text-success' : 'text-danger'}>{moeda(r.resultado_final)}</strong></div>}</div></div></div>
             </div>
             {atual && <div className="alert alert-info py-2 small">O mês ainda está em andamento: os números mudam até o fim do mês.</div>}
+            {r.excluidos?.qtd > 0 && (
+                <div className="alert alert-warning py-2 small">
+                    As receitas incluem <strong>{moeda(r.excluidos.valor)}</strong> em {r.excluidos.qtd} conta(s) em aberto de cliente excluído.
+                    Se não vão ser recebidas, cancele no sistema atual (depois da virada, aqui) para saírem do resultado. <Link href="/contas/abertas">Contas em aberto</Link>
+                </div>
+            )}
 
             <div className="row g-3">
                 <div className="col-lg-7">

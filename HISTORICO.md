@@ -4,6 +4,15 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 12/11/2026 — Cliente excluído: ordens com o nome, remover com conta em aberto, menu Lavagens
+
+- **Espelho:** as ordens, pagamentos e linhas do extrato de cliente excluído no sistema atual continuam ligados ao cliente (inativo no ERP). Antes viravam "sem cliente" a cada hora, e a ficha do cliente perdia o histórico.
+- **Remover cliente com conta em aberto** pergunta o que fazer: **Excluir** (as contas a receber são canceladas com o motivo "Cliente removido" e saem da inadimplência e do resultado; créditos ficam; pede a permissão de alterar contas), **Manter** (o cliente sai e as contas continuam a receber) ou **Receber** (vai para a tela de receber; o cliente não é removido).
+- **Contas em aberto** marca "Cliente excluído". **Resultado do mês** (por referência) avisa quanto das receitas está em aberto em cliente excluído.
+- Menu **Lavagens e serviços** passa a se chamar **Lavagens** (estadia também é serviço).
+- **161 testes automáticos.**
+- Arquivos: `app/Console/Commands/Concerns/ImportaCadastros.php`, `app/Http/Controllers/ClienteController.php`, `app/Http/Controllers/ContaController.php`, `app/Servicos/Resultado.php`, `resources/js/Pages/Clientes/Show.jsx`, `resources/js/Pages/Contas/Abertas.jsx`, `resources/js/Pages/Resultado/Mes.jsx`, `resources/js/Pages/Lavagens/Index.jsx`, `resources/js/lib/menu.js`, `tests/Feature/CadastrosTest.php`, `tests/Feature/ImportacaoDinheiroTest.php`, `docs/12-decisoes.md`, `docs/13-desenvolvimento.md`.
+
 ## 12/11/2026 — Relatório de mensalistas e impressão no padrão do sistema atual
 
 - **Clientes › Mensalistas** (permissão "Relatórios de mensalistas"), no lugar de Relatórios › Controle e Lista de mensalistas do sistema atual: resumo com receita mensal e quantidade de carros, motos e caminhões; tabela por tipo e período (Diurno, Noturno, 24 horas) com quantidade e receita; lista dos mensalistas (cliente, veículo, tipo, período, mensalidade) com filtro por tipo de veículo; planilha e **Imprimir**. A receita só aparece para quem tem a permissão de faturamento.

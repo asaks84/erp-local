@@ -249,8 +249,39 @@ class ClienteController extends Controller
         return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Dados do cliente salvos.');
     }
 
-    /** "Remover" desativa: o histórico (e, a partir da etapa 3, o dinheiro) continua guardado. */
-    public function desativar(Cliente $cliente): RedirectResponse
+    /**
+     * "Remover" desativa: o histórico (e, a partir da etapa 3, o dinheiro) continua guardado.
+     * Com conta em aberto, a tela pergunta o que fazer: "cancelar" (as contas a receber em aberto
+     * viram canceladas, com o motivo "Cliente removido"; créditos ficam) ou "manter" (continuam
+     * em aberto e na inadimplência). Receber não passa por aqui: a tela vai para Receber.
+     */
+    public function desativar(Request $request, Cliente $cliente): RedirectResponse
+    {
+        $abertas = \App\Servicos\Baixa::abertas($cliente)->where('tipo', '<>', 'credito');
+        $d = $request->validate(['contas' => [$abertas->isNotEmpty() ? 'required' : 'nullable', 'in:cancelar,manter']],
+            ['contas.required' => 'O cliente tem conta em aberto: escolha se as contas são excluídas, mantidas ou recebidas.']);
+        if (($d['contas'] ?? null) === 'cancelar') {
+            if (! $request->user()->pode('contas_editar')) {
+                abort(403, 'Excluir as contas pede a permissão de alterar contas.');
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cliente, $abertas, $d) {
+            if (($d['contas'] ?? null) === 'cancelar') {
+                $abertas->each(fn ($o) => \App\Servicos\Ordens::cancelar($o, 'Cliente removido'));
+            }
+            $this->encerrarCadastro($cliente);
+        });
+        $extra = match ($d['contas'] ?? null) {
+            'cancelar' => ' '.$abertas->count().' conta(s) em aberto cancelada(s).',
+            'manter' => ' As contas em aberto continuam a receber.',
+            default => '',
+        };
+
+        return redirect('/clientes')->with('sucesso', 'Cliente removido. Ele continua na lista "Inativos" com o histórico.'.$extra);
+    }
+
+    private function encerrarCadastro(Cliente $cliente): void
     {
         $cliente->veiculos()->with('contratos')->get()->each(function (Veiculo $v) {
             if ($c = Contratos::atual($v)) {
@@ -260,8 +291,6 @@ class ClienteController extends Controller
         });
         $cliente->update(['ativo' => false]);
         Atividades::registrar('cliente_removido', 'cliente '.$cliente->id.' - '.$cliente->nome);
-
-        return redirect('/clientes')->with('sucesso', 'Cliente removido. Ele continua na lista "Inativos" com o histórico.');
     }
 
     public function reativar(Cliente $cliente): RedirectResponse

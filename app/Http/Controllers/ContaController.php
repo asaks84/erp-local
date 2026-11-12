@@ -32,9 +32,9 @@ class ContaController extends Controller
             ->where('o.empresa_id', app(\App\Support\EmpresaAtual::class)->id())
             ->where('o.situacao', 'aberta')
             ->when($busca, fn ($q) => $q->where(fn ($w) => $w->where('c.nome', 'like', '%'.$busca.'%')->orWhere('o.placa', 'like', '%'.\App\Support\Placa::normalizar($busca).'%')->when(ctype_digit($busca), fn ($w) => $w->orWhere('c.id', (int) $busca))))
-            ->groupBy('c.id', 'c.nome', 'c.celular', 'c.telefone')
+            ->groupBy('c.id', 'c.nome', 'c.celular', 'c.telefone', 'c.ativo')
             ->havingRaw("SUM({$sinal}) > 0")
-            ->selectRaw("c.id, c.nome, COALESCE(c.celular, c.telefone) AS contato,
+            ->selectRaw("c.id, c.nome, c.ativo, COALESCE(c.celular, c.telefone) AS contato,
                 SUM({$sinal}) AS total,
                 SUM(o.tipo <> 'credito') AS qtd,
                 SUM(o.tipo = 'mensalidade') AS n_mensalidade,
@@ -62,6 +62,7 @@ class ContaController extends Controller
             return [
                 'id' => $l->id,
                 'nome' => $l->nome,
+                'ativo' => (bool) $l->ativo,
                 'contato' => $l->contato,
                 'total' => $total,
                 'vencido' => $vencido,

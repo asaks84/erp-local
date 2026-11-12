@@ -34,7 +34,7 @@ export default function Abertas({ linhas, resumo, filtros }) {
                 <tbody>
                     {linhas.map((l) => (
                         <tr key={l.id}>
-                            <td><strong>{l.nome}</strong><small>{l.placas || `Cód. ${l.id}`}</small></td>
+                            <td><strong>{l.nome}{!l.ativo && ' (excluído)'}</strong><small>{l.placas || `Cód. ${l.id}`}</small></td>
                             <td className="fw-semibold">{l.dias > 0 ? `${l.dias} dia(s) de atraso` : 'A vencer'}</td>
                             <td>{l.vencido > 0 ? fData(l.mais_antigo) : '—'}</td>
                             <td className="num">{l.qtd}</td>
@@ -75,7 +75,7 @@ export default function Abertas({ linhas, resumo, filtros }) {
                             {linhas.map((l) => (
                                 <tr key={l.id} role="link" style={{ cursor: 'pointer' }} onClick={() => router.visit(`/clientes/${l.id}`)}>
                                     <td>
-                                        <div className="fw-semibold">{l.nome}</div>
+                                        <div className="fw-semibold">{l.nome}{!l.ativo && <span className="selo selo-aviso ms-2">Cliente excluído</span>}</div>
                                         <div className="small text-muted">{[`Cód. ${l.id}`, l.placas, telefone(l.contato)].filter(Boolean).join(' · ')}</div>
                                     </td>
                                     <td className="d-none d-lg-table-cell d-print-table-cell small">{l.itens}</td>
