@@ -19,6 +19,7 @@ class Cliente extends Modelo
         return [
             'ativo' => 'boolean',
             'nao_recebe_avisos' => 'boolean',
+            'regras_boleto' => 'array',
             'cliente_desde' => 'date:Y-m-d',
             'dia_vencimento' => 'integer',
         ];

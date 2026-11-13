@@ -106,7 +106,9 @@ class ClienteController extends Controller
                 'documento' => Documento::formatar($cliente->documento),
                 'cliente_desde' => $cliente->cliente_desde?->format('Y-m-d'),
                 'convenio' => $cliente->convenio?->ativo ? $cliente->convenio->resumo() : null,
+                'regras_boleto' => $cliente->regras_boleto,
             ],
+            'regras_boleto_empresa' => \App\Servicos\Inter\Boletos::regras(),
             'veiculos' => $cliente->veiculos->map(fn (Veiculo $v) => [
                 'id' => $v->id,
                 'rotulo' => $v->rotulo(),

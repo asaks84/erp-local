@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Boleto;
 use App\Models\Cliente;
 use App\Models\Cobranca;
 use App\Models\Empresa;
+use App\Models\Integracao;
 use App\Models\OrdemServico;
 use App\Servicos\Cobrancas;
+use App\Servicos\Inter\Boletos;
 use App\Servicos\Mensalidades;
 use App\Support\Documento;
 use App\Support\Placa;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,6 +40,9 @@ class CobrancaController extends Controller
             ->when($f['q'] ?? null, fn ($q, $t) => $q->where(fn ($w) => $w->whereHas('cliente', fn ($c) => $c->where('nome', 'like', '%'.$t.'%'))->when(ctype_digit($t), fn ($w) => $w->orWhere('numero', (int) $t))))
             ->orderByDesc('numero')->paginate(50)->withQueryString()
             ->through(fn (Cobranca $c) => self::resumo($c) + ['cliente' => $c->cliente->only(['id', 'nome'])]);
+        // situação do último boleto de cada cobrança da página
+        $boletos = Boleto::whereIn('cobranca_id', collect($lista->items())->pluck('id'))->orderBy('id')->get(['cobranca_id', 'situacao'])->pluck('situacao', 'cobranca_id');
+        $lista->through(fn ($c) => $c + ['boleto' => $boletos[$c['id']] ?? null]);
         $validas = (clone $base)->where('situacao', '<>', 'cancelada');
 
         return Inertia::render('Cobrancas/Index', [
@@ -65,15 +72,22 @@ class CobrancaController extends Controller
     {
         $mes = $this->mes($request);
 
-        return Inertia::render('Cobrancas/Gerar', ['mes' => $mes, 'linhas' => Cobrancas::previa($mes)]);
+        return Inertia::render('Cobrancas/Gerar', ['mes' => $mes, 'linhas' => Cobrancas::previa($mes), 'inter' => self::interLigado()]);
     }
 
     public function emitirLote(Request $request): RedirectResponse
     {
-        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'clientes' => ['required', 'array', 'min:1'], 'clientes.*' => ['integer']],
+        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'clientes' => ['required', 'array', 'min:1'], 'clientes.*' => ['integer'], 'boleto' => ['nullable', 'boolean']],
             ['clientes.required' => 'Marque pelo menos um cliente.']);
         [$emitidas, $erros] = Cobrancas::emitirLote($d['mes'], $d['clientes']);
-        $r = redirect('/cobrancas?mes='.$d['mes'])->with('sucesso', count($emitidas).' cobrança(s) emitida(s).');
+        $msg = count($emitidas).' cobrança(s) emitida(s).';
+        if (! empty($d['boleto']) && $emitidas) {
+            [$ok, $falhas] = self::gerarBoletos($emitidas);
+            $msg .= ' '.$ok.' boleto(s) gerado(s).';
+            $erros = array_merge($erros, $falhas);
+        }
+        self::cancelarBoletosResolvidos();
+        $r = redirect('/cobrancas?mes='.$d['mes'])->with('sucesso', $msg);
         if ($erros) {
             $r->with('aviso', 'Ficaram de fora: '.implode(' ', array_slice($erros, 0, 5)).(count($erros) > 5 ? ' (e mais '.(count($erros) - 5).')' : ''));
         }
@@ -86,10 +100,51 @@ class CobrancaController extends Controller
 
     public function emitir(Request $request, Cliente $cliente): RedirectResponse
     {
-        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d']]);
+        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d'], 'boleto' => ['nullable', 'boolean']]);
         $c = Cobrancas::emitir($cliente, $d['mes'], $d['vencimento'] ?? null);
+        $r = redirect("/cobrancas/{$c->id}")->with('sucesso', 'Cobrança '.$c->numero.' emitida.');
+        if (! empty($d['boleto'])) {
+            [$ok, $falhas] = self::gerarBoletos([$c]);
+            $ok ? $r->with('sucesso', 'Cobrança '.$c->numero.' emitida com boleto.') : $r->with('aviso', 'Cobrança emitida, mas o boleto não saiu: '.($falhas[0] ?? ''));
+        }
+        self::cancelarBoletosResolvidos();
 
-        return redirect("/cobrancas/{$c->id}")->with('sucesso', 'Cobrança '.$c->numero.' emitida.');
+        return $r;
+    }
+
+    public static function interLigado(): bool
+    {
+        $i = Integracao::inter();
+
+        return (bool) ($i && $i->ativo && $i->completa());
+    }
+
+    /** gera o boleto de cada cobrança; devolve [quantos saíram, mensagens de erro] */
+    private static function gerarBoletos(array $cobrancas): array
+    {
+        $ok = 0;
+        $erros = [];
+        foreach ($cobrancas as $c) {
+            try {
+                Boletos::emitir($c);
+                $ok++;
+            } catch (ValidationException $e) {
+                $erros[] = collect($e->errors())->flatten()->first();
+            } catch (\Throwable $e) {
+                $erros[] = "Cobrança {$c->numero}: sem conexão com o Inter (".mb_substr($e->getMessage(), 0, 120).').';
+            }
+        }
+
+        return [$ok, $erros];
+    }
+
+    /** cobrança levada, paga ou cancelada: cancela o boleto antigo no Inter (falhou agora, a consulta periódica tenta de novo) */
+    public static function cancelarBoletosResolvidos(): void
+    {
+        try {
+            Boletos::cancelarResolvidos();
+        } catch (\Throwable) {
+        }
     }
 
     public function show(Cobranca $cobranca): Response
@@ -97,6 +152,18 @@ class CobrancaController extends Controller
         $cobranca->load(['cliente', 'itens.ordem']);
 
         return Inertia::render('Cobrancas/Show', [
+            'inter' => self::interLigado(),
+            'em_aberto' => Boletos::valorEmAberto($cobranca),
+            'falta_cadastro' => Boletos::faltaNoCadastro($cobranca->cliente),
+            'boletos' => Boleto::where('cobranca_id', $cobranca->id)->orderByDesc('id')->get()->map(fn (Boleto $b) => [
+                'id' => $b->id, 'seu_numero' => $b->seu_numero, 'situacao' => $b->situacao, 'situacao_nome' => Boleto::SITUACOES[$b->situacao] ?? $b->situacao,
+                'valor' => (float) $b->valor, 'vencimento' => $b->vencimento->format('Y-m-d'), 'linha_digitavel' => $b->linha_digitavel,
+                'pix_copia_cola' => $b->pix_copia_cola, 'valor_recebido' => $b->valor_recebido !== null ? (float) $b->valor_recebido : null,
+                'recebido_em' => $b->recebido_em?->format('Y-m-d'), 'recebido_por' => $b->recebido_por, 'erro' => $b->erro,
+                'motivo_cancelamento' => $b->motivo_cancelamento, 'consultado_em' => $b->consultado_em?->format('Y-m-d H:i'),
+                'criado_em' => $b->criado_em?->format('Y-m-d H:i'), 'ativo' => $b->ativo(),
+                'tem_pdf' => $b->codigo_solicitacao && ! in_array($b->situacao, ['falha', 'em_processamento'], true),
+            ]),
             'cobranca' => self::resumo($cobranca),
             'cliente' => $cobranca->cliente->only(['id', 'nome']),
             'itens' => $cobranca->itens->map(fn ($i) => [
@@ -150,6 +217,7 @@ class CobrancaController extends Controller
     {
         $d = $request->validate(['motivo' => ['required', 'string', 'max:200']], ['motivo.required' => 'Informe o motivo do cancelamento.']);
         Cobrancas::cancelar($cobranca, $d['motivo']);
+        self::cancelarBoletosResolvidos();
 
         return back()->with('sucesso', 'Cobrança '.$cobranca->numero.' cancelada; as contas continuam em aberto.');
     }

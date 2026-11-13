@@ -12,6 +12,7 @@ import { data as fData, mesAno, moeda } from '../../lib/formato'
 import { cep as mCep, telefone } from '../../lib/mascaras'
 import { usePode } from '../../lib/permissoes'
 import ContasCliente from '../../Components/ContasCliente'
+import RegrasBoletoCliente from '../../Components/RegrasBoletoCliente'
 
 const hoje = () => {
     const d = new Date()
@@ -118,7 +119,8 @@ function AcoesMensalidade({ veiculo, contrato, periodos, pausaPadrao, unidades }
     )
 }
 
-export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual }) {
+export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual, regras_boleto_empresa }) {
+    const interLigado = !!usePage().props.empresa?.inter
     const pode = usePode()
     const { unidades = [] } = usePage().props
     const [confirmar, setConfirmar] = useState(null)
@@ -188,6 +190,8 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                             </ul>
                         </div>
                     )}
+
+                    {(interLigado || cliente.regras_boleto) && regras_boleto_empresa && <RegrasBoletoCliente cliente={cliente} empresa={regras_boleto_empresa} />}
 
                     {pode('excluir_cadastro') && (
                         <div className="mt-3">

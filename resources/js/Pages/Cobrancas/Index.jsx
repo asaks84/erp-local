@@ -55,7 +55,7 @@ export default function CobrancasIndex({ mes, cobrancas, filtros, resumo }) {
                                     <td>{c.cliente.nome}</td>
                                     <td className="d-none d-md-table-cell">{fData(c.vencimento)}</td>
                                     <td className="text-end text-nowrap">{moeda(c.total)}</td>
-                                    <td><SeloCobranca situacao={c.situacao} /></td>
+                                    <td><SeloCobranca situacao={c.situacao} />{c.boleto && <span className={`selo ms-1 ${{ recebido: 'selo-ok', atrasado: 'selo-erro', falha: 'selo-erro' }[c.boleto] || ''}`} title="Boleto do Inter">{{ em_processamento: 'Boleto em emissão', a_receber: 'Boleto', atrasado: 'Boleto vencido', recebido: 'Boleto pago', cancelado: 'Boleto cancelado', expirado: 'Boleto baixado', falha: 'Boleto com falha' }[c.boleto]}</span>}</td>
                                 </tr>
                             ))}
                         </tbody>

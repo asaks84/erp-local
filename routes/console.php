@@ -16,5 +16,9 @@ Schedule::call(fn () => Artisan::call('legado:espelhar'))->name('legado:espelhar
 // Contas fixas: gera as contas a pagar até o mês seguinte (também é feito ao abrir Contas a pagar).
 Schedule::call(fn () => Artisan::call('pagar:gerar-fixas'))->name('pagar:gerar-fixas')->dailyAt('06:05');
 
+// Banco Inter: consulta os boletos em aberto a cada 10 minutos (baixa dos pagos, cancela os de
+// cobranças já resolvidas). Sem Inter configurado e ligado, não faz nada.
+Schedule::call(fn () => Artisan::call('inter:consultar'))->name('inter:consultar')->everyTenMinutes()->withoutOverlapping(15);
+
 // Backup diário dos bancos às 3h10.
 Schedule::call(fn () => Artisan::call('backup:banco'))->name('backup:banco')->dailyAt('03:10')->withoutOverlapping(60);

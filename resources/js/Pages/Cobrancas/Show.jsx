@@ -4,6 +4,7 @@ import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Campo from '../../Components/Campo'
+import BoletoCobranca from '../../Components/BoletoCobranca'
 import { SeloCobranca, competencia } from '../../Components/Dinheiro'
 import { data as fData, dataHora, moeda } from '../../lib/formato'
 import { usePode } from '../../lib/permissoes'
@@ -31,7 +32,7 @@ function Grupo({ titulo, itens }) {
     )
 }
 
-export default function CobrancaShow({ cobranca, cliente, itens }) {
+export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [] }) {
     const pode = usePode()
     const [cancelar, setCancelar] = useState(false)
     const form = useForm({ motivo: '' })
@@ -50,6 +51,7 @@ export default function CobrancaShow({ cobranca, cliente, itens }) {
                 <Link href={`/clientes/${cliente.id}`} className="ms-auto">Abrir cliente</Link>
             </div>
             {cobranca.situacao === 'cancelada' && <div className="alert alert-secondary">Cancelada: {cobranca.motivo_cancelamento}</div>}
+            <BoletoCobranca cobranca={cobranca} boletos={boletos} inter={inter} emAberto={emAberto} faltaCadastro={faltaCadastro} clienteId={cliente.id} />
             <div className="card">
                 <div className="table-responsive">
                     <table className="table align-middle mb-0">

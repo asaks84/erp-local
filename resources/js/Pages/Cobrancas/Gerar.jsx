@@ -5,8 +5,8 @@ import CampoData from '../../Components/CampoData'
 import { competencia } from '../../Components/Dinheiro'
 import { data as fData, moeda } from '../../lib/formato'
 
-export default function GerarCobrancas({ mes, linhas }) {
-    const { data, setData, post, processing, errors } = useForm({ mes, clientes: linhas.filter((l) => l.marcar).map((l) => l.cliente_id) })
+export default function GerarCobrancas({ mes, linhas, inter }) {
+    const { data, setData, post, processing, errors } = useForm({ mes, clientes: linhas.filter((l) => l.marcar).map((l) => l.cliente_id), boleto: !!inter })
     const possiveis = linhas.filter((l) => !l.ja_emitida)
     const total = useMemo(() => linhas.filter((l) => data.clientes.includes(l.cliente_id)).reduce((s, l) => s + l.total, 0), [data.clientes, linhas])
     const marcar = (id) => setData('clientes', data.clientes.includes(id) ? data.clientes.filter((x) => x !== id) : [...data.clientes, id])
@@ -52,7 +52,13 @@ export default function GerarCobrancas({ mes, linhas }) {
                         </table>
                     </div>
                 </div>
-                <div className="d-flex justify-content-end mt-3">
+                <div className="d-flex flex-wrap justify-content-end align-items-center gap-3 mt-3">
+                    {inter && (
+                        <div className="form-check mb-0">
+                            <input className="form-check-input" type="checkbox" id="gerar-boleto" checked={data.boleto} onChange={(e) => setData('boleto', e.target.checked)} />
+                            <label className="form-check-label" htmlFor="gerar-boleto">Gerar boleto com Pix (Banco Inter)</label>
+                        </div>
+                    )}
                     <button type="submit" className="btn btn-primary" disabled={processing || data.clientes.length === 0}>Emitir {data.clientes.length} cobrança(s)</button>
                 </div>
             </form>

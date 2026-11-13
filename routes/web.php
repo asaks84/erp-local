@@ -4,6 +4,7 @@ use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\CartaoController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\MensalistasController;
+use App\Http\Controllers\BoletoController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\ExtratoController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\AnotacaoController;
 use App\Http\Controllers\InicioController;
+use App\Http\Controllers\InterController;
 use App\Http\Controllers\LavagemController;
 use App\Http\Controllers\MensalidadeController;
 use App\Http\Controllers\NivelController;
@@ -107,6 +109,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/cobrancas/gerar', [CobrancaController::class, 'emitirLote']);
         Route::get('/cobrancas/imprimir', [CobrancaController::class, 'imprimir']);
         Route::get('/cobrancas/{cobranca}', [CobrancaController::class, 'show']);
+        Route::post('/cobrancas/{cobranca}/boleto', [BoletoController::class, 'emitir']);
+        Route::post('/boletos/{boleto}/atualizar', [BoletoController::class, 'atualizar']);
+        Route::get('/boletos/{boleto}/pdf', [BoletoController::class, 'pdf']);
 
         // operação (etapa 4): estadias e venda de lavagens e serviços
         Route::get('/estadias', [EstadiaController::class, 'index']);
@@ -129,6 +134,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/ordens/{ordem}/cancelar', [OrdemController::class, 'cancelar']);
         Route::post('/pagamentos/{pagamento}/estornar', [ContaController::class, 'estornar']);
         Route::post('/cobrancas/{cobranca}/cancelar', [CobrancaController::class, 'cancelar']);
+        Route::post('/boletos/{boleto}/cancelar', [BoletoController::class, 'cancelar']);
     });
 
     Route::middleware('permissao:contas_aberto')->group(function () {
@@ -223,6 +229,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/empresa/cobranca', [EmpresaController::class, 'cobranca']);
 
         Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
+        Route::get('/configuracoes/inter', [InterController::class, 'index']);
+        Route::post('/configuracoes/inter/credenciais', [InterController::class, 'credenciais']);
+        Route::post('/configuracoes/inter/testar', [InterController::class, 'testar']);
+        Route::post('/configuracoes/inter/desligar', [InterController::class, 'desligar']);
+        Route::put('/configuracoes/inter/regras', [InterController::class, 'regras']);
+        Route::put('/clientes/{cliente}/regras-boleto', [InterController::class, 'cliente']);
         Route::get('/conferencia', ConferenciaController::class);
         Route::get('/configuracoes/plano-contas', [PlanoContaController::class, 'index']);
         Route::post('/configuracoes/plano-contas', [PlanoContaController::class, 'store']);

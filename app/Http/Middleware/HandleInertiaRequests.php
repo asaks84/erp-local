@@ -51,6 +51,8 @@ class HandleInertiaRequests extends Middleware
         return $empresa ? [
             'nome' => $empresa->nome,
             'logo_url' => $empresa->logo ? asset('storage/'.$empresa->logo) : null,
+            // Banco Inter ligado: as telas de cobrança oferecem "gerar boleto"
+            'inter' => $id ? \App\Http\Controllers\CobrancaController::interLigado() : false,
         ] : null;
     }
 }

@@ -1,4 +1,4 @@
-import { Link, useForm } from '@inertiajs/react'
+import { Link, useForm, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import { Dropdown } from 'react-bootstrap'
 import Icone from './Icone'
@@ -16,12 +16,13 @@ export default function ContasCliente({ cliente, abertas, total, cobrancas, paga
     const editar = pode('contas_editar')
     const [janela, setJanela] = useState(null) // {tipo: 'alterar'|'cancelar'|'estornar'|'cobranca', item}
     const form = useForm({})
+    const inter = !!usePage().props.empresa?.inter
     const temContas = abertas.some((o) => o.tipo !== 'credito')
 
     function abrir(tipo, item = null) {
         form.clearErrors()
         if (tipo === 'alterar') form.setData({ valor: item.valor, vencimento: item.vencimento || '', descricao: item.descricao })
-        else if (tipo === 'cobranca') form.setData({ mes: mesAtual, vencimento: '' })
+        else if (tipo === 'cobranca') form.setData({ mes: mesAtual, vencimento: '', boleto: inter })
         else form.setData({ motivo: '' })
         setJanela({ tipo, item })
     }
@@ -145,6 +146,12 @@ export default function ContasCliente({ cliente, abertas, total, cobrancas, paga
                 <p className="small text-muted">Entram todas as contas em aberto ({moeda(total)}). Depois de emitida, a cobrança não muda.</p>
                 <CampoData mes rotulo="Mês da cobrança" value={form.data.mes ?? ''} onChange={(v) => form.setData('mes', v)} erro={form.errors.mes || form.errors.competencia || form.errors.cliente} />
                 <CampoData rotulo="Vencimento (vazio = o da mensalidade)" value={form.data.vencimento ?? ''} onChange={(v) => form.setData('vencimento', v)} erro={form.errors.vencimento} />
+                {inter && (
+                    <div className="form-check">
+                        <input className="form-check-input" type="checkbox" id="cob-boleto" checked={!!form.data.boleto} onChange={(e) => form.setData('boleto', e.target.checked)} />
+                        <label className="form-check-label" htmlFor="cob-boleto">Gerar boleto com Pix (Banco Inter)</label>
+                    </div>
+                )}
             </Janela>
         </div>
     )

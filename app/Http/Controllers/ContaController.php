@@ -138,6 +138,7 @@ class ContaController extends Controller
             'observacao' => ['nullable', 'string', 'max:255'],
         ], ['ordens.required' => 'Marque as contas que foram pagas.']);
         [, $msg] = Baixa::receber($cliente, $d + ['origem' => 'gestao']);
+        CobrancaController::cancelarBoletosResolvidos(); // cobrança quitada aqui: o boleto dela não pode mais ser pago
 
         return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Pagamento registrado: '.$msg.'.');
     }

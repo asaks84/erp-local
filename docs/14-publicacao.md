@@ -51,6 +51,8 @@ No Local, a pasta base é `/home/u612820499/domains/localestacionamento.com.br/e
 
 A Hostinger também faz backup semanal da conta. Para restaurar um backup do ERP: phpMyAdmin › Importar o `.sql.gz`, ou pelo SSH: `gunzip < arquivo.sql.gz | mysql -u USUARIO -p BANCO`.
 
+A consulta dos boletos do Banco Inter (`inter:consultar`, a cada 10 minutos) usa o mesmo cron; sem o Inter ligado em Configurações › Banco Inter, não faz nada.
+
 As tarefas agendadas rodam dentro do próprio `schedule:run` (`Schedule::call`), e o backup é feito em PHP, sem `mysqldump`: a hospedagem compartilhada desliga o `proc_open`, e um comando separado não roda pelo cron (erro "The Process class relies on proc_open" no log). Para conferir se o agendador está rodando: o "Ver resultado" do cron no hPanel e o log em `storage/logs/laravel-AAAA-MM-DD.log`.
 
 ## Portão da virada

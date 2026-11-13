@@ -58,6 +58,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Etapas da lavagem', href: '/configuracoes/etapas', permissao: 'configuracoes', acende: ['/configuracoes/etapas'] },
     { rotulo: 'Plano de contas', href: '/configuracoes/plano-contas', permissao: 'configuracoes', acende: ['/configuracoes/plano-contas'] },
     { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
+    { rotulo: 'Banco Inter', href: '/configuracoes/inter', permissao: 'configuracoes', acende: ['/configuracoes/inter'] },
 ]
 
 /** item aceso: o endereço que mais combina com a página atual */

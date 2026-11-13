@@ -4,6 +4,18 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Banco Inter: boleto com Pix (etapa 7)
+
+- **Configurações › Banco Inter:** credenciais (client id, client secret, certificado .crt e chave .key, ambiente produção ou testes, conta corrente opcional), guardadas criptografadas; "Testar conexão" liga a integração; aviso quando o certificado está para vencer. Regras do boleto: multa (% ou R$), juros (% ao mês ou R$ por dia), desconto (% ou R$ até X dias antes do vencimento) e baixa automática (0 a 60 dias depois do vencimento, padrão 30).
+- **Regras específicas por cliente:** na ficha do cliente, "Regras do boleto" com a escolha entre as regras da empresa e regras específicas dele.
+- **Gerar boleto:** caixa "Gerar boleto com Pix" ao emitir cobrança (uma ou em lote) e botão na tela da cobrança. O Inter exige CPF/CNPJ, CEP, endereço, cidade e UF do cliente: a tela avisa o que falta. Valor mínimo R$ 2,50; vencimento não pode ter passado.
+- **Tela da cobrança:** situação do boleto, linha digitável e Pix copia e cola (com QR Code) para copiar, PDF do Inter, Atualizar, Cancelar boleto (quem altera contas). Lista de cobranças mostra a situação do boleto.
+- **Consulta a cada 10 minutos** (`inter:consultar` no agendador): boleto pago dá baixa nas ordens da cobrança (forma Boleto, ou Pix se pago pelo QR Code); multa e juros entram como "Multa e juros do boleto"; desconto da regra vira desconto; se a cobrança já estava paga, o valor vira crédito do cliente.
+- **Cancelamento automático:** cobrança paga por outro meio (receber contas), cancelada ou levada para a cobrança seguinte tem o boleto cancelado no Inter.
+- Banco: tabelas `integracoes` e `boletos`, coluna `clientes.regras_boleto` (rodar `php artisan migrate` — o Publicar já roda).
+- **172 testes automáticos** (10 novos, com a API do Inter simulada).
+- Arquivos: `app/Servicos/Inter/` (InterCliente, Boletos, InterErro), `app/Models/Integracao.php`, `app/Models/Boleto.php`, `app/Console/Commands/InterConsultar.php`, `app/Http/Controllers/InterController.php`, `app/Http/Controllers/BoletoController.php`, `app/Http/Controllers/CobrancaController.php`, `app/Http/Controllers/ContaController.php`, `app/Http/Controllers/ClienteController.php`, `app/Http/Middleware/HandleInertiaRequests.php`, `app/Servicos/Baixa.php`, `app/Models/Cliente.php`, `routes/web.php`, `routes/console.php`, migrations `2026_11_19_000001` e `000002`, `resources/js/Pages/Configuracoes/Inter.jsx`, `resources/js/Components/BoletoCobranca.jsx`, `RegrasBoleto.jsx`, `RegrasBoletoCliente.jsx`, `ContasCliente.jsx`, `resources/js/Pages/Cobrancas/Show.jsx`, `Index.jsx`, `Gerar.jsx`, `resources/js/Pages/Clientes/Show.jsx`, `resources/js/lib/menu.js`, `tests/Feature/InterTest.php`, docs 06, 10, 12, 13 e 14.
+
 ## 13/11/2026 — Tabelas de estadia: começar imediatamente e seletor de tempo
 
 - **Reajustar** ganhou a opção **Começar imediatamente**: a nova versão vale a partir de hoje (a anterior termina ontem). Aviso: veículos que entraram hoje, mesmo antes da mudança, saem pela tabela nova. Sem marcar, continua começando amanhã ou na data escolhida.

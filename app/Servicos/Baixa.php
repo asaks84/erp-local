@@ -46,7 +46,8 @@ class Baixa
 
     /**
      * $d: ordens (ids), valor, forma_pagamento_id, recebido_em (data ou data e hora), parcelas,
-     *     sobra: credito | servico | nada, falta: debito | desconto, servico_id (ou "estadia") + veiculo_id (sobra = serviço),
+     *     sobra: credito | servico | nada | encargos (+ encargos: valor da multa/juros; o resto vira crédito), falta: debito | desconto,
+     *     sistema (baixa automática do Inter: desconto sem conferir o nível de acesso), servico_id (ou "estadia") + veiculo_id (sobra = serviço),
      *     origem, observacao, motivo (do desconto ou do débito), sem_ordens (extrato: aceita pagamento sem conta marcada).
      * Devolve [Pagamento, mensagem].
      */
@@ -86,13 +87,13 @@ class Baixa
 
             $sobra = $d['sobra'] ?? null;
             $falta = $d['falta'] ?? null;
-            if ($dif > 0 && ! in_array($sobra, ['credito', 'servico', 'nada'], true)) {
+            if ($dif > 0 && ! in_array($sobra, ['credito', 'servico', 'nada', 'encargos'], true)) {
                 self::erro('sobra', 'Escolha o que fazer com os '.Formato::moeda($dif).' a mais.');
             }
             if ($dif < 0 && ! in_array($falta, ['debito', 'desconto'], true)) {
                 self::erro('falta', 'Escolha o que fazer com os '.Formato::moeda(-$dif).' que faltaram.');
             }
-            if ($dif < 0 && $falta === 'desconto' && ! Auth::user()?->pode('desconto')) {
+            if ($dif < 0 && $falta === 'desconto' && empty($d['sistema']) && ! Auth::user()?->pode('desconto')) {
                 self::erro('falta', 'Seu nível de acesso não permite dar desconto.');
             }
 
@@ -121,12 +122,26 @@ class Baixa
 
             $extra = '';
             $motivo = trim((string) ($d['motivo'] ?? ''));
+            if ($dif > 0 && $sobra === 'encargos') {
+                // multa e juros do boleto: receita lançada e já paga; o que passar disso vira crédito
+                $enc = round(min($dif, max(0, (float) ($d['encargos'] ?? $dif))), 2);
+                if ($enc > 0) {
+                    $m = Ordens::lancar(['tipo' => 'debito', 'cliente_id' => $cliente->id, 'valor' => $enc, 'descricao' => 'Multa e juros do boleto',
+                        'data' => $recebido->toDateString(), 'vencimento' => $recebido->toDateString(), 'situacao' => 'paga', 'pago_em' => $recebido,
+                        'pagamento_origem_id' => $pagamento->id, 'origem' => $pagamento->origem]);
+                    PagamentoItem::create(['pagamento_id' => $pagamento->id, 'ordem_id' => $m->id, 'valor' => $enc]);
+                    $extra = 'multa e juros '.Formato::moeda($enc);
+                }
+                $dif = round($dif - $enc, 2);
+                $sobra = $dif > 0 ? 'credito' : null;
+                $motivo = $motivo ?: 'Pagou a mais';
+            }
             if ($dif > 0 && $sobra === 'credito') {
                 $c = Ordens::lancar(['tipo' => 'credito', 'cliente_id' => $cliente->id, 'valor' => $dif, 'descricao' => 'Crédito (pagou a mais)',
                     'data' => $recebido->toDateString(), 'pagamento_origem_id' => $pagamento->id, 'origem' => $pagamento->origem]);
                 Ajuste::create(['tipo' => 'credito', 'cliente_id' => $cliente->id, 'pagamento_id' => $pagamento->id, 'ordem_id' => $c->id,
                     'valor' => $dif, 'motivo' => $motivo ?: 'Pagou a mais', 'criado_por' => Auth::id()]);
-                $extra = 'crédito de '.Formato::moeda($dif);
+                $extra = ltrim($extra.' · crédito de '.Formato::moeda($dif), ' ·');
             } elseif ($dif > 0 && $sobra === 'servico') {
                 // "serviço feito na hora": uma lavagem/serviço cadastrado ou uma estadia avulsa, já paga
                 $estadia = ($d['servico_id'] ?? null) === 'estadia';

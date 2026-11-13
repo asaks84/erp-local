@@ -27,5 +27,5 @@ Durante as etapas 1 a 5, o sistema atual continua sendo o oficial e só recebe c
 | 4. Operação na gestão | pronta para conferência (10/11/2026): estadias (entrada, saída pelo tarifador, convênio), lavagens e serviços com quadro de etapas, fechamento de convênio pela cobrança |
 | 5. Paralelo e virada | paralelo iniciado em 12/11/2026: ERP no ar em erp.localestacionamento.com.br, primeira conferência igual ao sistema atual; espelho de hora em hora e backup diário rodando pelo cron; faltam as semanas de conferência sem diferença |
 | 6. Gastos e contas a pagar | pronta para conferência (12/11/2026): plano de contas, fornecedores e contas a pagar (parcelas, fixas, pagamento, comprovante) prontos; funcionários, recibos de salário, diárias e leitura de boleto/guia (com OCR) prontos; resultado do mês e fluxo de caixa prontos; fatura do cartão pronta — etapa concluída (12/11/2026) |
-| 7. Integrações (Inter e WhatsApp) | não iniciada |
+| 7. Integrações (Inter e WhatsApp) | em andamento (13/11/2026): boleto com Pix do Inter pronto para testar com as credenciais (configuração, emissão, consulta a cada 10 min, baixa, cancelamento, regras por empresa e por cliente); WhatsApp a fazer |
 | 8. API e PDV | não iniciada |
