@@ -98,6 +98,33 @@ class OperacaoTest extends TestCase
         Estadias::entrar(['placa' => 'ABC1D23']);
     }
 
+    public function test_tipo_informado_vale_sobre_o_cadastro_e_sem_tabela_nao_entra(): void
+    {
+        // moto ainda sem tabela de estadia: barrada na entrada, não na saída
+        try {
+            Estadias::entrar(['placa' => 'MOT0A11', 'tipo_veiculo_id' => $this->a->moto->id]);
+            $this->fail('Entrou sem tabela de estadia.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('Não há tabela de estadia para Moto', $e->errors()['tipo_veiculo_id'][0]);
+        }
+        $this->assertSame(0, Estadia::count());
+
+        // com tabela para moto, o tipo escolhido vale mesmo com o cadastro dizendo carro
+        $t = Tarifa::create(['nome' => 'Motos', 'tolerancia_min' => 0, 'fracao_min' => 0, 'restante' => 'faixas', 'vigencia_inicio' => '2000-01-01']);
+        TarifaFaixa::create(['tarifa_id' => $t->id, 'ordem' => 0, 'duracao_min' => null, 'modo' => 'bloco', 'bloco_min' => 60, 'valor' => 4]);
+        \App\Models\TarifaPacote::create(['tarifa_id' => $t->id, 'nome' => 'Diária', 'duracao_min' => 720, 'valor' => 10]);
+        $t->tipos()->attach($this->a->moto->id);
+        $e = Estadias::entrar(['placa' => 'ABC1D23', 'tipo_veiculo_id' => $this->a->moto->id, 'entrada' => '2026-11-10 10:00']);
+        $this->assertSame($this->a->moto->id, $e->tipo_veiculo_id);
+        $this->assertSame($this->x->cliente->id, $e->cliente_id);
+        $this->assertSame(8.0, Estadias::calcular($e, Carbon::parse('2026-11-10 11:30'))['valor']);
+
+        // tela lista os tipos com o resumo da tabela
+        $this->actingAs($this->a->operador)->get('/estadias')->assertOk()
+            ->assertInertia(fn ($p) => $p->where('tipos.0.nome', 'Carro')->where('tipos.0.tabela', 'Carros · 1h R$ 15,00 · cada 1h R$ 5,00')
+                ->where('tipos.1.tabela', 'Motos · cada 1h R$ 4,00 · Diária (12h) R$ 10,00'));
+    }
+
     public function test_tolerancia_nao_gera_conta(): void
     {
         $e = Estadias::entrar(['placa' => 'ABC1D23', 'entrada' => '2026-11-10 11:55']);

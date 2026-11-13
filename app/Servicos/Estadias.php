@@ -34,7 +34,7 @@ class Estadias
         return $veiculoId ? MensalidadeContrato::where('veiculo_id', $veiculoId)->vigentes($quando ?? now())->orderByDesc('inicio')->first() : null;
     }
 
-    /** $d: placa (ou identificacao), tipo_veiculo_id (sem cadastro), entrada, convenio_id, celular */
+    /** $d: placa (ou identificacao), tipo_veiculo_id (vem do cadastro se não informado; informado vale sobre o cadastro), entrada, convenio_id, celular */
     public static function entrar(array $d): Estadia
     {
         $placa = Placa::normalizar($d['placa'] ?? null);
@@ -43,11 +43,16 @@ class Estadias
             self::erro('placa', 'Informe a placa (ou, sem placa, uma identificação do veículo).');
         }
         $veiculo = $placa ? Vendas::veiculoDaPlaca($placa) : null;
-        $tipoId = $veiculo?->tipo_veiculo_id ?? (int) ($d['tipo_veiculo_id'] ?? 0);
-        if (! TipoVeiculo::find($tipoId)) {
-            self::erro('tipo_veiculo_id', 'Placa sem cadastro: escolha o tipo do veículo.');
+        $tipoId = (int) ($d['tipo_veiculo_id'] ?? 0) ?: (int) $veiculo?->tipo_veiculo_id;
+        $tipo = TipoVeiculo::where('ativo', true)->find($tipoId);
+        if (! $tipo) {
+            self::erro('tipo_veiculo_id', 'Escolha o tipo do veículo.');
         }
         $entrada = Carbon::parse($d['entrada'] ?? now())->seconds(0);
+        // sem tabela de preço o valor não sai na saída: barra já na entrada
+        if (! Precos::tarifa($tipoId, Ordens::unidadePadrao(), $entrada)) {
+            self::erro('tipo_veiculo_id', 'Não há tabela de estadia para '.$tipo->nome.'. Cadastre em Configurações › Tabelas de estadia.');
+        }
         if ($entrada->isAfter(now()->addMinutes(5))) {
             self::erro('entrada', 'A entrada não pode ser no futuro.');
         }

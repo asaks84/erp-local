@@ -8,6 +8,8 @@ use App\Models\FormaPagamento;
 use App\Models\TipoVeiculo;
 use App\Servicos\Estadias;
 use App\Servicos\FormasPagamento;
+use App\Servicos\Ordens;
+use App\Servicos\Precos;
 use App\Servicos\Vendas;
 use App\Support\Formato;
 use App\Support\Placa;
@@ -71,10 +73,22 @@ class EstadiaController extends Controller
                 'recebido' => round((float) $hoje->where('destino', 'pago')->sum('valor_cliente'), 2),
                 'convenio' => round((float) $hoje->sum('valor_convenio'), 2),
             ],
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'tipos' => self::tiposComTabela(),
             'convenios' => self::convenios('estadia'),
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
         ]);
+    }
+
+    /** tipos de veículo com o resumo da tabela de estadia que vale hoje (vazio = sem tabela) */
+    public static function tiposComTabela(): array
+    {
+        $unidade = Ordens::unidadePadrao();
+
+        return TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome'])->map(function ($t) use ($unidade) {
+            $tarifa = Precos::tarifa($t->id, $unidade);
+
+            return ['id' => $t->id, 'nome' => $t->nome, 'tabela' => $tarifa ? $tarifa->nome.' · '.$tarifa->resumo() : null];
+        })->all();
     }
 
     /** o que o sistema sabe da placa (cadastro, mensalista) antes da entrada */

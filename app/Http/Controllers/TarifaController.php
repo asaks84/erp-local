@@ -43,17 +43,7 @@ class TarifaController extends Controller
 
     private function resumo(Tarifa $t): string
     {
-        $partes = [];
-        foreach ($t->faixas as $f) {
-            $partes[] = $f->modo === 'fixo'
-                ? ($f->duracao_min ? \App\Support\Formato::duracao($f->duracao_min) : 'Restante').' '.\App\Support\Formato::moeda($f->valor)
-                : 'cada '.\App\Support\Formato::duracao($f->bloco_min).' '.\App\Support\Formato::moeda($f->valor);
-        }
-        foreach ($t->pacotes as $p) {
-            $partes[] = $p->nome.' '.\App\Support\Formato::moeda($p->valor);
-        }
-
-        return implode(' · ', $partes) ?: 'Sem regras';
+        return $t->resumo();
     }
 
     private function opcoes(): array

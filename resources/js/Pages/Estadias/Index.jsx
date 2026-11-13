@@ -40,7 +40,11 @@ function Entrada({ tipos, convenios }) {
         if (p.length < 7) { setInfo(null); return }
         const t = setTimeout(() => {
             fetch(`/estadias/placa?placa=${encodeURIComponent(p)}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-                .then((r) => r.json()).then((j) => setInfo(j.veiculo || false)).catch(() => {})
+                .then((r) => r.json()).then((j) => {
+                    setInfo(j.veiculo || false)
+                    // cadastro traz o tipo; o operador ainda pode trocar
+                    if (j.veiculo?.tipo_id) setData('tipo_veiculo_id', String(j.veiculo.tipo_id))
+                }).catch(() => {})
         }, 250)
         return () => clearTimeout(t)
     }, [data.placa])
@@ -54,6 +58,8 @@ function Entrada({ tipos, convenios }) {
     }
 
     const precisaTipo = semPlaca || info === false
+    const tipoEscolhido = tipos.find((t) => String(t.id) === String(data.tipo_veiculo_id))
+    const trocouTipo = info && info.tipo_id && data.tipo_veiculo_id && String(info.tipo_id) !== String(data.tipo_veiculo_id)
     return (
         <form className="card mb-4" onSubmit={enviar} noValidate>
             <div className="card-header d-flex align-items-center gap-2">
@@ -67,14 +73,12 @@ function Entrada({ tipos, convenios }) {
                             ? <Campo rotulo="Identificação (ex.: bicicleta azul)" value={data.identificacao} onChange={(e) => setData('identificacao', e.target.value)} erro={errors.placa} maxLength={40} autoFocus />
                             : <Campo rotulo="Placa" value={mPlaca(data.placa)} onChange={(e) => setData('placa', e.target.value)} erro={errors.placa} autoFocus ref={campo} autoComplete="off" style={{ textTransform: 'uppercase' }} />}
                     </div>
-                    {precisaTipo && (
-                        <div className="col-md-3">
-                            <Campo as="select" rotulo="Tipo do veículo" value={data.tipo_veiculo_id} onChange={(e) => setData('tipo_veiculo_id', e.target.value)} erro={errors.tipo_veiculo_id}>
-                                <option value="">Escolha</option>
-                                {tipos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                            </Campo>
-                        </div>
-                    )}
+                    <div className="col-md-3">
+                        <Campo as="select" rotulo="Tipo do veículo" value={data.tipo_veiculo_id} onChange={(e) => setData('tipo_veiculo_id', e.target.value)} erro={errors.tipo_veiculo_id}>
+                            <option value="">Escolha</option>
+                            {tipos.map((t) => <option key={t.id} value={t.id} disabled={!t.tabela}>{t.nome}{t.tabela ? '' : ' (sem tabela de estadia)'}</option>)}
+                        </Campo>
+                    </div>
                     {convenios.length > 0 && (
                         <div className="col-md-3">
                             <Campo as="select" rotulo="Convênio" value={data.convenio_id} onChange={(e) => setData('convenio_id', e.target.value)} erro={errors.convenio_id}>
@@ -92,10 +96,12 @@ function Entrada({ tipos, convenios }) {
                 </div>
                 {info && (
                     <p className="small mb-2">
-                        <strong>{info.rotulo}</strong> · {info.descricao || info.tipo} {info.cliente && <>· {info.cliente}</>} {info.mensalista && <span className="selo selo-marca ms-1">Mensalista</span>}
+                        <strong>{info.rotulo}</strong> · {[info.descricao, info.tipo].filter(Boolean).join(' · ')} {info.cliente && <>· {info.cliente}</>} {info.mensalista && <span className="selo selo-marca ms-1">Mensalista</span>}
                     </p>
                 )}
                 {info === false && !semPlaca && <p className="small text-muted mb-2">Placa sem cadastro: entra como avulso.</p>}
+                {tipoEscolhido?.tabela && <p className="small text-muted mb-2">Tabela: {tipoEscolhido.tabela}</p>}
+                {trocouTipo && <p className="small text-warning-emphasis mb-2">Tipo diferente do cadastro ({info.tipo}): a estadia é cobrada como {tipoEscolhido?.nome}.</p>}
             </div>
             <div className="card-footer d-flex align-items-center gap-2">
                 {!outraHora && <button type="button" className="btn btn-sm btn-link px-0" onClick={() => { setOutraHora(true); setData('entrada', agoraTexto()) }}>Entrou em outro horário?</button>}

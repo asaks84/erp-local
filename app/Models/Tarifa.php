@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\PertenceAEmpresa;
+use App\Support\Formato;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +40,22 @@ class Tarifa extends Modelo
     public function unidade(): BelongsTo
     {
         return $this->belongsTo(Unidade::class);
+    }
+
+    /** texto curto das regras: "1h R$ 15,00 · cada 1h R$ 5,00 · Diária (12h) R$ 10,00" */
+    public function resumo(): string
+    {
+        $partes = [];
+        foreach ($this->faixas as $f) {
+            $partes[] = $f->modo === 'fixo'
+                ? ($f->duracao_min ? Formato::duracao($f->duracao_min) : 'Restante').' '.Formato::moeda($f->valor)
+                : 'cada '.Formato::duracao($f->bloco_min).' '.Formato::moeda($f->valor);
+        }
+        foreach ($this->pacotes as $p) {
+            $partes[] = $p->nome.($p->duracao_min ? ' ('.Formato::duracao($p->duracao_min).')' : '').' '.Formato::moeda($p->valor);
+        }
+
+        return implode(' · ', $partes) ?: 'Sem regras';
     }
 
     /** formato usado pelo Tarifador */
