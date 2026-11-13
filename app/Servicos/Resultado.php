@@ -71,15 +71,15 @@ class Resultado
     }
 
     /**
-     * receitas do mês (por referência) que ainda estão em aberto e são de cliente excluído
-     * (ou sem cliente): a tela avisa, porque provavelmente não vão ser recebidas
+     * receitas do mês (por referência) que ainda estão em aberto e são de cliente excluído:
+     * a tela avisa, porque provavelmente não vão ser recebidas (estadia avulsa sem cliente não entra)
      */
     private static function abertoDeExcluidos(string $ym): array
     {
         [$de, $ate] = self::limites($ym);
-        $l = DB::table('ordens_servico as o')->leftJoin('clientes as c', 'c.id', '=', 'o.cliente_id')
+        $l = DB::table('ordens_servico as o')->join('clientes as c', 'c.id', '=', 'o.cliente_id')
             ->where('o.empresa_id', self::empresa())->where('o.situacao', 'aberta')->whereIn('o.tipo', array_keys(self::RECEITA_POR_TIPO))
-            ->where(fn ($w) => $w->whereNull('o.cliente_id')->orWhere('c.ativo', false))
+            ->where('c.ativo', false)
             ->where(fn ($w) => $w->where(fn ($m) => $m->where('o.tipo', 'mensalidade')->where('o.competencia', $ym))
                 ->orWhere(fn ($o) => $o->where('o.tipo', '<>', 'mensalidade')->whereBetween('o.data', [$de, $ate])))
             ->selectRaw('COUNT(*) AS qtd, COALESCE(SUM(o.valor), 0) AS valor')->first();
