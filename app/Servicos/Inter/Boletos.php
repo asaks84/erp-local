@@ -67,6 +67,41 @@ class Boletos
         return $r;
     }
 
+    /**
+     * As ordens têm a primeira mensalidade do cadastro (ou uma proporcional)? Então o boleto sai,
+     * por padrão, sem as regras (multa, juros, desconto): o desconto de pontualidade, por exemplo,
+     * não vale para a primeira cobrança.
+     */
+    public static function temPrimeiraMensalidade(iterable $ordens): bool
+    {
+        foreach ($ordens as $o) {
+            if ($o->tipo !== 'mensalidade' || $o->situacao === 'cancelada') {
+                continue;
+            }
+            if (str_starts_with((string) $o->descricao, 'Mensalidade proporcional')) {
+                return true;
+            }
+            if ($o->contrato_id && ! OrdemServico::where('tipo', 'mensalidade')->where('contrato_id', $o->contrato_id)
+                ->where('situacao', '<>', 'cancelada')->where('numero', '<', $o->numero)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** sugestão para a cobrança: false = gerar o boleto sem as regras */
+    public static function aplicarRegrasSugerido(Cobranca $cob): bool
+    {
+        return ! self::temPrimeiraMensalidade(OrdemServico::where('cobranca_id', $cob->id)->where('situacao', 'aberta')->get());
+    }
+
+    /** regras sem multa, juros e desconto (a baixa automática continua) */
+    public static function semRegras(array $regras): array
+    {
+        return array_merge($regras, ['boleto_multa_tipo' => 'nenhuma', 'boleto_juros_tipo' => 'nenhum', 'boleto_desconto_tipo' => 'nenhum', 'sem_regras' => true]);
+    }
+
     public static function integracao(): Integracao
     {
         $i = Integracao::inter();
@@ -171,8 +206,11 @@ class Boletos
         return $dados;
     }
 
-    /** Emite o boleto da cobrança. Erro de cadastro ou do Inter: ValidationException com a mensagem. */
-    public static function emitir(Cobranca $cob, ?InterCliente $api = null): Boleto
+    /**
+     * Emite o boleto da cobrança. $aplicarRegras: null = automático (sem regras quando há primeira
+     * mensalidade ou proporcional). Erro de cadastro ou do Inter: ValidationException com a mensagem.
+     */
+    public static function emitir(Cobranca $cob, ?InterCliente $api = null, ?bool $aplicarRegras = null): Boleto
     {
         $integracao = self::integracao();
         if (! in_array($cob->situacao, ['aberta', 'parcial'], true)) {
@@ -195,6 +233,9 @@ class Boletos
 
         $empresa = Empresa::atual();
         $regras = self::regras($empresa, $cob->cliente);
+        if (! ($aplicarRegras ?? self::aplicarRegrasSugerido($cob))) {
+            $regras = self::semRegras($regras);
+        }
         $seq = Boleto::where('cobranca_id', $cob->id)->count() + 1;
         $b = Boleto::create([
             'cobranca_id' => $cob->id,
@@ -213,11 +254,17 @@ class Boletos
             self::erro("Cobrança {$cob->numero}: o Inter recusou o boleto — ".$e->getMessage());
         }
         Atividades::registrar('boleto_emitido', 'cobrança '.$cob->numero.' de '.$cob->cliente->nome.': '.Formato::moeda($valor).', vencimento '.$b->vencimento->format('d/m/Y'));
-        // a linha digitável e o Pix costumam ficar prontos em segundos
-        try {
-            self::atualizar($b, $api);
-        } catch (Throwable) {
-            // fica "em emissão"; a consulta periódica completa depois
+        // a linha digitável e o Pix ficam prontos em segundos: tenta algumas vezes antes de devolver
+        foreach ([2, 3, 4] as $espera) {
+            app()->runningUnitTests() || sleep($espera);
+            try {
+                self::atualizar($b, $api);
+            } catch (Throwable) {
+                // fica "em emissão"; a consulta periódica completa depois
+            }
+            if ($b->situacao !== 'em_processamento') {
+                break;
+            }
         }
 
         return $b->refresh();

@@ -37,7 +37,29 @@ class Resultado
         return [$ini->toDateString(), $ini->copy()->endOfMonth()->toDateString()];
     }
 
-    /** receitas do mês por chave de conta do plano */
+    /** descrição da ordem que a baixa do boleto do Inter cria para a multa e os juros (Baixa::receber, sobra "encargos") */
+    public const MULTA_JUROS = 'Multa e juros do boleto';
+
+    /** multa e juros recebidos no mês (pela data do pagamento, nos dois olhares) */
+    private static function multaJuros(string $ym): float
+    {
+        [$de, $ate] = self::limites($ym);
+
+        return round((float) DB::table('ordens_servico')->where('empresa_id', self::empresa())->where('tipo', 'debito')
+            ->where('descricao', self::MULTA_JUROS)->where('situacao', 'paga')->whereBetween('pago_em', [$de.' 00:00:00', $ate.' 23:59:59'])->sum('valor'), 2);
+    }
+
+    /** descontos dados em pagamentos recebidos no mês (olhar de caixa: pela data do pagamento) */
+    private static function descontosCaixa(string $ym): float
+    {
+        [$de, $ate] = self::limites($ym);
+
+        return round((float) DB::table('ajustes as a')->join('pagamentos as p', 'p.id', '=', 'a.pagamento_id')
+            ->where('a.empresa_id', self::empresa())->where('a.tipo', 'desconto')->where('p.situacao', 'confirmado')
+            ->whereBetween('p.recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])->sum('a.valor'), 2);
+    }
+
+    /** receitas do mês por chave de conta do plano (multa/juros e descontos ficam em linhas próprias) */
     private static function receitas(string $ym, string $regime): array
     {
         [$de, $ate] = self::limites($ym);
@@ -46,6 +68,7 @@ class Resultado
         if ($regime === 'caixa') {
             $linhas = DB::table('pagamento_itens as i')->join('pagamentos as p', 'p.id', '=', 'i.pagamento_id')->join('ordens_servico as o', 'o.id', '=', 'i.ordem_id')
                 ->where('p.empresa_id', $e)->where('p.situacao', 'confirmado')->whereBetween('p.recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])
+                ->where(fn ($w) => $w->where('o.tipo', '<>', 'debito')->orWhere('o.descricao', '<>', self::MULTA_JUROS))
                 ->groupBy('o.tipo')->selectRaw('o.tipo, SUM(i.valor) AS total')->pluck('total', 'tipo');
             foreach ($linhas as $tipo => $v) {
                 $chave = self::RECEITA_POR_TIPO[$tipo] ?? 'receita_outras';
@@ -53,7 +76,8 @@ class Resultado
             }
             // pagamento sem ordem (ou crédito que sobrou): o que não foi distribuído vai para "outras"
             $bruto = (float) DB::table('pagamentos')->where('empresa_id', $e)->where('situacao', 'confirmado')->whereBetween('recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])->sum('valor');
-            $resto = round($bruto - array_sum($tot), 2);
+            // multa/juros e descontos têm linha própria: não entram no "resto"
+            $resto = round($bruto - array_sum($tot) - self::multaJuros($ym) + self::descontosCaixa($ym), 2);
             if (abs($resto) >= 0.01) {
                 $tot['receita_outras'] = ($tot['receita_outras'] ?? 0) + $resto;
             }
@@ -165,8 +189,12 @@ class Resultado
         }
 
         $receitas = self::arvore($contas, 'receita', $valores);
-        $desconto = self::descontos($ym);
-        if ($desconto > 0 && $regime === 'referencia') {
+        $multa = self::multaJuros($ym);
+        if ($multa > 0) {
+            $receitas[] = ['id' => 'multa_juros', 'codigo' => '', 'nome' => 'Multa e juros recebidos', 'nivel' => 1, 'valor' => $multa, 'tem_filhas' => false];
+        }
+        $desconto = $regime === 'referencia' ? self::descontos($ym) : self::descontosCaixa($ym);
+        if ($desconto > 0) {
             $receitas[] = ['id' => 'descontos', 'codigo' => '', 'nome' => '(−) Descontos dados', 'nivel' => 1, 'valor' => -$desconto, 'tem_filhas' => false];
         }
         $todas = self::arvore($contas, 'despesa', $valores);

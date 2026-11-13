@@ -119,7 +119,7 @@ function AcoesMensalidade({ veiculo, contrato, periodos, pausaPadrao, unidades }
     )
 }
 
-export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual, regras_boleto_empresa }) {
+export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual, regras_boleto_empresa, boleto_regras_sugerido }) {
     const interLigado = !!usePage().props.empresa?.inter
     const pode = usePode()
     const { unidades = [] } = usePage().props
@@ -203,7 +203,7 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                 </div>
 
                 <div className="col-lg-8">
-                    <ContasCliente cliente={cliente} abertas={abertas} total={total_aberto} cobrancas={cobrancas} pagamentos={pagamentos} mesAtual={mes_atual} />
+                    <ContasCliente cliente={cliente} abertas={abertas} total={total_aberto} cobrancas={cobrancas} pagamentos={pagamentos} mesAtual={mes_atual} regrasSugerido={boleto_regras_sugerido !== false} />
                     <div className="d-flex align-items-center mb-2">
                         <h2 className="fs-5 fw-semibold flex-grow-1 mb-0">Veículos</h2>
                         {cliente.ativo && <Link href={`/clientes/${cliente.id}/veiculos/novo`} className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"><Icone nome="mais" tamanho={16} /> Adicionar veículo</Link>}

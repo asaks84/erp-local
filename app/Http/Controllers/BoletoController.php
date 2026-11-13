@@ -14,13 +14,14 @@ use Symfony\Component\HttpFoundation\Response;
 /** Boleto com Pix do Inter na tela da cobrança: gerar, atualizar, PDF e cancelar. */
 class BoletoController extends Controller
 {
-    public function emitir(Cobranca $cobranca): RedirectResponse
+    public function emitir(Request $request, Cobranca $cobranca): RedirectResponse
     {
-        $b = Boletos::emitir($cobranca);
+        $d = $request->validate(['regras' => ['nullable', 'boolean']]);
+        $b = Boletos::emitir($cobranca, null, isset($d['regras']) ? (bool) $d['regras'] : null);
 
         return back()->with('sucesso', $b->situacao === 'em_processamento'
             ? 'Boleto pedido ao Inter. A linha digitável e o Pix aparecem em instantes (clique em Atualizar).'
-            : 'Boleto gerado.');
+            : 'Boleto gerado'.(! empty($b->regras['sem_regras']) ? ' sem multa, juros e desconto.' : '.'));
     }
 
     public function atualizar(Boleto $boleto): RedirectResponse

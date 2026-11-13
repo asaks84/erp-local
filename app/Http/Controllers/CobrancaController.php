@@ -72,17 +72,25 @@ class CobrancaController extends Controller
     {
         $mes = $this->mes($request);
 
-        return Inertia::render('Cobrancas/Gerar', ['mes' => $mes, 'linhas' => Cobrancas::previa($mes), 'inter' => self::interLigado()]);
+        $linhas = Cobrancas::previa($mes);
+        if (self::interLigado()) {
+            // quem tem a primeira mensalidade (ou proporcional) recebe o boleto sem as regras
+            $primeiras = \App\Models\OrdemServico::abertas()->whereIn('cliente_id', $linhas->pluck('cliente_id'))->where('tipo', 'mensalidade')->get()->groupBy('cliente_id');
+            $linhas = $linhas->map(fn ($l) => $l + ['boleto_sem_regras' => Boletos::temPrimeiraMensalidade($primeiras[$l['cliente_id']] ?? [])]);
+        }
+
+        return Inertia::render('Cobrancas/Gerar', ['mes' => $mes, 'linhas' => $linhas, 'inter' => self::interLigado()]);
     }
 
     public function emitirLote(Request $request): RedirectResponse
     {
-        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'clientes' => ['required', 'array', 'min:1'], 'clientes.*' => ['integer'], 'boleto' => ['nullable', 'boolean']],
+        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'clientes' => ['required', 'array', 'min:1'], 'clientes.*' => ['integer'], 'boleto' => ['nullable', 'boolean'], 'regras' => ['nullable', 'boolean']],
             ['clientes.required' => 'Marque pelo menos um cliente.']);
         [$emitidas, $erros] = Cobrancas::emitirLote($d['mes'], $d['clientes']);
         $msg = count($emitidas).' cobrança(s) emitida(s).';
         if (! empty($d['boleto']) && $emitidas) {
-            [$ok, $falhas] = self::gerarBoletos($emitidas);
+            // regras desmarcadas: nenhum boleto com regras; marcadas: automático (primeira mensalidade sai sem)
+            [$ok, $falhas] = self::gerarBoletos($emitidas, array_key_exists('regras', $d) && ! $d['regras'] ? false : null);
             $msg .= ' '.$ok.' boleto(s) gerado(s).';
             $erros = array_merge($erros, $falhas);
         }
@@ -100,11 +108,11 @@ class CobrancaController extends Controller
 
     public function emitir(Request $request, Cliente $cliente): RedirectResponse
     {
-        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d'], 'boleto' => ['nullable', 'boolean']]);
+        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d'], 'boleto' => ['nullable', 'boolean'], 'regras' => ['nullable', 'boolean']]);
         $c = Cobrancas::emitir($cliente, $d['mes'], $d['vencimento'] ?? null);
         $r = redirect("/cobrancas/{$c->id}")->with('sucesso', 'Cobrança '.$c->numero.' emitida.');
         if (! empty($d['boleto'])) {
-            [$ok, $falhas] = self::gerarBoletos([$c]);
+            [$ok, $falhas] = self::gerarBoletos([$c], array_key_exists('regras', $d) && $d['regras'] !== null ? (bool) $d['regras'] : null);
             $ok ? $r->with('sucesso', 'Cobrança '.$c->numero.' emitida com boleto.') : $r->with('aviso', 'Cobrança emitida, mas o boleto não saiu: '.($falhas[0] ?? ''));
         }
         self::cancelarBoletosResolvidos();
@@ -120,13 +128,13 @@ class CobrancaController extends Controller
     }
 
     /** gera o boleto de cada cobrança; devolve [quantos saíram, mensagens de erro] */
-    private static function gerarBoletos(array $cobrancas): array
+    private static function gerarBoletos(array $cobrancas, ?bool $aplicarRegras = null): array
     {
         $ok = 0;
         $erros = [];
         foreach ($cobrancas as $c) {
             try {
-                Boletos::emitir($c);
+                Boletos::emitir($c, null, $aplicarRegras);
                 $ok++;
             } catch (ValidationException $e) {
                 $erros[] = collect($e->errors())->flatten()->first();
@@ -153,6 +161,7 @@ class CobrancaController extends Controller
 
         return Inertia::render('Cobrancas/Show', [
             'inter' => self::interLigado(),
+            'regras_sugerido' => Boletos::aplicarRegrasSugerido($cobranca),
             'em_aberto' => Boletos::valorEmAberto($cobranca),
             'falta_cadastro' => Boletos::faltaNoCadastro($cobranca->cliente),
             'boletos' => Boleto::where('cobranca_id', $cobranca->id)->orderByDesc('id')->get()->map(fn (Boleto $b) => [
@@ -163,6 +172,7 @@ class CobrancaController extends Controller
                 'motivo_cancelamento' => $b->motivo_cancelamento, 'consultado_em' => $b->consultado_em?->format('Y-m-d H:i'),
                 'criado_em' => $b->criado_em?->format('Y-m-d H:i'), 'ativo' => $b->ativo(),
                 'tem_pdf' => $b->codigo_solicitacao && ! in_array($b->situacao, ['falha', 'em_processamento'], true),
+                'sem_regras' => ! empty($b->regras['sem_regras']),
             ]),
             'cobranca' => self::resumo($cobranca),
             'cliente' => $cobranca->cliente->only(['id', 'nome']),

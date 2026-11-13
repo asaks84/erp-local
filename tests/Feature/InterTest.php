@@ -172,6 +172,15 @@ class InterTest extends TestCase
         $this->assertSame(4.5, (float) $enc->valor);
         $this->assertSame('paga', $enc->situacao);
         $this->assertSame(0, OrdemServico::abertas()->where('cliente_id', $this->x->cliente->id)->count());
+
+        // resultado: linha própria de multa e juros nos dois olhares; nada sobra em "outras receitas"
+        foreach (['caixa', 'referencia'] as $regime) {
+            $r = \App\Servicos\Resultado::mes('2026-11', $regime);
+            $linhas = collect($r['receitas'])->keyBy('id');
+            $this->assertSame(4.5, $linhas['multa_juros']['valor'], $regime);
+            $this->assertSame(204.5, $r['total_receitas'], $regime);
+            $this->assertFalse(collect($r['receitas'])->contains(fn ($l) => $l['nome'] === 'Outras receitas'), $regime);
+        }
     }
 
     public function test_desconto_do_boleto_vira_desconto(): void
@@ -187,6 +196,13 @@ class InterTest extends TestCase
         $this->assertNotNull($b->refresh()->pagamento_id);
         $this->assertSame(10.0, (float) Ajuste::where('tipo', 'desconto')->value('valor'));
         $this->assertSame('boleto', \App\Models\FormaPagamento::find(Pagamento::find($b->pagamento_id)->forma_pagamento_id)->tipo);
+
+        // caixa: mensalidade 200 e "(−) Descontos dados" 10, sem "outras receitas" negativas
+        $r = \App\Servicos\Resultado::mes('2026-11', 'caixa');
+        $linhas = collect($r['receitas'])->keyBy('id');
+        $this->assertSame(-10.0, $linhas['descontos']['valor']);
+        $this->assertSame(190.0, $r['total_receitas']);
+        $this->assertFalse(collect($r['receitas'])->contains(fn ($l) => $l['nome'] === 'Outras receitas'));
     }
 
     public function test_cobranca_paga_no_balcao_cancela_o_boleto_e_pago_depois_vira_credito(): void
@@ -326,5 +342,30 @@ class InterTest extends TestCase
         // nada marcado: volta ao padrão
         $this->actingAs($this->a->admin)->put('/clientes/'.$this->x->cliente->id.'/regras-boleto', $base + ['particular' => []])->assertSessionHasNoErrors();
         $this->assertNull($this->x->cliente->refresh()->regras_boleto);
+    }
+
+    public function test_primeira_mensalidade_sai_sem_regras_e_da_para_escolher(): void
+    {
+        $this->a->empresa->update(['configuracoes' => ['boleto_multa_tipo' => 'percentual', 'boleto_multa_valor' => 2, 'boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10, 'boleto_baixa_dias' => 20]]);
+        $estado = ['situacao' => 'A_RECEBER'];
+        $this->fakeInter($estado);
+        Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $this->x->cliente->id, 'valor' => 120, 'descricao' => 'Mensalidade proporcional 13/11 a 30/11',
+            'data' => '2026-11-13', 'vencimento' => '2026-11-20', 'competencia' => '2026-11']);
+        $cob = Cobrancas::emitir($this->x->cliente, '2026-11', '2026-11-20');
+        $this->assertFalse(Boletos::aplicarRegrasSugerido($cob));
+        $this->actingAs($this->a->admin)->get('/cobrancas/'.$cob->id)->assertInertia(fn ($p) => $p->where('regras_sugerido', false));
+
+        // automático: sem multa e sem desconto; a baixa automática continua
+        $b = Boletos::emitir($cob);
+        $this->assertArrayNotHasKey('multa', $estado['emitido']);
+        $this->assertArrayNotHasKey('desconto', $estado['emitido']);
+        $this->assertSame(20, $estado['emitido']['numDiasAgenda']);
+        $this->assertTrue($b->regras['sem_regras']);
+
+        // escolhendo aplicar as regras mesmo assim
+        Boletos::cancelar($b, 'teste');
+        $estado['situacao'] = 'A_RECEBER';
+        $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true])->assertSessionHasNoErrors();
+        $this->assertSame(['codigo' => 'PERCENTUAL', 'taxa' => 2.0], $estado['emitido']['multa']);
     }
 }

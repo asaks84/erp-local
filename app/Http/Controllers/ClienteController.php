@@ -109,6 +109,8 @@ class ClienteController extends Controller
                 'regras_boleto' => $cliente->regras_boleto,
             ],
             'regras_boleto_empresa' => \App\Servicos\Inter\Boletos::regras(),
+            // emitir cobrança com boleto: a primeira mensalidade (ou proporcional) sai sem as regras
+            'boleto_regras_sugerido' => ! \App\Servicos\Inter\Boletos::temPrimeiraMensalidade(\App\Servicos\Baixa::abertas($cliente)),
             'veiculos' => $cliente->veiculos->map(fn (Veiculo $v) => [
                 'id' => $v->id,
                 'rotulo' => $v->rotulo(),

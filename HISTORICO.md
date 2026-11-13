@@ -4,6 +4,21 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Resultado: multa e juros e descontos em linhas próprias
+
+- **Multa e juros recebidos** (boleto pago com atraso) ganharam linha própria no Resultado, nos dois olhares (por referência e pelo dinheiro), pela data do pagamento. Antes, no olhar por referência, não entravam.
+- **(−) Descontos dados** aparece também no olhar pelo dinheiro (antes, lá, o desconto virava "outras receitas" negativas). Vale para o desconto do boleto e para o dado no Receber contas.
+- Arquivos: `app/Servicos/Resultado.php`, `app/Servicos/Baixa.php`, `tests/Feature/InterTest.php`.
+
+## 13/11/2026 — Boleto sem as regras na primeira mensalidade
+
+- Ao gerar o boleto (tela da cobrança, "Emitir cobrança" na ficha e emissão em lote) há a caixa **"Aplicar as regras do boleto (multa, juros e desconto)"**. Desmarcada, o boleto sai sem multa, juros e desconto; a baixa automática continua.
+- A caixa já vem **desmarcada** quando a cobrança tem a primeira mensalidade do contrato ou uma mensalidade proporcional. No lote, essas cobranças saem sem as regras (selo "Boleto sem regras"); desmarcar no lote tira as regras de todos.
+- O boleto guarda que saiu sem as regras ("sem multa, juros e desconto" na tela da cobrança).
+- Gerar boleto agora espera alguns segundos pelo Inter antes de voltar, para já mostrar a linha digitável e o Pix (sem precisar clicar em Atualizar).
+- **173 testes automáticos.**
+- Arquivos: `app/Servicos/Inter/Boletos.php`, `app/Http/Controllers/BoletoController.php`, `CobrancaController.php`, `ClienteController.php`, `resources/js/Components/BoletoCobranca.jsx`, `ContasCliente.jsx`, `resources/js/Pages/Cobrancas/Show.jsx`, `Gerar.jsx`, `resources/js/Pages/Clientes/Show.jsx`, `tests/Feature/InterTest.php`, docs 12 e 13.
+
 ## 13/11/2026 — Banco Inter: correção no teste de conexão
 
 - O "Testar conexão" falhava com "CURLOPT_SSLCERT_BLOB ... not supported": o Guzzle não aceita o certificado em memória. Agora o certificado e a chave vão para arquivos temporários em `storage/app/private/inter-tmp` (fora da pasta pública, só o dono lê), apagados ao fim de cada conexão; sobra de processo interrompido é apagada depois de 10 minutos.

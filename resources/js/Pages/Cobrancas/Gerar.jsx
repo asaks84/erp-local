@@ -6,7 +6,7 @@ import { competencia } from '../../Components/Dinheiro'
 import { data as fData, moeda } from '../../lib/formato'
 
 export default function GerarCobrancas({ mes, linhas, inter }) {
-    const { data, setData, post, processing, errors } = useForm({ mes, clientes: linhas.filter((l) => l.marcar).map((l) => l.cliente_id), boleto: !!inter })
+    const { data, setData, post, processing, errors } = useForm({ mes, clientes: linhas.filter((l) => l.marcar).map((l) => l.cliente_id), boleto: !!inter, regras: true })
     const possiveis = linhas.filter((l) => !l.ja_emitida)
     const total = useMemo(() => linhas.filter((l) => data.clientes.includes(l.cliente_id)).reduce((s, l) => s + l.total, 0), [data.clientes, linhas])
     const marcar = (id) => setData('clientes', data.clientes.includes(id) ? data.clientes.filter((x) => x !== id) : [...data.clientes, id])
@@ -41,6 +41,7 @@ export default function GerarCobrancas({ mes, linhas, inter }) {
                                                 {l.ja_emitida && <span className="selo selo-ok">Já emitida</span>}
                                                 {!l.mensalidade_do_mes && <span className="selo">Sem mensalidade do mês</span>}
                                                 {l.saldo_anterior && <span className="selo selo-aviso">Com saldo anterior</span>}
+                                                {data.boleto && data.regras && l.boleto_sem_regras && <span className="selo" title="Tem a primeira mensalidade ou uma proporcional">Boleto sem regras</span>}
                                             </div>
                                         </td>
                                         <td className="d-none d-md-table-cell">{l.itens}</td>
@@ -57,6 +58,12 @@ export default function GerarCobrancas({ mes, linhas, inter }) {
                         <div className="form-check mb-0">
                             <input className="form-check-input" type="checkbox" id="gerar-boleto" checked={data.boleto} onChange={(e) => setData('boleto', e.target.checked)} />
                             <label className="form-check-label" htmlFor="gerar-boleto">Gerar boleto com Pix (Banco Inter)</label>
+                        </div>
+                    )}
+                    {inter && data.boleto && (
+                        <div className="form-check mb-0" title="Quem tem a primeira mensalidade ou uma proporcional sai sempre sem as regras">
+                            <input className="form-check-input" type="checkbox" id="gerar-regras" checked={data.regras} onChange={(e) => setData('regras', e.target.checked)} />
+                            <label className="form-check-label" htmlFor="gerar-regras">Aplicar as regras do boleto</label>
                         </div>
                     )}
                     <button type="submit" className="btn btn-primary" disabled={processing || data.clientes.length === 0}>Emitir {data.clientes.length} cobrança(s)</button>

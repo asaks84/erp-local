@@ -11,7 +11,7 @@ import { data as fData, dataHora, moeda } from '../lib/formato'
 import { usePode } from '../lib/permissoes'
 
 /** Bloco "Contas" da ficha do cliente: em aberto, cobranças e pagamentos recentes. */
-export default function ContasCliente({ cliente, abertas, total, cobrancas, pagamentos, mesAtual }) {
+export default function ContasCliente({ cliente, abertas, total, cobrancas, pagamentos, mesAtual, regrasSugerido = true }) {
     const pode = usePode()
     const editar = pode('contas_editar')
     const [janela, setJanela] = useState(null) // {tipo: 'alterar'|'cancelar'|'estornar'|'cobranca', item}
@@ -22,7 +22,7 @@ export default function ContasCliente({ cliente, abertas, total, cobrancas, paga
     function abrir(tipo, item = null) {
         form.clearErrors()
         if (tipo === 'alterar') form.setData({ valor: item.valor, vencimento: item.vencimento || '', descricao: item.descricao })
-        else if (tipo === 'cobranca') form.setData({ mes: mesAtual, vencimento: '', boleto: inter })
+        else if (tipo === 'cobranca') form.setData({ mes: mesAtual, vencimento: '', boleto: inter, regras: regrasSugerido })
         else form.setData({ motivo: '' })
         setJanela({ tipo, item })
     }
@@ -150,6 +150,13 @@ export default function ContasCliente({ cliente, abertas, total, cobrancas, paga
                     <div className="form-check">
                         <input className="form-check-input" type="checkbox" id="cob-boleto" checked={!!form.data.boleto} onChange={(e) => form.setData('boleto', e.target.checked)} />
                         <label className="form-check-label" htmlFor="cob-boleto">Gerar boleto com Pix (Banco Inter)</label>
+                    </div>
+                )}
+                {inter && form.data.boleto && (
+                    <div className="form-check ms-4">
+                        <input className="form-check-input" type="checkbox" id="cob-regras" checked={!!form.data.regras} onChange={(e) => form.setData('regras', e.target.checked)} />
+                        <label className="form-check-label" htmlFor="cob-regras">Aplicar as regras do boleto (multa, juros e desconto)</label>
+                        {!regrasSugerido && <div className="form-text">Desmarcado porque tem a primeira mensalidade (ou uma proporcional).</div>}
                     </div>
                 )}
             </Janela>

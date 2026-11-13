@@ -6,6 +6,8 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 13/11/2026 | Resultado: "Multa e juros recebidos" em linha própria nos dois olhares, pela data do pagamento; "(−) Descontos dados" também no olhar pelo dinheiro (pela data do pagamento) | Multa e juros são receita do mês em que entram; desconto não deve aparecer como "outras receitas" negativas |
+| 13/11/2026 | Boleto pode sair sem as regras (multa, juros e desconto), escolhendo na hora de gerar; sai assim por padrão quando a cobrança tem a primeira mensalidade do contrato ou uma proporcional. Baixa automática continua sempre | O desconto de pontualidade (e multa/juros) não vale para a primeira cobrança proporcional |
 | 13/11/2026 | Banco Inter: boleto com Pix (API cobrança v3) gerado a partir da cobrança, opcional ao emitir; credenciais (client id/secret, certificado e chave) por empresa, criptografadas com a APP_KEY; ligar só depois de "Testar conexão" | Cobrança emitida é a base do boleto; credencial errada não chega a emitir; preparado para o SaaS |
 | 13/11/2026 | Situação "pendente" do pagamento fica na tabela `boletos` (em emissão, a receber, vencido, pago, cancelado, baixado, falha); o pagamento nasce confirmado quando o Inter informa o recebimento. Substitui "pagamento pendente" da decisão de 09/11 | A baixa e os relatórios continuam contando só dinheiro recebido |
 | 13/11/2026 | Boleto pago: multa e juros (valor acima do nominal) viram ordem "Multa e juros do boleto" já paga (receita); desconto da regra vira desconto; sobra além disso vira crédito do cliente | Resultado mostra o que entrou de multa/juros; nada se perde se a conta já estava paga |

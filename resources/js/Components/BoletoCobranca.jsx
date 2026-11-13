@@ -48,15 +48,16 @@ function Ativo({ b }) {
 }
 
 /** Quadro do boleto com Pix (Banco Inter) na tela da cobrança. */
-export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId }) {
+export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId, regrasSugerido = true }) {
     const pode = usePode()
     const [cancelar, setCancelar] = useState(null)
     const [ocupado, setOcupado] = useState(false)
+    const [regras, setRegras] = useState(regrasSugerido)
     const form = useForm({ motivo: '' })
     const atual = boletos.find((b) => b.ativo) || null
     const anteriores = boletos.filter((b) => b !== atual)
     const podeGerar = inter && !atual && ['aberta', 'parcial'].includes(cobranca.situacao) && emAberto >= 2.5
-    const acao = (url) => { setOcupado(true); router.post(url, {}, { preserveScroll: true, onFinish: () => setOcupado(false) }) }
+    const acao = (url, dados = {}) => { setOcupado(true); router.post(url, dados, { preserveScroll: true, onFinish: () => setOcupado(false) }) }
 
     if (!inter && boletos.length === 0) return null
 
@@ -72,7 +73,7 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
             <div className="card-body">
                 {atual && (
                     <>
-                        <p className="small text-muted">{moeda(atual.valor)} · vence {fData(atual.vencimento)} · nº {atual.seu_numero}{atual.consultado_em && ` · consultado ${dataHora(atual.consultado_em)}`}</p>
+                        <p className="small text-muted">{moeda(atual.valor)} · vence {fData(atual.vencimento)} · nº {atual.seu_numero}{atual.sem_regras && ' · sem multa, juros e desconto'}{atual.consultado_em && ` · consultado ${dataHora(atual.consultado_em)}`}</p>
                         <Ativo b={atual} />
                     </>
                 )}
@@ -80,10 +81,17 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                     <div className="alert alert-warning mb-0">Para gerar o boleto, o Inter exige {faltaCadastro.join(', ')} no cadastro. <Link href={`/clientes/${clienteId}/editar`}>Completar cadastro</Link></div>
                 )}
                 {!atual && podeGerar && faltaCadastro.length === 0 && (
-                    <div className="d-flex flex-wrap align-items-center gap-3">
-                        <span className="small text-muted flex-grow-1">Gera um boleto de {moeda(emAberto)} com vencimento em {fData(cobranca.vencimento)}. Quando for pago, a baixa é automática.</span>
-                        <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`)}>Gerar boleto</button>
-                    </div>
+                    <>
+                        <div className="d-flex flex-wrap align-items-center gap-3">
+                            <span className="small text-muted flex-grow-1">Gera um boleto de {moeda(emAberto)} com vencimento em {fData(cobranca.vencimento)}. Quando for pago, a baixa é automática.</span>
+                            <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, { regras })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
+                        </div>
+                        <div className="form-check mt-2 mb-0">
+                            <input className="form-check-input" type="checkbox" id="bol-regras" checked={regras} onChange={(e) => setRegras(e.target.checked)} />
+                            <label className="form-check-label small" htmlFor="bol-regras">Aplicar as regras do boleto (multa, juros e desconto)</label>
+                            {!regrasSugerido && <div className="form-text">Desmarcado porque a cobrança tem a primeira mensalidade (ou uma proporcional).</div>}
+                        </div>
+                    </>
                 )}
                 {!atual && !podeGerar && boletos.length === 0 && <p className="small text-muted mb-0">Sem boleto.</p>}
                 {anteriores.length > 0 && (

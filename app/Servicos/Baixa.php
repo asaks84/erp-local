@@ -126,7 +126,7 @@ class Baixa
                 // multa e juros do boleto: receita lançada e já paga; o que passar disso vira crédito
                 $enc = round(min($dif, max(0, (float) ($d['encargos'] ?? $dif))), 2);
                 if ($enc > 0) {
-                    $m = Ordens::lancar(['tipo' => 'debito', 'cliente_id' => $cliente->id, 'valor' => $enc, 'descricao' => 'Multa e juros do boleto',
+                    $m = Ordens::lancar(['tipo' => 'debito', 'cliente_id' => $cliente->id, 'valor' => $enc, 'descricao' => Resultado::MULTA_JUROS,
                         'data' => $recebido->toDateString(), 'vencimento' => $recebido->toDateString(), 'situacao' => 'paga', 'pago_em' => $recebido,
                         'pagamento_origem_id' => $pagamento->id, 'origem' => $pagamento->origem]);
                     PagamentoItem::create(['pagamento_id' => $pagamento->id, 'ordem_id' => $m->id, 'valor' => $enc]);
