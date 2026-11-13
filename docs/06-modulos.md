@@ -17,7 +17,7 @@ Os quatro módulos previstos entram já no sistema novo, sobre o modelo de dados
 - A tela de baixa parcial (escolher o que foi pago) que já existe passa a valer para todos os caminhos.
 - Relatório de recebimentos por forma de pagamento e por caixa.
 
-**Régua de cobrança (com o WhatsApp, etapa 8)**
+**Régua de cobrança (com o WhatsApp, etapa 7)**
 
 - Sequência de avisos ligada ao vencimento; padrão inicial: 3 dias antes, no dia, 3 e 10 dias depois. Dias e textos configuráveis; cada etapa liga/desliga.
 - Para sozinha quando o cliente paga; registra cada aviso (quando, para quem, canal); clientes marcados como "não recebe avisos".

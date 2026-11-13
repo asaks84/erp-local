@@ -9,7 +9,7 @@ Um servidor Laravel concentra gestão, regras e API; o PDV é um app leve no cel
 | Servidor | Laravel (PHP 8.3+), MySQL | Roda na hospedagem compartilhada; migração curta a partir do código atual |
 | Telas da gestão | Inertia + React + Bootstrap 5.3 (React-Bootstrap), com as cores, fontes e cantos do visual atual e tema escuro nativo | Telas em JavaScript, que o Cauê acompanha; servidor e regras em PHP, sem API separada para as telas |
 | API do PDV | Laravel Sanctum (um token por aparelho) | Cada celular autenticado e revogável |
-| PDV | PWA no navegador do celular, online primeiro | Instala como app, sem loja; impressora Bluetooth pelo navegador |
+| PDV | App React separado (sem Inertia), online primeiro: PWA agora, empacotado com Capacitor para a Play Store depois | O navegador só imprime em impressora Bluetooth BLE; Bluetooth clássico (a maioria das térmicas) e impressora de rede exigem o app (ver [07-pdv.md](07-pdv.md)) |
 | Filas e agendas | Fila no banco + cron da hospedagem (`schedule:run` a cada minuto) | Mensalidades, WhatsApp e conciliação sem servidor dedicado |
 | Arquivos | Disco configurável (local agora, nuvem depois) | Holerites e comprovantes mudam de lugar sem mexer no código |
 | Hospedagem | Hostinger compartilhada para o Local; VPS ou nuvem no primeiro cliente pagante | Nada guardado no servidor além do banco e do disco configurado |
