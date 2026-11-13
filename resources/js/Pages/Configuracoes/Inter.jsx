@@ -52,15 +52,10 @@ function Regras({ regras }) {
         <form className="card mb-4" onSubmit={(e) => { e.preventDefault(); form.put('/configuracoes/inter/regras', { preserveScroll: true }) }}>
             <div className="card-header">Regras do boleto</div>
             <div className="card-body">
-                <p className="small text-muted">Valem para os boletos gerados daqui em diante. O Inter calcula e cobra; quando o boleto é pago, a multa e os juros entram como receita e o desconto como desconto.</p>
+                <p className="small text-muted">Valem para os boletos gerados daqui em diante. O Inter calcula e cobra; quando o boleto é pago, a multa e os juros entram como receita e o desconto como desconto. O desconto vale só para as mensalidades do mês, até o vencimento do cliente; o boleto vence alguns dias depois (prazo em Configurações gerais › Cobrança).</p>
                 <Regra nome="multa" rotulo="Multa por atraso" form={form} ajuda="Para pessoa física, o Código de Defesa do Consumidor limita a 2%." />
                 <Regra nome="juros" rotulo="Juros por atraso" form={form} />
-                <Regra nome="desconto" rotulo="Desconto por pagar antes" form={form} />
-                {form.data.boleto_desconto_tipo !== 'nenhum' && (
-                    <div className="row g-2">
-                        <div className="col-sm-6"><Campo rotulo="Vale até quantos dias antes do vencimento" type="number" min="0" max="60" value={form.data.boleto_desconto_dias} onChange={(e) => form.setData('boleto_desconto_dias', e.target.value)} erro={form.errors.boleto_desconto_dias} ajuda="0 = até o dia do vencimento." /></div>
-                    </div>
-                )}
+                <Regra nome="desconto" rotulo="Desconto de pontualidade (só mensalidades)" form={form} />
                 <div className="row g-2">
                     <div className="col-sm-6"><Campo rotulo="Baixa automática (dias depois do vencimento)" type="number" min="0" max="60" value={form.data.boleto_baixa_dias} onChange={(e) => form.setData('boleto_baixa_dias', e.target.value)} erro={form.errors.boleto_baixa_dias} ajuda="Depois disso o boleto não pode mais ser pago; a dívida continua no sistema e entra na próxima cobrança. Máximo 60." /></div>
                 </div>

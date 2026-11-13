@@ -6,6 +6,7 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 13/11/2026 | Desconto do boleto é de pontualidade e só sobre as mensalidades do mês (% da soma ou R$ por mensalidade; atrasada não ganha); vale até o vencimento do cliente. O boleto vence N dias depois (prazo em Configurações gerais › Cobrança); multa e juros só depois do vencimento do boleto | Mensalidade cheia com desconto para quem paga em dia; o boleto dá folga sem multa entre o vencimento do cliente e o do boleto |
 | 13/11/2026 | Resultado: "Multa e juros recebidos" em linha própria nos dois olhares, pela data do pagamento; "(−) Descontos dados" também no olhar pelo dinheiro (pela data do pagamento) | Multa e juros são receita do mês em que entram; desconto não deve aparecer como "outras receitas" negativas |
 | 13/11/2026 | Boleto pode sair sem as regras (multa, juros e desconto), escolhendo na hora de gerar; sai assim por padrão quando a cobrança tem a primeira mensalidade do contrato ou uma proporcional. Baixa automática continua sempre | O desconto de pontualidade (e multa/juros) não vale para a primeira cobrança proporcional |
 | 13/11/2026 | Banco Inter: boleto com Pix (API cobrança v3) gerado a partir da cobrança, opcional ao emitir; credenciais (client id/secret, certificado e chave) por empresa, criptografadas com a APP_KEY; ligar só depois de "Testar conexão" | Cobrança emitida é a base do boleto; credencial errada não chega a emitir; preparado para o SaaS |

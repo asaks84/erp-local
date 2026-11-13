@@ -24,12 +24,17 @@ class BoletoController extends Controller
             : 'Boleto gerado'.(! empty($b->regras['sem_regras']) ? ' sem multa, juros e desconto.' : '.'));
     }
 
-    public function atualizar(Boleto $boleto): RedirectResponse
+    public function atualizar(Request $request, Boleto $boleto): RedirectResponse
     {
+        // "silencioso": a tela consultando sozinha enquanto o boleto está em emissão (sem aviso a cada vez)
+        $silencioso = $request->boolean('silencioso');
         try {
             Boletos::atualizar($boleto);
         } catch (InterErro $e) {
-            return back()->with('erro', 'O Inter respondeu: '.$e->getMessage());
+            return $silencioso ? back() : back()->with('erro', 'O Inter respondeu: '.$e->getMessage());
+        }
+        if ($silencioso) {
+            return $boleto->situacao === 'em_processamento' ? back() : back()->with('sucesso', 'Boleto pronto.');
         }
 
         return back()->with('sucesso', 'Boleto atualizado: '.Boleto::SITUACOES[$boleto->situacao].'.');

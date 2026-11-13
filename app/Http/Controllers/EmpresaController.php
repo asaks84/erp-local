@@ -31,6 +31,7 @@ class EmpresaController extends Controller
                 'pausa_taxa_valor' => (float) $empresa->config('pausa_taxa_valor'),
             ],
             'cobranca_instrucoes' => $empresa->config('cobranca_instrucoes'),
+            'boleto_prazo_dias' => (int) ($empresa->configuracoes['boleto_prazo_dias'] ?? 0),
             'link_cadastro' => $empresa->codigo_publico ? url('/cadastro/'.$empresa->codigo_publico) : null,
             'unidades' => Unidade::orderBy('nome')->get(['id', 'nome', 'endereco', 'ativa']),
         ]);
@@ -79,13 +80,16 @@ class EmpresaController extends Controller
     /** texto impresso no pé da cobrança (chave Pix, conta, recado) */
     public function cobranca(Request $request): RedirectResponse
     {
-        $d = $request->validate(['cobranca_instrucoes' => ['nullable', 'string', 'max:500']]);
+        $d = $request->validate(['cobranca_instrucoes' => ['nullable', 'string', 'max:500'], 'boleto_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:30']]);
         $empresa = $this->empresa();
-        $empresa->configuracoes = array_merge($empresa->configuracoes ?? [], ['cobranca_instrucoes' => trim((string) ($d['cobranca_instrucoes'] ?? ''))]);
+        $empresa->configuracoes = array_merge($empresa->configuracoes ?? [], [
+            'cobranca_instrucoes' => trim((string) ($d['cobranca_instrucoes'] ?? '')),
+            'boleto_prazo_dias' => (int) ($d['boleto_prazo_dias'] ?? 0),
+        ]);
         $empresa->save();
-        Atividades::registrar('empresa_config_alterada', 'instruções de pagamento da cobrança');
+        Atividades::registrar('empresa_config_alterada', 'cobrança: instruções de pagamento e prazo do boleto ('.(int) ($d['boleto_prazo_dias'] ?? 0).' dia(s))');
 
-        return back()->with('sucesso', 'Instruções da cobrança salvas.');
+        return back()->with('sucesso', 'Configurações da cobrança salvas.');
     }
 
     /** cria (ou troca) o código do link público de cadastro; trocar invalida o QR Code antigo */

@@ -8,7 +8,7 @@ import { moeda } from '../lib/formato'
 export const TIPOS = {
     multa: [['nenhuma', 'Sem multa'], ['percentual', 'Percentual (%)'], ['valor', 'Valor fixo (R$)']],
     juros: [['nenhum', 'Sem juros'], ['percentual_mes', 'Percentual ao mês (%)'], ['valor_dia', 'Valor por dia (R$)']],
-    desconto: [['nenhum', 'Sem desconto'], ['percentual', 'Percentual (%)'], ['valor', 'Valor fixo (R$)']],
+    desconto: [['nenhum', 'Sem desconto'], ['percentual', 'Percentual da mensalidade (%)'], ['valor', 'Valor fixo por mensalidade (R$)']],
 }
 
 export function Regra({ nome, rotulo, form, ajuda }) {
@@ -41,7 +41,7 @@ export function textoRegra(grupo, r) {
     if (grupo === 'desconto') {
         if (r.boleto_desconto_tipo === 'nenhum') return 'Sem desconto'
         const v = r.boleto_desconto_tipo === 'percentual' ? `${num(r.boleto_desconto_valor)}%` : moeda(r.boleto_desconto_valor)
-        return `Desconto ${v} ${Number(r.boleto_desconto_dias) ? `até ${r.boleto_desconto_dias} dia(s) antes` : 'até o vencimento'}`
+        return `Desconto ${v} por mensalidade paga até o vencimento`
     }
     return `Baixa ${r.boleto_baixa_dias} dia(s) após o vencimento`
 }

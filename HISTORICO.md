@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Desconto de pontualidade só nas mensalidades e prazo do boleto
+
+- **Prazo do boleto** em Configurações gerais › Cobrança: quantos dias depois do vencimento do cliente o boleto vence (ex.: mensalidade dia 5, boleto dia 10 = 5; 0 a 30, padrão 0).
+- **Desconto de pontualidade:** vale até o vencimento do cliente (o boleto vence depois, pelo prazo); multa e juros só depois do vencimento do boleto. O ERP calcula o valor e manda ao Inter em reais: % sobre a soma das mensalidades do mês, ou R$ fixo por mensalidade do mês. Lavagens, estadias, débitos e mensalidade atrasada (saldo anterior) não ganham desconto. Cobrança sem mensalidade do mês: boleto sem desconto. Saiu o campo "vale até quantos dias antes do vencimento".
+- **Boleto em emissão:** a tela da cobrança consulta o Inter a cada 5 segundos por até 2 minutos ("Aguardando o banco…") e mostra o boleto quando fica pronto, sem clicar em Atualizar.
+- **174 testes automáticos.**
+- Arquivos: `app/Servicos/Inter/Boletos.php`, `app/Http/Controllers/BoletoController.php`, `EmpresaController.php`, `resources/js/Pages/Empresa/Edit.jsx`, `resources/js/Pages/Configuracoes/Inter.jsx`, `resources/js/Components/BoletoCobranca.jsx`, `RegrasBoleto.jsx`, `RegrasBoletoCliente.jsx`, `tests/Feature/InterTest.php`, docs 06, 12 e 13.
+
 ## 13/11/2026 — Resultado: multa e juros e descontos em linhas próprias
 
 - **Multa e juros recebidos** (boleto pago com atraso) ganharam linha própria no Resultado, nos dois olhares (por referência e pelo dinheiro), pela data do pagamento. Antes, no olhar por referência, não entravam.

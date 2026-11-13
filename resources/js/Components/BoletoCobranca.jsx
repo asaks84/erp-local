@@ -14,11 +14,13 @@ function Copiar({ texto, rotulo }) {
     return <button type="button" className="btn btn-sm btn-outline-secondary text-nowrap" onClick={copiar}>{ok ? 'Copiado' : rotulo}</button>
 }
 
-function Ativo({ b }) {
+function Ativo({ b, esgotou }) {
     const [qr, setQr] = useState(null)
     useEffect(() => { if (b.pix_copia_cola) QRCode.toDataURL(b.pix_copia_cola, { width: 360, margin: 1 }).then(setQr) }, [b.pix_copia_cola])
     if (b.situacao === 'em_processamento' && !b.linha_digitavel) {
-        return <p className="mb-0 small text-muted">O Inter está gerando o boleto. Clique em Atualizar em alguns segundos.</p>
+        return esgotou
+            ? <p className="mb-0 small text-muted">O Inter ainda não devolveu o boleto. Clique em Atualizar daqui a pouco (a consulta automática também tenta a cada 10 minutos).</p>
+            : <p className="mb-0 small text-muted"><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />Aguardando o banco… a tela atualiza sozinha.</p>
     }
     return (
         <div className="row g-3 align-items-center">
@@ -57,6 +59,16 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
     const atual = boletos.find((b) => b.ativo) || null
     const anteriores = boletos.filter((b) => b !== atual)
     const podeGerar = inter && !atual && ['aberta', 'parcial'].includes(cobranca.situacao) && emAberto >= 2.5
+    // em emissão: consulta o Inter a cada 5 s, por até 2 minutos, sem precisar clicar em Atualizar
+    const esperando = atual?.situacao === 'em_processamento'
+    const [tentativas, setTentativas] = useState(0)
+    useEffect(() => {
+        if (!esperando || tentativas >= 24) return
+        const t = setTimeout(() => {
+            router.post(`/boletos/${atual.id}/atualizar`, { silencioso: true }, { preserveScroll: true, preserveState: true, onFinish: () => setTentativas((n) => n + 1) })
+        }, 5000)
+        return () => clearTimeout(t)
+    }, [esperando, tentativas, atual?.id])
     const acao = (url, dados = {}) => { setOcupado(true); router.post(url, dados, { preserveScroll: true, onFinish: () => setOcupado(false) }) }
 
     if (!inter && boletos.length === 0) return null
@@ -74,7 +86,7 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                 {atual && (
                     <>
                         <p className="small text-muted">{moeda(atual.valor)} · vence {fData(atual.vencimento)} · nº {atual.seu_numero}{atual.sem_regras && ' · sem multa, juros e desconto'}{atual.consultado_em && ` · consultado ${dataHora(atual.consultado_em)}`}</p>
-                        <Ativo b={atual} />
+                        <Ativo b={atual} esgotou={tentativas >= 24} />
                     </>
                 )}
                 {!atual && podeGerar && faltaCadastro.length > 0 && (

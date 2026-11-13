@@ -100,7 +100,7 @@ class InterTest extends TestCase
     public function test_emite_boleto_com_regras_e_mensagem(): void
     {
         $this->a->empresa->update(['configuracoes' => ['boleto_multa_tipo' => 'percentual', 'boleto_multa_valor' => 2, 'boleto_juros_tipo' => 'percentual_mes',
-            'boleto_juros_valor' => 1, 'boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10, 'boleto_desconto_dias' => 5, 'boleto_baixa_dias' => 15,
+            'boleto_juros_valor' => 1, 'boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10, 'boleto_baixa_dias' => 15, 'boleto_prazo_dias' => 5,
             'cobranca_instrucoes' => 'Pix: chave do estacionamento']]);
         $estado = ['situacao' => 'A_RECEBER'];
         $this->fakeInter($estado);
@@ -108,7 +108,7 @@ class InterTest extends TestCase
 
         $e = $estado['emitido'];
         $this->assertSame(200.0, (float) $e['valorNominal']);
-        $this->assertSame('2026-11-20', $e['dataVencimento']);
+        $this->assertSame('2026-11-25', $e['dataVencimento']); // 5 dias depois do vencimento do cliente
         $this->assertSame(15, $e['numDiasAgenda']);
         $this->assertSame(['codigo' => 'PERCENTUAL', 'taxa' => 2.0], $e['multa']);
         $this->assertSame(['codigo' => 'TAXAMENSAL', 'taxa' => 1.0], $e['mora']);
@@ -326,7 +326,7 @@ class InterTest extends TestCase
         $todos = ['particular' => ['multa' => true, 'juros' => true, 'desconto' => true, 'baixa' => true]];
         $this->actingAs($this->a->operador)->put('/clientes/'.$this->x->cliente->id.'/regras-boleto', $base + $todos)->assertForbidden();
         $this->actingAs($this->a->admin)->put('/clientes/'.$this->x->cliente->id.'/regras-boleto', $base + $todos)->assertSessionHasNoErrors();
-        $this->assertCount(8, $this->x->cliente->refresh()->regras_boleto);
+        $this->assertCount(7, $this->x->cliente->refresh()->regras_boleto);
 
         // a empresa muda os juros depois: o cliente com regras específicas não muda
         $this->a->empresa->update(['configuracoes' => array_merge($this->a->empresa->configuracoes, ['boleto_juros_valor' => 2])]);
@@ -335,7 +335,7 @@ class InterTest extends TestCase
         Boletos::emitir($this->cobranca());
         $e = $estado['emitido'];
         $this->assertArrayNotHasKey('multa', $e);
-        $this->assertSame(['codigo' => 'PERCENTUALDATAINFORMADA', 'taxa' => 5.0, 'quantidadeDias' => 0], $e['desconto']);
+        $this->assertSame(['codigo' => 'VALORFIXODATAINFORMADA', 'valor' => 10.0, 'quantidadeDias' => 0], $e['desconto']); // 5% de 200
         $this->assertSame(['codigo' => 'TAXAMENSAL', 'taxa' => 1.0], $e['mora']);
 
         $this->actingAs($this->a->admin)->get('/clientes/'.$this->x->cliente->id)->assertInertia(fn ($p) => $p->where('cliente.regras_boleto.boleto_multa_tipo', 'nenhuma')->where('regras_boleto_empresa.boleto_multa_tipo', 'percentual'));
@@ -367,5 +367,37 @@ class InterTest extends TestCase
         $estado['situacao'] = 'A_RECEBER';
         $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true])->assertSessionHasNoErrors();
         $this->assertSame(['codigo' => 'PERCENTUAL', 'taxa' => 2.0], $estado['emitido']['multa']);
+    }
+
+    public function test_desconto_de_pontualidade_so_nas_mensalidades_do_mes(): void
+    {
+        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'percentual', 'boleto_desconto_valor' => 10, 'boleto_prazo_dias' => 5]]);
+        $estado = ['situacao' => 'A_RECEBER'];
+        $this->fakeInter($estado);
+        $cli = $this->x->cliente->id;
+        // mensalidade atrasada (saldo anterior), lavagem e a mensalidade do mês
+        Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $cli, 'valor' => 250, 'descricao' => 'Mensalidade', 'data' => '2026-10-01', 'vencimento' => '2026-10-05', 'competencia' => '2026-10']);
+        Ordens::lancar(['tipo' => 'debito', 'cliente_id' => $cli, 'valor' => 50, 'descricao' => 'Lavagem', 'data' => '2026-11-10', 'vencimento' => '2026-11-10']);
+        Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $cli, 'valor' => 250, 'descricao' => 'Mensalidade', 'data' => '2026-11-01', 'vencimento' => '2026-11-20', 'competencia' => '2026-11']);
+        $cob = Cobrancas::emitir($this->x->cliente, '2026-11', '2026-11-20');
+        $b = Boletos::emitir($cob, null, true);
+
+        $e = $estado['emitido'];
+        $this->assertSame(550.0, (float) $e['valorNominal']);
+        $this->assertSame('2026-11-25', $e['dataVencimento']);
+        // 10% só da mensalidade do mês (250), válido até o dia 20 = 5 dias antes do vencimento do boleto
+        $this->assertSame(['codigo' => 'VALORFIXODATAINFORMADA', 'valor' => 25.0, 'quantidadeDias' => 5], $e['desconto']);
+        $this->assertSame('2026-11-25', $b->vencimento->toDateString());
+
+        // R$ fixo: uma vez por mensalidade do mês
+        Boletos::cancelar($b, 'teste');
+        $estado['situacao'] = 'A_RECEBER';
+        $this->a->empresa->update(['configuracoes' => array_merge($this->a->empresa->configuracoes, ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 30])]);
+        Boletos::emitir($cob->refresh(), null, true);
+        $this->assertSame(30.0, $estado['emitido']['desconto']['valor']);
+
+        // configuração geral: prazo do boleto
+        $this->actingAs($this->a->admin)->put('/empresa/cobranca', ['cobranca_instrucoes' => 'Pix', 'boleto_prazo_dias' => 3])->assertSessionHasNoErrors();
+        $this->assertSame(3, Boletos::prazo($this->a->empresa->refresh()));
     }
 }

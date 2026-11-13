@@ -33,7 +33,7 @@ class Boletos
         'boleto_juros_valor' => 0,
         'boleto_desconto_tipo' => 'nenhum',    // nenhum | percentual | valor
         'boleto_desconto_valor' => 0,
-        'boleto_desconto_dias' => 0,           // até quantos dias antes do vencimento vale o desconto (0 = até o vencimento)
+        'boleto_desconto_dias' => 0,           // (não usado: o desconto vale até o vencimento da mensalidade)
         'boleto_baixa_dias' => 30,             // dias depois do vencimento para o Inter baixar o boleto (0 a 60)
     ];
 
@@ -46,7 +46,7 @@ class Boletos
     public const GRUPOS = [
         'multa' => ['boleto_multa_tipo', 'boleto_multa_valor'],
         'juros' => ['boleto_juros_tipo', 'boleto_juros_valor'],
-        'desconto' => ['boleto_desconto_tipo', 'boleto_desconto_valor', 'boleto_desconto_dias'],
+        'desconto' => ['boleto_desconto_tipo', 'boleto_desconto_valor'],
         'baixa' => ['boleto_baixa_dias'],
     ];
 
@@ -94,6 +94,35 @@ class Boletos
     public static function aplicarRegrasSugerido(Cobranca $cob): bool
     {
         return ! self::temPrimeiraMensalidade(OrdemServico::where('cobranca_id', $cob->id)->where('situacao', 'aberta')->get());
+    }
+
+    /** prazo do boleto: dias depois do vencimento da mensalidade (Configurações gerais › Cobrança) */
+    public static function prazo(?Empresa $empresa = null): int
+    {
+        return max(0, min(30, (int) (($empresa ?? Empresa::atual())->configuracoes['boleto_prazo_dias'] ?? 0)));
+    }
+
+    /**
+     * Desconto de pontualidade: só sobre as mensalidades da cobrança que ainda não venceram
+     * (mensalidade atrasada trazida como saldo anterior não ganha); % sobre a soma delas ou
+     * R$ fixo por mensalidade. Vale até o vencimento da cobrança (o dia combinado com o cliente).
+     */
+    public static function descontoPontualidade(Cobranca $cob, array $regras): float
+    {
+        $tipo = $regras['boleto_desconto_tipo'] ?? 'nenhum';
+        $valor = (float) ($regras['boleto_desconto_valor'] ?? 0);
+        if ($tipo === 'nenhum' || $valor <= 0 || $cob->vencimento->isBefore(today())) {
+            return 0.0;
+        }
+        $mens = OrdemServico::abertas()->where('cobranca_id', $cob->id)->where('tipo', 'mensalidade')
+            ->where(fn ($q) => $q->whereNull('vencimento')->orWhere('vencimento', '>=', today()->toDateString()))->get(['valor']);
+        if ($mens->isEmpty()) {
+            return 0.0;
+        }
+        $base = (float) $mens->sum('valor');
+        $d = $tipo === 'percentual' ? $base * min($valor, 100) / 100 : $valor * $mens->count();
+
+        return round(min($d, $base), 2);
     }
 
     /** regras sem multa, juros e desconto (a baixa automática continua) */
@@ -184,11 +213,10 @@ class Boletos
         } elseif ($regras['boleto_juros_tipo'] === 'valor_dia' && $v('boleto_juros_valor') > 0) {
             $dados['mora'] = ['codigo' => 'VALORDIA', 'valor' => $v('boleto_juros_valor')];
         }
-        $dias = max(0, (int) $regras['boleto_desconto_dias']);
-        if ($regras['boleto_desconto_tipo'] === 'percentual' && $v('boleto_desconto_valor') > 0) {
-            $dados['desconto'] = ['codigo' => 'PERCENTUALDATAINFORMADA', 'taxa' => $v('boleto_desconto_valor'), 'quantidadeDias' => $dias];
-        } elseif ($regras['boleto_desconto_tipo'] === 'valor' && $v('boleto_desconto_valor') > 0) {
-            $dados['desconto'] = ['codigo' => 'VALORFIXODATAINFORMADA', 'valor' => $v('boleto_desconto_valor'), 'quantidadeDias' => $dias];
+        // desconto de pontualidade: valor já calculado só sobre as mensalidades (descontoPontualidade),
+        // válido até o vencimento da mensalidade = N dias antes do vencimento do boleto
+        if (($regras['desconto_calculado'] ?? 0) > 0) {
+            $dados['desconto'] = ['codigo' => 'VALORFIXODATAINFORMADA', 'valor' => round((float) $regras['desconto_calculado'], 2), 'quantidadeDias' => max(0, (int) ($regras['desconto_ate_dias'] ?? 0))];
         }
 
         // mensagem do boleto: número da cobrança + instruções da empresa (até 5 linhas de 78)
@@ -227,22 +255,27 @@ class Boletos
         if ($valor < 2.5) {
             self::erro("Cobrança {$cob->numero}: o Inter só emite boleto a partir de R$ 2,50.");
         }
-        if ($cob->vencimento->isBefore(today())) {
-            self::erro("Cobrança {$cob->numero}: o vencimento ({$cob->vencimento->format('d/m/Y')}) já passou. Emita uma cobrança nova com vencimento futuro.");
-        }
-
         $empresa = Empresa::atual();
+        // o boleto vence alguns dias depois do vencimento combinado com o cliente (prazo da empresa)
+        $prazo = self::prazo($empresa);
+        $vencimento = $cob->vencimento->copy()->addDays($prazo);
+        if ($vencimento->isBefore(today())) {
+            self::erro("Cobrança {$cob->numero}: o vencimento do boleto ({$vencimento->format('d/m/Y')}) já passou. Emita uma cobrança nova com vencimento futuro.");
+        }
         $regras = self::regras($empresa, $cob->cliente);
         if (! ($aplicarRegras ?? self::aplicarRegrasSugerido($cob))) {
             $regras = self::semRegras($regras);
         }
+        $regras['desconto_calculado'] = self::descontoPontualidade($cob, $regras);
+        $regras['desconto_ate_dias'] = $prazo;
+        $regras['prazo_dias'] = $prazo;
         $seq = Boleto::where('cobranca_id', $cob->id)->count() + 1;
         $b = Boleto::create([
             'cobranca_id' => $cob->id,
             'cliente_id' => $cob->cliente_id,
             'seu_numero' => mb_substr($cob->numero.'-'.$seq, 0, 15),
             'valor' => $valor,
-            'vencimento' => $cob->vencimento,
+            'vencimento' => $vencimento,
             'regras' => $regras,
             'criado_por' => Auth::id(),
         ]);
