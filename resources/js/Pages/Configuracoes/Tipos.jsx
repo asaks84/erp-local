@@ -42,7 +42,7 @@ export default function Tipos({ tipos }) {
     return (
         <div className="pagina">
             <AbasConfiguracoes />
-            <div style={{ maxWidth: 900 }}>
+            <div>
             <TituloPagina titulo="Tipos de veículo" descricao="Cada tipo tem seu preço nas lavagens e serviços e sua tabela de estadia. Tipo já usado não é excluído: desative." />
             <div className="card">
                 <div className="table-responsive">

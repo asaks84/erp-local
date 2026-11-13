@@ -32,14 +32,17 @@ export default function NivelForm({ nivel, catalogo }) {
             <TituloPagina titulo={novo ? 'Novo nível de acesso' : `Nível: ${nivel.nome}`} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
+                    <div className="row"><div className="col-md-6 col-xl-4">
                     <Campo rotulo="Nome do nível" value={data.nome} erro={errors.nome} maxLength={40}
                         onChange={(e) => setData('nome', e.target.value)} />
+                    </div></div>
 
                     {fixo ? (
                         <div className="alert aviso-neutro mb-0">Este nível tem acesso total ao sistema e não pode ser limitado nem excluído.</div>
                     ) : (
-                        catalogo.map((g) => (
-                            <fieldset key={g.grupo} className="mb-3">
+                        <div className="row g-3">
+                        {catalogo.map((g) => (
+                            <fieldset key={g.grupo} className="col-md-6 col-xl-4 mb-2">
                                 <legend className="fs-6 fw-semibold text-uppercase text-muted small mb-2">{g.grupo}</legend>
                                 {g.itens.map((p) => (
                                     <div className="form-check mb-2" key={p.chave}>
@@ -53,7 +56,8 @@ export default function NivelForm({ nivel, catalogo }) {
                                     </div>
                                 ))}
                             </fieldset>
-                        ))
+                        ))}
+                        </div>
                     )}
                     {errors.permissoes && <div className="text-danger small">{errors.permissoes}</div>}
                 </div>

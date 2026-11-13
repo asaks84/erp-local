@@ -156,7 +156,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 // larguras: página (1200px) e formulário (640px)
 .pagina { max-width: 1200px; }
-.estreito { max-width: 640px; }
+.estreito { } /* largura padrão: a mesma das outras telas; os campos se distribuem pelo grid do Bootstrap */
 
 .titulo-pagina {
 	display: flex; flex-wrap: wrap; align-items: center; gap: 12px;

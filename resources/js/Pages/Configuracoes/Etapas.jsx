@@ -49,7 +49,7 @@ export default function Etapas({ etapas }) {
     return (
         <div className="pagina">
             <AbasConfiguracoes />
-            <div style={{ maxWidth: 760 }}>
+            <div>
                 <TituloPagina titulo="Etapas da lavagem" descricao="O que é registrado no quadro de lavagens, em ordem. Cada mudança de etapa fica no histórico com quem registrou. Desative o que você não quer registrar." />
                 <div className="card">
                     <ul className="list-group list-group-flush">

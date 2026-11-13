@@ -28,34 +28,42 @@ export default function UsuarioForm({ usuario, niveis, unidades }) {
             <TituloPagina titulo={novo ? 'Novo usuário' : 'Editar usuário'} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
+                    <div className="row g-2">
+                        <div className="col-md-6 col-xl-4">
                     <Campo rotulo="Nome completo" value={data.nome} erro={errors.nome} maxLength={80}
                         onChange={(e) => setData('nome', e.target.value)} />
+                        </div>
+                        <div className="col-md-6 col-xl-4">
                     <Campo rotulo="Login" value={data.login} erro={errors.login} maxLength={40}
                         autoCapitalize="none" autoComplete="off" ajuda="Usado para entrar no sistema. Sem espaços."
                         onChange={(e) => setData('login', e.target.value)} />
-                    <div className="row g-2">
-                        <div className="col-sm-6">
-                            <Campo rotulo={novo ? 'Senha' : 'Nova senha (vazio = não muda)'} type="password" value={data.senha}
-                                erro={errors.senha} autoComplete="new-password"
-                                onChange={(e) => setData('senha', e.target.value)} />
                         </div>
-                        <div className="col-sm-6">
-                            <Campo rotulo="Repita a senha" type="password" value={data.senha_confirmation}
-                                autoComplete="new-password"
-                                onChange={(e) => setData('senha_confirmation', e.target.value)} />
-                        </div>
-                    </div>
+                        <div className="col-md-6 col-xl-4">
                     <Campo as="select" rotulo="Nível de acesso" value={data.nivel_id} erro={errors.nivel_id}
                         disabled={eu} ajuda={eu ? 'Você não pode mudar o seu próprio nível.' : undefined}
                         onChange={(e) => setData('nivel_id', e.target.value)}>
                         <option value="">Escolha…</option>
                         {niveis.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
                     </Campo>
+                        </div>
+                        <div className="col-md-6 col-xl-4">
+                            <Campo rotulo={novo ? 'Senha' : 'Nova senha (vazio = não muda)'} type="password" value={data.senha}
+                                erro={errors.senha} autoComplete="new-password"
+                                onChange={(e) => setData('senha', e.target.value)} />
+                        </div>
+                        <div className="col-md-6 col-xl-4">
+                            <Campo rotulo="Repita a senha" type="password" value={data.senha_confirmation}
+                                autoComplete="new-password"
+                                onChange={(e) => setData('senha_confirmation', e.target.value)} />
+                        </div>
+                        <div className="col-md-6 col-xl-4">
                     <Campo as="select" rotulo="Unidade" value={data.unidade_id} erro={errors.unidade_id}
                         onChange={(e) => setData('unidade_id', e.target.value)}>
                         <option value="">Todas as unidades</option>
                         {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
                     </Campo>
+                        </div>
+                    </div>
                     <div className="form-check form-switch mb-2">
                         <input className="form-check-input" type="checkbox" role="switch" id="operador_caixa"
                             checked={data.operador_caixa} onChange={(e) => setData('operador_caixa', e.target.checked)} />

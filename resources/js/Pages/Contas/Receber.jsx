@@ -55,7 +55,9 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
         <div className="estreito">
             <TituloPagina titulo="Receber" descricao={`Cliente: ${cliente.nome}`} />
             <form onSubmit={enviar} noValidate>
-                <div className="card mb-3">
+                <div className="row g-4 mb-3">
+                <div className="col-lg-6">
+                <div className="card h-100">
                     <div className="card-header">Contas pagas</div>
                     <ul className="list-group list-group-flush">
                         {contas.map((o) => (
@@ -82,8 +84,10 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
                         <span>Total marcado</span><span>{moeda(total)}</span>
                     </div>
                 </div>
+                </div>
 
-                <div className="card mb-3">
+                <div className="col-lg-6">
+                <div className="card h-100">
                     <div className="card-header">Pagamento</div>
                     <div className="card-body">
                         <div className="row g-2">
@@ -134,6 +138,8 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
                         )}
                         <Campo rotulo="Observação (opcional)" value={data.observacao} onChange={(e) => setData('observacao', e.target.value)} maxLength={255} className="mb-0" />
                     </div>
+                </div>
+                </div>
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">

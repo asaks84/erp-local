@@ -42,6 +42,8 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
             <TituloPagina titulo="Nova venda" descricao="Lavagem ou serviço, com o preço da tabela pelo tipo do veículo." />
             <form className="card" onSubmit={(e) => { e.preventDefault(); post('/lavagens') }} noValidate>
                 <div className="card-body">
+                    <div className="row g-4">
+                    <div className="col-lg-6">
                     <Campo rotulo="Placa" value={mPlaca(data.placa)} onChange={(e) => setData('placa', e.target.value)} erro={errors.placa} autoFocus autoComplete="off" style={{ textTransform: 'uppercase' }} />
                     {veiculo && <p className="small mt-n2">{veiculo.descricao || veiculo.tipo} · {veiculo.cliente || 'sem cliente'} {veiculo.mensalista && <span className="selo selo-marca ms-1">Mensalista</span>}</p>}
                     {info && !veiculo && (
@@ -85,6 +87,8 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
                             {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.resumo}</option>)}
                         </Campo>
                     )}
+                    </div>
+                    <div className="col-lg-6">
                     {servico && tipoId && <p className="fw-semibold fs-5">Total: {moeda(total)}{convenio && <span className="small text-muted fw-normal"> · {convenio.resumo} (aplicado ao salvar)</span>}</p>}
 
                     <div className="btn-group w-100 mb-3 flex-wrap" role="group" aria-label="Quando paga">
@@ -109,6 +113,8 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
                             )}
                         </div>
                     )}
+                    </div>
+                    </div>
                 </div>
                 <div className="card-footer d-flex gap-2 justify-content-end">
                     <Link href="/lavagens" className="btn btn-outline-secondary">Cancelar</Link>

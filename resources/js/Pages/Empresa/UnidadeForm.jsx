@@ -23,12 +23,14 @@ export default function UnidadeForm({ unidade }) {
             <TituloPagina titulo={nova ? 'Nova unidade' : `Unidade: ${unidade.nome}`} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
-                    <Campo rotulo="Nome da unidade" value={data.nome} erro={errors.nome} maxLength={60}
-                        onChange={(e) => setData('nome', e.target.value)} />
-                    <Campo rotulo="Endereço" value={data.endereco} erro={errors.endereco} maxLength={160}
-                        onChange={(e) => setData('endereco', e.target.value)} />
-                    <Campo rotulo="Telefone" value={telefone(data.telefone)} erro={errors.telefone} inputMode="tel"
-                        onChange={(e) => setData('telefone', e.target.value)} />
+                    <div className="row g-2">
+                        <div className="col-md-6 col-xl-3"><Campo rotulo="Nome da unidade" value={data.nome} erro={errors.nome} maxLength={60}
+                            onChange={(e) => setData('nome', e.target.value)} /></div>
+                        <div className="col-md-6 col-xl-6"><Campo rotulo="Endereço" value={data.endereco} erro={errors.endereco} maxLength={160}
+                            onChange={(e) => setData('endereco', e.target.value)} /></div>
+                        <div className="col-md-6 col-xl-3"><Campo rotulo="Telefone" value={telefone(data.telefone)} erro={errors.telefone} inputMode="tel"
+                            onChange={(e) => setData('telefone', e.target.value)} /></div>
+                    </div>
                     <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" role="switch" id="ativa"
                             checked={data.ativa} onChange={(e) => setData('ativa', e.target.checked)} />

@@ -52,14 +52,20 @@ export default function Lancar({ cliente, veiculos, servicos, precos, tipo: tipo
                     {data.tipo === 'servico' && (
                         <>
                             {veiculos.length === 0 && <div className="alert alert-warning">O cliente não tem veículo ativo. Cadastre o veículo antes de lançar uma lavagem.</div>}
+                            <div className="row g-2">
+                            <div className="col-md-6">
                             <Campo as="select" rotulo="Veículo" value={data.veiculo_id} onChange={(e) => setData('veiculo_id', e.target.value)} erro={errors.veiculo_id}>
                                 <option value="">Escolha</option>
                                 {veiculos.map((v) => <option key={v.id} value={v.id}>{v.rotulo}{v.tipo ? ` (${v.tipo})` : ''}</option>)}
                             </Campo>
+                            </div>
+                            <div className="col-md-6">
                             <Campo as="select" rotulo="Serviço" value={data.servico_id} onChange={(e) => setData((d) => ({ ...d, servico_id: e.target.value, adicionais: [], valor: '' }))} erro={errors.servico_id || errors.servico}>
                                 <option value="">Escolha</option>
                                 {servicos.map((s) => <option key={s.id} value={s.id}>{s.nome}{preco(s.id) !== null ? ` · ${s.preco_modo === 'ate' ? 'até ' : ''}${moeda(preco(s.id))}` : ''}</option>)}
                             </Campo>
+                            </div>
+                            </div>
                             {servico?.preco_modo === 'ate' && (
                                 <CampoValor rotulo={`Valor cobrado (até ${moeda(preco(servico.id))})`} value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} />
                             )}
@@ -81,14 +87,16 @@ export default function Lancar({ cliente, veiculos, servicos, precos, tipo: tipo
 
                     {data.tipo !== 'servico' && (
                         <>
-                            <CampoValor rotulo="Valor" value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} autoFocus />
-                            <Campo rotulo={data.tipo === 'estadia' ? 'Descrição (vazio = "Estadia avulsa")' : 'Descrição (opcional)'} value={data.descricao} onChange={(e) => setData('descricao', e.target.value)} erro={errors.descricao} maxLength={80} />
-                            {data.tipo !== 'estadia' && <Campo rotulo="Motivo" value={data.motivo} onChange={(e) => setData('motivo', e.target.value)} erro={errors.motivo} maxLength={200} />}
+                            <div className="row g-2">
+                                <div className="col-md-4 col-xl-3"><CampoValor rotulo="Valor" value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} autoFocus /></div>
+                                <div className="col-md-8 col-xl-4"><Campo rotulo={data.tipo === 'estadia' ? 'Descrição (vazio = "Estadia avulsa")' : 'Descrição (opcional)'} value={data.descricao} onChange={(e) => setData('descricao', e.target.value)} erro={errors.descricao} maxLength={80} /></div>
+                                {data.tipo !== 'estadia' && <div className="col-xl-5"><Campo rotulo="Motivo" value={data.motivo} onChange={(e) => setData('motivo', e.target.value)} erro={errors.motivo} maxLength={200} /></div>}
+                            </div>
                             {data.tipo === 'credito' && <p className="small text-muted">O crédito abate da próxima conta do cliente.</p>}
                         </>
                     )}
 
-                    <CampoData rotulo="Data" value={data.data} onChange={(v) => setData('data', v)} erro={errors.data} />
+                    <div className="row"><div className="col-md-4 col-xl-3"><CampoData rotulo="Data" value={data.data} onChange={(v) => setData('data', v)} erro={errors.data} /></div></div>
                 </div>
                 <div className="card-footer d-flex gap-2 justify-content-end">
                     <Link href={`/clientes/${cliente.id}`} className="btn btn-outline-secondary">Cancelar</Link>

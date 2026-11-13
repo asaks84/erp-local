@@ -31,10 +31,12 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
     return (
         <div className="pagina">
             <AbasConfiguracoes />
-            <div style={{ maxWidth: 900 }}>
+            <div>
             <TituloPagina titulo="Formas de pagamento" descricao="Como os clientes pagam, em que conta o dinheiro entra, a taxa cobrada e em quantos dias cai. Nada é apagado: desative o que não usa mais." />
 
-            <div className="card mb-4">
+            <div className="row g-4">
+            <div className="col-xl-8">
+            <div className="card">
                 <div className="card-header d-flex align-items-center">
                     <span className="flex-grow-1">Formas de pagamento</span>
                     <button type="button" className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" onClick={() => abrir('forma')}><Icone nome="mais" tamanho={16} /> Nova forma</button>
@@ -56,7 +58,9 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
                     </table>
                 </div>
             </div>
+            </div>
 
+            <div className="col-xl-4">
             <div className="card">
                 <div className="card-header d-flex align-items-center">
                     <span className="flex-grow-1">Contas (onde o dinheiro fica)</span>
@@ -70,6 +74,8 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
                         </li>
                     ))}
                 </ul>
+            </div>
+            </div>
             </div>
 
             <Janela aberta={janela?.tipo === 'forma'} titulo={janela?.item ? 'Editar forma de pagamento' : 'Nova forma de pagamento'} onFechar={() => setJanela(null)} onEnviar={enviar} ocupado={form.processing}>

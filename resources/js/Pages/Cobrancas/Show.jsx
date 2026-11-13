@@ -38,7 +38,7 @@ export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], i
     const form = useForm({ motivo: '' })
 
     return (
-        <div className="pagina" style={{ maxWidth: 900 }}>
+        <div className="pagina">
             <TituloPagina titulo={`Cobrança ${cobranca.numero}`} descricao={`${cliente.nome} · ${competencia(cobranca.competencia)}`}>
                 <a href={`/cobrancas/imprimir?ids[]=${cobranca.id}`} target="_blank" rel="noopener" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2"><Icone nome="impressora" tamanho={16} /> Imprimir</a>
                 {pode('contas_editar') && cobranca.situacao === 'aberta' && <button type="button" className="btn btn-outline-danger" onClick={() => setCancelar(true)}>Cancelar</button>}

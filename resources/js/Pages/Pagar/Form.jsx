@@ -53,16 +53,16 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
             <form className="card" onSubmit={salvar} noValidate>
                 {nova && <div className="card-body border-bottom bg-body-tertiary"><LerDocumento aoLer={preencher} /></div>}
                 <div className="card-body">
-                    <Campo rotulo="Descrição" value={data.descricao} onChange={(e) => setData('descricao', e.target.value)} erro={errors.descricao} maxLength={120} autoFocus={nova} placeholder="Ex.: Energia de novembro" />
                     <div className="row g-2">
-                        <div className="col-md-6">
+                        <div className="col-xl-6"><Campo rotulo="Descrição" value={data.descricao} onChange={(e) => setData('descricao', e.target.value)} erro={errors.descricao} maxLength={120} autoFocus={nova} placeholder="Ex.: Energia de novembro" /></div>
+                        <div className="col-md-6 col-xl-3">
                             <Campo as="select" rotulo="Fornecedor" value={data.fornecedor_id} onChange={(e) => escolherFornecedor(e.target.value)} erro={errors.fornecedor_id}>
                                 <option value="">Sem fornecedor</option>
                                 {fornecedores.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
                             </Campo>
                             <div className="form-text mt-n2 mb-2"><Link href="/fornecedores">Cadastrar fornecedor</Link></div>
                         </div>
-                        <div className="col-md-6">
+                        <div className="col-md-6 col-xl-3">
                             <Campo as="select" rotulo="Conta (plano de contas)" value={data.conta_id} onChange={(e) => setData('conta_id', e.target.value)} erro={errors.conta_id}>
                                 <option value="">Escolha</option>
                                 {contas.map((c) => <option key={c.id} value={c.id}>{c.rotulo}</option>)}
@@ -70,13 +70,13 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
                         </div>
                     </div>
                     <div className="row g-2">
-                        <div className="col-sm-4"><CampoValor rotulo={parcelas > 1 ? 'Valor total' : 'Valor'} value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} /></div>
-                        <div className="col-sm-4"><CampoData rotulo={parcelas > 1 ? '1º vencimento' : 'Vencimento'} value={data.vencimento} onChange={escolherVencimento} erro={errors.vencimento} /></div>
-                        <div className="col-sm-4"><CampoData mes rotulo="Referente ao mês" value={data.competencia} onChange={(v) => setData('competencia', v)} erro={errors.competencia} /></div>
+                        <div className="col-sm-4 col-xl-3"><CampoValor rotulo={parcelas > 1 ? 'Valor total' : 'Valor'} value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} /></div>
+                        <div className="col-sm-4 col-xl-3"><CampoData rotulo={parcelas > 1 ? '1º vencimento' : 'Vencimento'} value={data.vencimento} onChange={escolherVencimento} erro={errors.vencimento} /></div>
+                        <div className="col-sm-4 col-xl-3"><CampoData mes rotulo="Referente ao mês" value={data.competencia} onChange={(v) => setData('competencia', v)} erro={errors.competencia} /></div>
                     </div>
                     {nova && (
                         <div className="row g-2">
-                            <div className="col-sm-4">
+                            <div className="col-sm-4 col-xl-3">
                                 <Campo as="select" rotulo="Parcelas" value={data.parcelas} onChange={(e) => setData('parcelas', e.target.value)} erro={errors.parcelas}>
                                     {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>{i === 0 ? 'À vista' : `${i + 1}x`}</option>)}
                                 </Campo>
@@ -84,11 +84,15 @@ export default function PagarForm({ despesa, contas, fornecedores, formas, conta
                             {parcelas > 1 && Number(data.valor) > 0 && <div className="col-sm-8 d-flex align-items-center small text-muted mb-3">{parcelas}x de {moeda(Math.floor(Number(data.valor) / parcelas * 100) / 100)}, uma por mês a partir do 1º vencimento.</div>}
                         </div>
                     )}
-                    <Campo rotulo="Observação" value={data.observacao} onChange={(e) => setData('observacao', e.target.value)} erro={errors.observacao} maxLength={255} />
+                    <div className="row g-2">
+                    <div className="col-xl-6"><Campo rotulo="Observação" value={data.observacao} onChange={(e) => setData('observacao', e.target.value)} erro={errors.observacao} maxLength={255} /></div>
+                    <div className="col-xl-6">
                     {anexo && data.comprovante
                         ? <div className="mb-3 small">Anexado: <strong>{anexo}</strong> <button type="button" className="btn btn-link btn-sm p-0 ms-1" onClick={() => { setAnexo(null); setData('comprovante', null) }}>trocar</button>
                             {form.errors.comprovante && <div className="text-danger">{form.errors.comprovante}</div>}</div>
                         : <CampoArquivo form={form} rotulo={nova ? 'Boleto, nota ou comprovante (PDF ou foto, até 5 MB)' : 'Trocar o arquivo anexado (PDF ou foto, até 5 MB)'} />}
+                    </div>
+                    </div>
 
                     {nova && (
                         <>

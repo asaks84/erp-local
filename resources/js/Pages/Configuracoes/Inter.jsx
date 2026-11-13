@@ -21,7 +21,7 @@ function Credenciais({ i }) {
     const form = useForm({ ambiente: i.ambiente, conta_corrente: i.conta_corrente || '', client_id: '', client_secret: '', certificado: null, chave: null })
     const e = form.errors
     return (
-        <form className="card mb-4" onSubmit={(ev) => { ev.preventDefault(); form.post('/configuracoes/inter/credenciais', { preserveScroll: true, onSuccess: () => form.reset('client_id', 'client_secret', 'certificado', 'chave') }) }}>
+        <form className="card h-100" onSubmit={(ev) => { ev.preventDefault(); form.post('/configuracoes/inter/credenciais', { preserveScroll: true, onSuccess: () => form.reset('client_id', 'client_secret', 'certificado', 'chave') }) }}>
             <div className="card-header">Credenciais da integração</div>
             <div className="card-body">
                 <p className="small text-muted">No Internet Banking do Inter Empresas (computador), crie a integração com as permissões de <strong>emitir e cancelar boletos</strong> e <strong>consultar boletos</strong>. Baixe o arquivo que o Inter entrega, descompacte e envie aqui o certificado (.crt) e a chave (.key). Tudo fica guardado criptografado; ninguém consegue ver de novo pela tela.</p>
@@ -49,15 +49,16 @@ function Credenciais({ i }) {
 function Regras({ regras }) {
     const form = useForm(regras)
     return (
-        <form className="card mb-4" onSubmit={(e) => { e.preventDefault(); form.put('/configuracoes/inter/regras', { preserveScroll: true }) }}>
+        <form className="card h-100" onSubmit={(e) => { e.preventDefault(); form.put('/configuracoes/inter/regras', { preserveScroll: true }) }}>
             <div className="card-header">Regras do boleto</div>
             <div className="card-body">
-                <p className="small text-muted">Valem para os boletos gerados daqui em diante. O Inter calcula e cobra; quando o boleto é pago, a multa e os juros entram como receita e o desconto como desconto. O desconto vale só para as mensalidades do mês, até o vencimento do cliente; o boleto vence alguns dias depois (prazo em Configurações gerais › Cobrança).</p>
+                <p className="small text-muted">Valem para os boletos gerados daqui em diante. O Inter calcula e cobra; quando o boleto é pago, a multa e os juros entram como receita e o desconto como desconto. O desconto vale só para as mensalidades do mês, até o vencimento do cliente; o boleto vence alguns dias depois, pelo prazo abaixo; multa e juros só depois do vencimento do boleto.</p>
                 <Regra nome="multa" rotulo="Multa por atraso" form={form} ajuda="Para pessoa física, o Código de Defesa do Consumidor limita a 2%." />
                 <Regra nome="juros" rotulo="Juros por atraso" form={form} />
-                <Regra nome="desconto" rotulo="Desconto de pontualidade (só mensalidades)" form={form} />
+                <Regra nome="desconto" rotulo="Desconto de pontualidade" form={form} />
                 <div className="row g-2">
-                    <div className="col-sm-6"><Campo rotulo="Baixa automática (dias depois do vencimento)" type="number" min="0" max="60" value={form.data.boleto_baixa_dias} onChange={(e) => form.setData('boleto_baixa_dias', e.target.value)} erro={form.errors.boleto_baixa_dias} ajuda="Depois disso o boleto não pode mais ser pago; a dívida continua no sistema e entra na próxima cobrança. Máximo 60." /></div>
+                    <div className="col-sm-6"><Campo rotulo="Prazo do boleto (dias)" type="number" min="0" max="30" value={form.data.boleto_prazo_dias} onChange={(e) => form.setData('boleto_prazo_dias', e.target.value)} erro={form.errors.boleto_prazo_dias} ajuda="Quantos dias depois do vencimento do cliente o boleto vence. Ex.: cliente dia 5, boleto dia 10 = 5." /></div>
+                    <div className="col-sm-6"><Campo rotulo="Baixa automática (dias)" type="number" min="0" max="60" value={form.data.boleto_baixa_dias} onChange={(e) => form.setData('boleto_baixa_dias', e.target.value)} erro={form.errors.boleto_baixa_dias} ajuda="Dias depois do vencimento do boleto; depois disso ele não pode mais ser pago (a dívida continua no sistema). Máximo 60." /></div>
                 </div>
             </div>
             <div className="card-footer bg-transparent d-flex justify-content-end">
@@ -74,7 +75,7 @@ export default function Inter({ integracao: i, regras, boletos }) {
     return (
         <div className="pagina">
             <AbasConfiguracoes />
-            <div style={{ maxWidth: 820 }}>
+            <div>
                 <TituloPagina titulo="Banco Inter" descricao="Boleto com Pix gerado a partir da cobrança. O sistema consulta o Inter a cada 10 minutos: boleto pago dá baixa sozinho." />
                 <div className="card mb-4">
                     <div className="card-body d-flex flex-wrap align-items-center gap-3">
@@ -96,8 +97,10 @@ export default function Inter({ integracao: i, regras, boletos }) {
                     {i.ultimo_erro && <div className="card-footer bg-transparent small text-danger-emphasis">{i.ultimo_erro}</div>}
                     {vence !== null && vence <= 30 && <div className="card-footer bg-transparent small text-danger-emphasis">{vence < 0 ? 'O certificado venceu.' : `O certificado vence em ${vence} dia(s).`} Gere outro no Internet Banking do Inter e envie aqui.</div>}
                 </div>
-                <Credenciais i={i} />
-                <Regras regras={regras} />
+                <div className="row g-4">
+                    <div className="col-xl-6"><Credenciais i={i} /></div>
+                    <div className="col-xl-6"><Regras regras={regras} /></div>
+                </div>
             </div>
         </div>
     )

@@ -13,7 +13,7 @@ export default function ExtratoCliente({ cliente, filtros, anterior, linhas, sal
         if (x.de && x.ate) router.get(`/clientes/${cliente.id}/extrato`, x, { preserveState: true, replace: true })
     }
     return (
-        <div className="pagina extrato-conta" style={{ maxWidth: 1000 }}>
+        <div className="pagina extrato-conta">
             <TituloPagina titulo="Extrato da conta" descricao={`${cliente.nome} · cód. ${cliente.id}${cliente.documento ? ` · ${cliente.documento}` : ''}`}>
                 <button type="button" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2 nao-imprimir" onClick={() => window.print()}><Icone nome="impressora" tamanho={16} /> Imprimir</button>
                 <Link href={`/clientes/${cliente.id}`} className="btn btn-outline-secondary nao-imprimir">Voltar ao cliente</Link>

@@ -4,9 +4,17 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Telas com a mesma largura (grid do Bootstrap) e prazo do boleto na aba do Inter
+
+- **Prazo do boleto** saiu de Configurações gerais e foi para Configurações › Banco Inter, junto das regras (só faz sentido com o Inter ligado). Rótulos mais curtos: "Prazo do boleto (dias)" e "Baixa automática (dias)", lado a lado.
+- **Todas as telas com a largura do conteúdo.** Saíram as larguras fixas (formulários de 640 px, cobrança, extrato do cliente, tipos de veículo, etapas, plano de contas, formas de pagamento). Os campos se distribuem pelo grid do Bootstrap (`row`/`col-*`): em tela grande ficam lado a lado; no celular, um embaixo do outro.
+- Telas com mais de um quadro lado a lado: Banco Inter (credenciais | regras), Receber (contas | pagamento), Formas de pagamento (formas | contas), Nova venda, Primeira cobrança, Novo convênio e Serviço (dados | preços). Empresa e unidades: "Cobrança impressa" foi para a coluna da direita.
+- Formulários de cliente, veículo, mensalidade, usuário, unidade, nível (permissões em colunas), lançar, conta a pagar e extrato bancário reorganizados em colunas. O cadastro público (QR Code) continua estreito.
+- Arquivos: `resources/scss/app.scss`, `resources/js/Components/CamposCliente.jsx`, `CamposVeiculo.jsx`, `CamposMensalidade.jsx`, `RegrasBoletoCliente.jsx`, `resources/js/Pages/` (Clientes/Form e Extrato, Veiculos/Form, Pendentes/Revisar, Usuarios/Form, Empresa/UnidadeForm e Edit, Niveis/Form, Convenios/Form, Lavagens/Nova, Mensalidades/Primeira, Ordens/Lancar, Pagar/Form, Contas/Receber, Extrato/Index, Cobrancas/Show, Configuracoes/ServicoForm, Pagamentos, Tipos, Etapas, PlanoContas, Inter), `app/Http/Controllers/InterController.php`, `EmpresaController.php`, `tests/Feature/InterTest.php`.
+
 ## 13/11/2026 — Desconto de pontualidade só nas mensalidades e prazo do boleto
 
-- **Prazo do boleto** em Configurações gerais › Cobrança: quantos dias depois do vencimento do cliente o boleto vence (ex.: mensalidade dia 5, boleto dia 10 = 5; 0 a 30, padrão 0).
+- **Prazo do boleto** (depois movido para Configurações › Banco Inter): quantos dias depois do vencimento do cliente o boleto vence (ex.: mensalidade dia 5, boleto dia 10 = 5; 0 a 30, padrão 0).
 - **Desconto de pontualidade:** vale até o vencimento do cliente (o boleto vence depois, pelo prazo); multa e juros só depois do vencimento do boleto. O ERP calcula o valor e manda ao Inter em reais: % sobre a soma das mensalidades do mês, ou R$ fixo por mensalidade do mês. Lavagens, estadias, débitos e mensalidade atrasada (saldo anterior) não ganham desconto. Cobrança sem mensalidade do mês: boleto sem desconto. Saiu o campo "vale até quantos dias antes do vencimento".
 - **Boleto em emissão:** a tela da cobrança consulta o Inter a cada 5 segundos por até 2 minutos ("Aguardando o banco…") e mostra o boleto quando fica pronto, sem clicar em Atualizar.
 - **174 testes automáticos.**

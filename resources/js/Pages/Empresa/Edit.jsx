@@ -45,15 +45,12 @@ function PadroesMensalidade({ config }) {
     )
 }
 
-function InstrucoesCobranca({ texto, prazo }) {
-    const { data, setData, put, processing, errors } = useForm({ cobranca_instrucoes: texto || '', boleto_prazo_dias: prazo ?? 0 })
+function InstrucoesCobranca({ texto }) {
+    const { data, setData, put, processing, errors } = useForm({ cobranca_instrucoes: texto || '' })
     return (
         <form className="card mt-4" noValidate onSubmit={(e) => { e.preventDefault(); put('/empresa/cobranca', { preserveScroll: true }) }}>
-            <div className="card-header">Cobrança</div>
+            <div className="card-header">Cobrança impressa</div>
             <div className="card-body">
-                <Campo rotulo="Boleto vence quantos dias depois do vencimento do cliente" type="number" min="0" max="30" value={data.boleto_prazo_dias}
-                    onChange={(e) => setData('boleto_prazo_dias', e.target.value)} erro={errors.boleto_prazo_dias}
-                    ajuda="Ex.: mensalidade vence dia 5 e o boleto dia 10 = 5. O desconto de pontualidade vale até o vencimento do cliente; multa e juros, só depois do vencimento do boleto. 0 = mesmo dia." />
                 <Campo as="textarea" rotulo="Como pagar (sai no pé da cobrança)" style={{ height: 110 }} maxLength={500} value={data.cobranca_instrucoes}
                     onChange={(e) => setData('cobranca_instrucoes', e.target.value)} erro={errors.cobranca_instrucoes}
                     ajuda="Ex.: chave Pix, banco e conta, recado para o cliente." className="mb-0" />
@@ -97,7 +94,7 @@ function LinkCadastro({ link }) {
     )
 }
 
-export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, cobranca_instrucoes, boleto_prazo_dias }) {
+export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, cobranca_instrucoes }) {
     const { data, setData, put, processing, errors } = useForm({
         nome: empresa.nome || '',
         razao_social: empresa.razao_social || '',
@@ -142,7 +139,6 @@ export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, 
                         </div>
                     </form>
                     <PadroesMensalidade config={config} />
-                    <InstrucoesCobranca texto={cobranca_instrucoes} prazo={boleto_prazo_dias} />
                 </div>
 
                 <div className="col-lg-6">
@@ -174,6 +170,7 @@ export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, 
                         </div>
                     </div>
                     <LinkCadastro link={link_cadastro} />
+                    <InstrucoesCobranca texto={cobranca_instrucoes} />
                 </div>
             </div>
         </div>

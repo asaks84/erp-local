@@ -40,11 +40,11 @@ export default function PendenteRevisar({ pendente, existente, tipos, unidades, 
             <form onSubmit={(e) => e.preventDefault()} className="card" noValidate>
                 <div className="card-header">Cliente</div>
                 <div className="card-body">
-                    <CamposCliente data={data} setData={setData} errors={errors} />
+                    <CamposCliente data={data} setData={setData} errors={errors} largo />
                 </div>
                 <div className="card-header border-top">Veículo</div>
                 <div className="card-body">
-                    <CamposVeiculo data={data} setData={setData} errors={errors} tipos={tipos} semPlacaPermitido={false} />
+                    <CamposVeiculo data={data} setData={setData} errors={errors} tipos={tipos} semPlacaPermitido={false} largo />
                     <hr />
                     <CamposMensalidade data={data} setData={setData} errors={errors} periodos={periodos} unidades={unidades} />
                 </div>

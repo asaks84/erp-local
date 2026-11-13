@@ -24,7 +24,7 @@ export default function VeiculoForm({ cliente, veiculo, tipos, unidades, periodo
             <TituloPagina titulo={novo ? 'Novo veículo' : 'Editar veículo'} descricao={cliente ? `Cliente: ${cliente.nome}` : null} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
-                    <CamposVeiculo data={data} setData={setData} errors={errors} tipos={tipos} />
+                    <CamposVeiculo data={data} setData={setData} errors={errors} tipos={tipos} largo />
                     {!novo && data.placa !== (veiculo.placa || '') && veiculo.placa && (
                         <div className="alert aviso-neutro small">A troca de placa fica registrada no histórico do veículo.</div>
                     )}

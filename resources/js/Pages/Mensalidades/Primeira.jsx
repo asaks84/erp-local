@@ -30,6 +30,8 @@ export default function Primeira({ contrato, cliente, veiculo, proporcional, pro
                         </div>
                     )}
                     <p className="text-muted small">Entrou hoje: {proporcional.dias} dia(s) até o fim do mês (mês comercial de 30 dias). Vencimento do cliente: dia {cliente.dia_vencimento}.</p>
+                    <div className="row g-4">
+                    <div className="col-lg-6">
                     <fieldset className="mb-3">
                         <legend className="fs-6 fw-semibold">Como fica</legend>
                         {Object.entries(opcoes).map(([k, r]) => {
@@ -48,6 +50,8 @@ export default function Primeira({ contrato, cliente, veiculo, proporcional, pro
                         <CampoValor rotulo="Valor do proporcional" value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} ajuda={`Calculado: ${moeda(proporcional.valor)}`} />
                     )}
 
+                    </div>
+                    <div className="col-lg-6">
                     {resumo.length > 0 ? (
                         <ul className="list-group mb-0">
                             {resumo.map(([d, v, venc]) => (
@@ -55,6 +59,8 @@ export default function Primeira({ contrato, cliente, veiculo, proporcional, pro
                             ))}
                         </ul>
                     ) : <p className="mb-0 text-muted">Nada é lançado agora. A mensalidade entra na geração do mês.</p>}
+                    </div>
+                    </div>
                 </div>
                 <div className="card-footer d-flex gap-2 justify-content-end">
                     <Link href={`/clientes/${cliente.id}`} className="btn btn-outline-secondary">Decidir depois</Link>

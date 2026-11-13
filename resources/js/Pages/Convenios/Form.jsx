@@ -27,6 +27,8 @@ export default function ConvenioForm({ convenio }) {
             <TituloPagina titulo={novo ? 'Novo convênio' : 'Editar convênio'} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
+                    <div className="row g-4">
+                    <div className="col-lg-6">
                     <label className="form-label fw-semibold">Conveniado (cliente)</label>
                     {cliente
                         ? <div className="d-flex align-items-center gap-2 mb-3"><strong>{cliente.nome}</strong>{novo && <button type="button" className="btn btn-link btn-sm" onClick={() => { setCliente(null); setData('cliente_id', '') }}>trocar</button>}</div>
@@ -55,6 +57,8 @@ export default function ConvenioForm({ convenio }) {
                             <div className="col-7"><CampoValor rotulo="Desconto" prefixo={data.desconto_tipo === 'pct' ? '%' : 'R$'} value={data.desconto_valor} erro={errors.desconto_valor} onChange={(v) => setData('desconto_valor', v)} /></div>
                         </div>
                     )}
+                    </div>
+                    <div className="col-lg-6">
                     <fieldset className="mb-3">
                         <legend className="fs-6 fw-semibold">Vale para</legend>
                         <div className="form-check"><input className="form-check-input" type="checkbox" id="ve" checked={data.vale_estadia} onChange={(e) => setData('vale_estadia', e.target.checked)} /><label className="form-check-label" htmlFor="ve">Estadias</label></div>
@@ -65,6 +69,8 @@ export default function ConvenioForm({ convenio }) {
                     <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" role="switch" id="ativo" checked={data.ativo} onChange={(e) => setData('ativo', e.target.checked)} />
                         <label className="form-check-label" htmlFor="ativo">Ativo</label>
+                    </div>
+                    </div>
                     </div>
                 </div>
                 <div className="card-footer bg-transparent d-flex gap-2 justify-content-end p-3">

@@ -28,6 +28,8 @@ export default function ServicoForm({ servico, tipos, unidades, adicionais_dispo
             <TituloPagina titulo={novo ? 'Novo serviço' : `Serviço: ${servico.nome}`} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
+                    <div className="row g-4">
+                    <div className="col-lg-6">
                     <div className="row g-2">
                         <div className="col-4"><Campo rotulo="Código" value={data.codigo} erro={errors.codigo} maxLength={10} onChange={(e) => setData('codigo', e.target.value.toUpperCase())} /></div>
                         <div className="col-8"><Campo rotulo="Nome" value={data.nome} erro={errors.nome} maxLength={60} onChange={(e) => setData('nome', e.target.value)} /></div>
@@ -64,7 +66,20 @@ export default function ServicoForm({ servico, tipos, unidades, adicionais_dispo
                         </fieldset>
                     )}
 
-                    <h3 className="fs-6 fw-semibold mt-3">Preço por tipo de veículo</h3>
+                    <details className="mb-3">
+                        <summary className="text-muted">Dados fiscais (para a nota fiscal, no futuro)</summary>
+                        <div className="row g-2 mt-2">
+                            <div className="col-sm-6"><Campo rotulo="Código de serviço municipal" value={data.codigo_servico_municipal} maxLength={20} onChange={(e) => setData('codigo_servico_municipal', e.target.value)} /></div>
+                            <div className="col-sm-6"><CampoValor rotulo="Alíquota de ISS" prefixo="%" value={data.aliquota_iss} erro={errors.aliquota_iss} onChange={(v) => setData('aliquota_iss', v)} /></div>
+                        </div>
+                    </details>
+                    <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" role="switch" id="ativo" checked={data.ativo} onChange={(e) => setData('ativo', e.target.checked)} />
+                        <label className="form-check-label" htmlFor="ativo">Ativo (aparece na venda)</label>
+                    </div>
+                    </div>
+                    <div className="col-lg-6">
+                    <h3 className="fs-6 fw-semibold">Preço por tipo de veículo</h3>
                     {unidades.length > 1 && !novo && (
                         <Campo as="select" rotulo="Preços de" value={data.unidade_id}
                             onChange={(e) => router.get(`/configuracoes/servicos/${servico.id}`, { unidade: e.target.value || undefined }, { preserveScroll: true })}>
@@ -89,16 +104,7 @@ export default function ServicoForm({ servico, tipos, unidades, adicionais_dispo
                         </div>
                     )}
 
-                    <details className="mb-3">
-                        <summary className="text-muted">Dados fiscais (para a nota fiscal, no futuro)</summary>
-                        <div className="row g-2 mt-2">
-                            <div className="col-sm-6"><Campo rotulo="Código de serviço municipal" value={data.codigo_servico_municipal} maxLength={20} onChange={(e) => setData('codigo_servico_municipal', e.target.value)} /></div>
-                            <div className="col-sm-6"><CampoValor rotulo="Alíquota de ISS" prefixo="%" value={data.aliquota_iss} erro={errors.aliquota_iss} onChange={(v) => setData('aliquota_iss', v)} /></div>
-                        </div>
-                    </details>
-                    <div className="form-check form-switch">
-                        <input className="form-check-input" type="checkbox" role="switch" id="ativo" checked={data.ativo} onChange={(e) => setData('ativo', e.target.checked)} />
-                        <label className="form-check-label" htmlFor="ativo">Ativo (aparece na venda)</label>
+                    </div>
                     </div>
                 </div>
                 <div className="card-footer bg-transparent d-flex gap-2 justify-content-end p-3">

@@ -396,8 +396,9 @@ class InterTest extends TestCase
         Boletos::emitir($cob->refresh(), null, true);
         $this->assertSame(30.0, $estado['emitido']['desconto']['valor']);
 
-        // configuração geral: prazo do boleto
-        $this->actingAs($this->a->admin)->put('/empresa/cobranca', ['cobranca_instrucoes' => 'Pix', 'boleto_prazo_dias' => 3])->assertSessionHasNoErrors();
+        // prazo do boleto: aba Banco Inter, junto das regras
+        $this->actingAs($this->a->admin)->put('/configuracoes/inter/regras', ['boleto_multa_tipo' => 'nenhuma', 'boleto_juros_tipo' => 'nenhum', 'boleto_desconto_tipo' => 'nenhum',
+            'boleto_baixa_dias' => 30, 'boleto_prazo_dias' => 3])->assertSessionHasNoErrors();
         $this->assertSame(3, Boletos::prazo($this->a->empresa->refresh()));
     }
 }

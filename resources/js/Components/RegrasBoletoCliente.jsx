@@ -50,7 +50,7 @@ export default function RegrasBoletoCliente({ cliente, empresa }) {
                         <p className="small text-muted">Valem só para este cliente, nos próximos boletos. Mudanças nas regras da empresa não mudam estas.</p>
                         <Regra nome="multa" rotulo="Multa por atraso" form={form} />
                         <Regra nome="juros" rotulo="Juros por atraso" form={form} />
-                        <Regra nome="desconto" rotulo="Desconto de pontualidade (só mensalidades)" form={form} />
+                        <Regra nome="desconto" rotulo="Desconto de pontualidade" form={form} />
                         <Campo rotulo="Baixa automática (dias depois do vencimento)" type="number" min="0" max="60" value={form.data.boleto_baixa_dias} onChange={(e) => form.setData('boleto_baixa_dias', e.target.value)} erro={form.errors.boleto_baixa_dias} />
                     </>
                 )}

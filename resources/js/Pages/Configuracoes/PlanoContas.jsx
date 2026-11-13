@@ -22,7 +22,7 @@ export default function PlanoContas({ contas }) {
     return (
         <div className="pagina">
             <AbasConfiguracoes />
-            <div style={{ maxWidth: 820 }}>
+            <div>
                 <TituloPagina titulo="Plano de contas" descricao="Onde cada receita e cada despesa é classificada. É a base do resultado do mês. Contas do sistema (receitas das ordens e folha) não se apagam; as outras você cria, renomeia, reordena e desativa." />
                 <div className="card">
                     <ul className="list-group list-group-flush">

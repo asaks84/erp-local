@@ -47,7 +47,7 @@ class InterController extends Controller
                 'testado_em' => $i->testado_em?->format('Y-m-d H:i'),
                 'ultimo_erro' => $i->ultimo_erro,
             ],
-            'regras' => Boletos::regras(),
+            'regras' => Boletos::regras() + ['boleto_prazo_dias' => Boletos::prazo()],
             'boletos' => ['ativos' => Boleto::whereIn('situacao', Boleto::ATIVAS)->count(), 'com_erro' => Boleto::whereNotNull('erro')->whereIn('situacao', ['recebido', 'falha'])->where('criado_em', '>=', now()->subDays(30))->count()],
         ]);
     }
@@ -162,11 +162,13 @@ class InterController extends Controller
             session()->flash('aviso', 'Atenção: para consumidor (pessoa física), a multa por atraso é limitada a 2% pelo Código de Defesa do Consumidor.');
         }
         $d = array_map(fn ($v) => $v ?? 0, $d);
+        // prazo do boleto é da empresa (não entra nas regras específicas do cliente)
+        $d['boleto_prazo_dias'] = (int) ($request->validate(['boleto_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:30']])['boleto_prazo_dias'] ?? 0);
         $e = Empresa::atual();
         $e->configuracoes = array_merge($e->configuracoes ?? [], $d);
         $e->save();
         Atividades::registrar('empresa_config_alterada', 'regras do boleto: multa '.$d['boleto_multa_tipo'].' '.$d['boleto_multa_valor'].', juros '.$d['boleto_juros_tipo'].' '.$d['boleto_juros_valor']
-            .', desconto '.$d['boleto_desconto_tipo'].' '.$d['boleto_desconto_valor'].', baixa em '.$d['boleto_baixa_dias'].' dia(s)');
+            .', desconto '.$d['boleto_desconto_tipo'].' '.$d['boleto_desconto_valor'].', baixa em '.$d['boleto_baixa_dias'].' dia(s), boleto vence '.$d['boleto_prazo_dias'].' dia(s) depois do vencimento do cliente');
 
         return back()->with('sucesso', 'Regras do boleto salvas. Valem para os próximos boletos.');
     }

@@ -22,7 +22,7 @@ export default function ClienteForm({ cliente, dia_padrao }) {
             <TituloPagina titulo={novo ? 'Novo cliente' : 'Editar cliente'} />
             <form onSubmit={salvar} className="card" noValidate>
                 <div className="card-body">
-                    <CamposCliente data={data} setData={setData} errors={errors} />
+                    <CamposCliente data={data} setData={setData} errors={errors} largo />
                 </div>
                 <div className="card-footer bg-transparent d-flex gap-2 justify-content-end p-3">
                     <Link href={novo ? '/clientes' : `/clientes/${cliente.id}`} className="btn btn-outline-secondary">Cancelar</Link>
