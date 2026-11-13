@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Banco Inter: correção no teste de conexão
+
+- O "Testar conexão" falhava com "CURLOPT_SSLCERT_BLOB ... not supported": o Guzzle não aceita o certificado em memória. Agora o certificado e a chave vão para arquivos temporários em `storage/app/private/inter-tmp` (fora da pasta pública, só o dono lê), apagados ao fim de cada conexão; sobra de processo interrompido é apagada depois de 10 minutos.
+- Arquivo: `app/Servicos/Inter/InterCliente.php`.
+
 ## 13/11/2026 — Banco Inter: boleto com Pix (etapa 7)
 
 - **Configurações › Banco Inter:** credenciais (client id, client secret, certificado .crt e chave .key, ambiente produção ou testes, conta corrente opcional), guardadas criptografadas; "Testar conexão" liga a integração; aviso quando o certificado está para vencer. Regras do boleto: multa (% ou R$), juros (% ao mês ou R$ por dia), desconto (% ou R$ até X dias antes do vencimento) e baixa automática (0 a 60 dias depois do vencimento, padrão 30).

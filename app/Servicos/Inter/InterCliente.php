@@ -22,8 +22,10 @@ class InterCliente
 
     public const ESCOPOS = 'boleto-cobranca.read boleto-cobranca.write';
 
-    /** arquivos temporários do certificado (só quando o PHP não aceita o certificado em memória) */
+    /** arquivos temporários do certificado e da chave (apagados ao fim; o Guzzle só aceita arquivo) */
     private array $temporarios = [];
+
+    private ?array $arquivos = null;
 
     public function __construct(private Integracao $integracao)
     {
@@ -44,18 +46,19 @@ class InterCliente
         return self::BASES[$this->integracao->ambiente] ?? self::BASES['producao'];
     }
 
-    /** requisição com o certificado da empresa (em memória quando o PHP permite; senão arquivo temporário) */
+    /**
+     * Requisição com o certificado da empresa. O Guzzle não aceita o certificado em memória
+     * (CURLOPT_SSLCERT_BLOB fica fora da lista permitida), então o certificado e a chave vão para
+     * arquivos temporários fora da pasta pública, só leitura do dono, apagados ao fim desta conexão.
+     */
     private function http(): PendingRequest
     {
-        $cert = (string) $this->integracao->credencial('certificado');
-        $chave = (string) $this->integracao->credencial('chave');
-        if (defined('CURLOPT_SSLCERT_BLOB') && defined('CURLOPT_SSLKEY_BLOB')) {
-            $opcoes = ['curl' => [CURLOPT_SSLCERT_BLOB => $cert, CURLOPT_SSLCERTTYPE => 'PEM', CURLOPT_SSLKEY_BLOB => $chave, CURLOPT_SSLKEYTYPE => 'PEM']];
-        } else {
-            $opcoes = ['cert' => $this->temporario($cert), 'ssl_key' => $this->temporario($chave)];
-        }
+        $this->arquivos ??= [
+            'cert' => $this->temporario((string) $this->integracao->credencial('certificado')),
+            'ssl_key' => $this->temporario((string) $this->integracao->credencial('chave')),
+        ];
 
-        return Http::withOptions($opcoes)->timeout(30)->connectTimeout(10)->acceptJson();
+        return Http::withOptions($this->arquivos)->timeout(30)->connectTimeout(10)->acceptJson();
     }
 
     private function temporario(string $conteudo): string
@@ -63,6 +66,12 @@ class InterCliente
         $pasta = storage_path('app/private/inter-tmp');
         if (! is_dir($pasta)) {
             mkdir($pasta, 0700, true);
+        }
+        // sobra de processo interrompido: não deixa certificado parado em disco
+        foreach (glob($pasta.'/*.pem') ?: [] as $velho) {
+            if (filemtime($velho) < time() - 600) {
+                @unlink($velho);
+            }
         }
         $f = $pasta.'/'.bin2hex(random_bytes(12)).'.pem';
         file_put_contents($f, $conteudo);
