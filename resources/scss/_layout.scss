@@ -252,6 +252,11 @@
     .meses { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; .btn { text-transform: capitalize; } }
     .rodape { text-align: right; .btn { text-decoration: none; } }
 }
+// campo de minutos: sem as setinhas do navegador (o relógio ocupa o lado direito)
+.campo-data > input[type=number] { -moz-appearance: textfield; &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } }
+// seletor de tempo (horas e minutos) do campo de minutos
+.campo-tempo { width: 16rem;
+    .atalhos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; margin-top: .5rem; } }
 // campos de data pequenos (tabela de recibos): botão acompanha a altura
 .recibos-lidos .campo-data-botao { height: calc(2.75rem + 2px); }
 

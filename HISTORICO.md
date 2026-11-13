@@ -4,6 +4,30 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Tabelas de estadia: começar imediatamente e seletor de tempo
+
+- **Reajustar** ganhou a opção **Começar imediatamente**: a nova versão vale a partir de hoje (a anterior termina ontem). Aviso: veículos que entraram hoje, mesmo antes da mudança, saem pela tabela nova. Sem marcar, continua começando amanhã ou na data escolhida.
+- **Seletor de tempo** nos campos de minutos (tolerância, fração, duração da faixa, bloco e duração do pacote): o campo continua em minutos e pode ser digitado; o relógio abre horas e minutos com atalhos (15 min a 24h) e converte (12h → 720 min).
+- Campos dos pacotes e das faixas reorganizados para caber o relógio. A data padrão da tela usa o dia local (antes, depois das 21h, saía o dia seguinte).
+- Durante o paralelo, mudança de preço continua sendo feita no sistema atual: o espelho de hora em hora sobrescreve as tabelas que vieram de lá.
+- Arquivos: `resources/js/Components/CampoMinutos.jsx` (novo), `resources/js/Pages/Configuracoes/TarifaForm.jsx`, `resources/scss/_layout.scss`.
+
+## 13/11/2026 — Entrada de estadia mostra e deixa trocar o tipo do veículo
+
+- O campo **Tipo do veículo** aparece sempre na entrada, já preenchido pelo cadastro da placa e podendo ser trocado (cadastro errado, outro veículo). O tipo escolhido é o que vale na cobrança; um aviso mostra quando ele difere do cadastro.
+- Abaixo do campo aparece a tabela de estadia que vai valer, com as faixas e os pacotes (ex.: "Motos · Diária (12h) R$ 10,00"); a lista de tabelas em Configurações também passa a mostrar a duração do pacote. Tipo sem tabela aparece desabilitado e é **barrado na entrada** (antes o erro só aparecia na saída).
+- PDV (documentação): sem internet, fila no aparelho e cobrança pela cópia local, atualizada ao iniciar a operação do dia; o servidor recalcula ao voltar.
+- **162 testes automáticos.**
+- Arquivos: `app/Servicos/Estadias.php`, `app/Http/Controllers/EstadiaController.php`, `app/Http/Controllers/TarifaController.php`, `app/Models/Tarifa.php`, `resources/js/Pages/Estadias/Index.jsx`, `tests/Feature/OperacaoTest.php`, `docs/07-pdv.md`, `docs/12-decisoes.md`, `docs/13-desenvolvimento.md`.
+
+## 13/11/2026 — Desenho do PDV e nova ordem das etapas (só documentação)
+
+- **Etapas 7 e 8 trocadas:** a 7 passa a ser Integrações (Inter e WhatsApp) e a 8, API e PDV.
+- **PDV:** app React separado da gestão, PWA agora e empacotado com Capacitor para a Play Store depois; impressão (ESC/POS) e armazenamento local atrás de portas trocáveis; nenhuma regra de dinheiro no celular.
+- **Ticket como página com link:** bobina, QR na tela e WhatsApp/SMS entregam a mesma página; WhatsApp e QR opcionais.
+- Corrigido: impressora pelo navegador só funciona com Bluetooth BLE.
+- Arquivos: `docs/02-tecnologia-e-infraestrutura.md`, `docs/06-modulos.md`, `docs/07-pdv.md`, `docs/10-plano-de-etapas.md`, `docs/12-decisoes.md`.
+
 ## 12/11/2026 — Cliente excluído: ordens com o nome, remover com conta em aberto, menu Lavagens
 
 - **Espelho:** as ordens, pagamentos e linhas do extrato de cliente excluído no sistema atual continuam ligados ao cliente (inativo no ERP). Antes viravam "sem cliente" a cada hora, e a ficha do cliente perdia o histórico.

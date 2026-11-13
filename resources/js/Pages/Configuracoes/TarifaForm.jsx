@@ -4,11 +4,14 @@ import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import CampoData from '../../Components/CampoData'
 import CampoValor from '../../Components/CampoValor'
+import CampoMinutos from '../../Components/CampoMinutos'
 import Icone from '../../Components/Icone'
 import Confirmar from '../../Components/Confirmar'
 import { moeda } from '../../lib/formato'
 
-const hoje = () => new Date().toISOString().slice(0, 10)
+// data local (toISOString é UTC: depois das 21h já seria amanhã)
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const hoje = () => iso(new Date())
 
 function Simulador({ regras }) {
     const [diaE, setDiaE] = useState(hoje())
@@ -61,6 +64,8 @@ function Simulador({ regras }) {
 export default function TarifaForm({ tarifa, versao_de, tipos, unidades }) {
     const editando = !!tarifa?.id
     const [excluir, setExcluir] = useState(false)
+    const [imediato, setImediato] = useState(false)
+    const inicioSugerido = tarifa?.vigencia_inicio || hoje()
     const { data, setData, post, put, processing, errors } = useForm({
         anterior_id: tarifa?.anterior_id || null,
         nome: tarifa?.nome || '', unidade_id: tarifa?.unidade_id || '',
@@ -98,9 +103,20 @@ export default function TarifaForm({ tarifa, versao_de, tipos, unidades }) {
                                 </div>
                             </div>
                             <div className="row g-2">
-                                <div className="col-sm-6"><CampoData rotulo="Vale a partir de" value={data.vigencia_inicio} erro={err('vigencia_inicio')} onChange={(v) => setData('vigencia_inicio', v)} /></div>
+                                <div className="col-sm-6"><CampoData rotulo="Vale a partir de" value={data.vigencia_inicio} erro={err('vigencia_inicio')} onChange={(v) => setData('vigencia_inicio', v)} disabled={imediato} /></div>
                                 <div className="col-sm-6"><CampoData rotulo="Até (opcional)" value={data.vigencia_fim} erro={err('vigencia_fim')} onChange={(v) => setData('vigencia_fim', v)} /></div>
                             </div>
+
+                            {versao_de && (
+                                <div className="mb-3">
+                                    <div className="form-check">
+                                        <input className="form-check-input" type="checkbox" id="imediato" checked={imediato}
+                                            onChange={(e) => { setImediato(e.target.checked); setData('vigencia_inicio', e.target.checked ? hoje() : inicioSugerido) }} />
+                                        <label className="form-check-label" htmlFor="imediato">Começar imediatamente</label>
+                                    </div>
+                                    {imediato && <div className="form-text">Vale a partir de hoje: veículos que entraram hoje, mesmo antes da mudança, saem pela tabela nova.</div>}
+                                </div>
+                            )}
 
                             <fieldset className="mb-3">
                                 <legend className="fs-6 fw-semibold">Tipos de veículo</legend>
@@ -117,8 +133,8 @@ export default function TarifaForm({ tarifa, versao_de, tipos, unidades }) {
                             </fieldset>
 
                             <div className="row g-2">
-                                <div className="col-sm-6"><Campo rotulo="Tolerância (minutos grátis)" type="number" min="0" value={data.tolerancia_min} erro={err('tolerancia_min')} onChange={(e) => setData('tolerancia_min', e.target.value)} /></div>
-                                <div className="col-sm-6"><Campo rotulo="Fração (min de cortesia)" type="number" min="0" value={data.fracao_min} erro={err('fracao_min')} onChange={(e) => setData('fracao_min', e.target.value)}
+                                <div className="col-sm-6"><CampoMinutos rotulo="Tolerância (minutos grátis)" min="0" value={data.tolerancia_min} erro={err('tolerancia_min')} onChange={(v) => setData('tolerancia_min', v)} /></div>
+                                <div className="col-sm-6"><CampoMinutos rotulo="Fração (min de cortesia)" min="0" value={data.fracao_min} erro={err('fracao_min')} onChange={(v) => setData('fracao_min', v)}
                                     ajuda="Passou até X min do bloco, não cobra outro." /></div>
                             </div>
 
@@ -126,21 +142,21 @@ export default function TarifaForm({ tarifa, versao_de, tipos, unidades }) {
                             {err('faixas') && <div className="text-danger small">{err('faixas')}</div>}
                             {data.faixas.map((f, i) => (
                                 <div className="row g-2 align-items-start" key={i}>
-                                    <div className="col-6 col-sm-3">
+                                    <div className="col-6 col-sm">
                                         <Campo as="select" rotulo="Modo" value={f.modo} onChange={(e) => mudarLista('faixas', i, 'modo', e.target.value)}>
                                             <option value="fixo">Valor fixo</option>
                                             <option value="bloco">A cada N min</option>
                                         </Campo>
                                     </div>
-                                    <div className="col-6 col-sm-3">
-                                        <Campo rotulo="Duração (min)" type="number" min="1" value={f.duracao_min ?? ''} erro={err(`faixas.${i}.duracao_min`)}
-                                            onChange={(e) => mudarLista('faixas', i, 'duracao_min', e.target.value)} ajuda={i === data.faixas.length - 1 ? 'Última: até o fim' : 'Vazio = até o fim'} />
+                                    <div className="col-6 col-sm">
+                                        <CampoMinutos rotulo="Duração (min)" min="1" value={f.duracao_min ?? ''} erro={err(`faixas.${i}.duracao_min`)}
+                                            onChange={(v) => mudarLista('faixas', i, 'duracao_min', v)} ajuda={i === data.faixas.length - 1 ? 'Última: até o fim' : 'Vazio = até o fim'} />
                                     </div>
-                                    <div className="col-5 col-sm-2">
-                                        {f.modo === 'bloco' && <Campo rotulo="Bloco (min)" type="number" min="1" value={f.bloco_min ?? 60} erro={err(`faixas.${i}.bloco_min`)} onChange={(e) => mudarLista('faixas', i, 'bloco_min', e.target.value)} />}
+                                    <div className="col-5 col-sm">
+                                        {f.modo === 'bloco' && <CampoMinutos rotulo="Bloco (min)" min="1" value={f.bloco_min ?? 60} erro={err(`faixas.${i}.bloco_min`)} onChange={(v) => mudarLista('faixas', i, 'bloco_min', v)} />}
                                     </div>
-                                    <div className="col-5 col-sm-3"><CampoValor rotulo="Valor" value={f.valor} erro={err(`faixas.${i}.valor`)} onChange={(v) => mudarLista('faixas', i, 'valor', v)} /></div>
-                                    <div className="col-2 col-sm-1 pt-2"><button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Tirar faixa" onClick={() => tirar('faixas', i)}><Icone nome="lixeira" tamanho={16} /></button></div>
+                                    <div className="col-5 col-sm"><CampoValor rotulo="Valor" value={f.valor} erro={err(`faixas.${i}.valor`)} onChange={(v) => mudarLista('faixas', i, 'valor', v)} /></div>
+                                    <div className="col-2 col-sm-auto pt-2"><button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Tirar faixa" onClick={() => tirar('faixas', i)}><Icone nome="lixeira" tamanho={16} /></button></div>
                                 </div>
                             ))}
                             <button type="button" className="btn btn-sm btn-outline-secondary mb-3" onClick={() => setData('faixas', [...data.faixas, { duracao_min: '', modo: 'bloco', bloco_min: 60, valor: '' }])}>+ Faixa</button>
@@ -148,13 +164,13 @@ export default function TarifaForm({ tarifa, versao_de, tipos, unidades }) {
                             <h3 className="fs-6 fw-semibold">Pacotes (diárias, pernoite)</h3>
                             <p className="small text-muted">Servem de teto: se as faixas passarem do pacote, cobra o pacote. Com horário, viram pernoite/período.</p>
                             {data.pacotes.map((p, i) => (
-                                <div className="row g-2 align-items-start" key={i}>
-                                    <div className="col-sm-3"><Campo rotulo="Nome" value={p.nome} erro={err(`pacotes.${i}.nome`)} maxLength={40} onChange={(e) => mudarLista('pacotes', i, 'nome', e.target.value)} /></div>
-                                    <div className="col-4 col-sm-2"><Campo rotulo="Minutos" type="number" min="1" value={p.duracao_min ?? ''} erro={err(`pacotes.${i}.duracao_min`)} onChange={(e) => mudarLista('pacotes', i, 'duracao_min', e.target.value)} /></div>
-                                    <div className="col-4 col-sm-2"><Campo rotulo="Início" placeholder="19:00" value={p.hora_inicio ?? ''} erro={err(`pacotes.${i}.hora_inicio`)} maxLength={5} onChange={(e) => mudarLista('pacotes', i, 'hora_inicio', e.target.value)} /></div>
-                                    <div className="col-4 col-sm-2"><Campo rotulo="Fim" value={p.hora_fim ?? ''} erro={err(`pacotes.${i}.hora_fim`)} maxLength={5} onChange={(e) => mudarLista('pacotes', i, 'hora_fim', e.target.value)} /></div>
-                                    <div className="col-8 col-sm-2"><CampoValor rotulo="Valor" value={p.valor} erro={err(`pacotes.${i}.valor`)} onChange={(v) => mudarLista('pacotes', i, 'valor', v)} /></div>
-                                    <div className="col-4 col-sm-1 pt-2"><button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Tirar pacote" onClick={() => tirar('pacotes', i)}><Icone nome="lixeira" tamanho={16} /></button></div>
+                                <div className="row g-2 align-items-start border-bottom mb-3" key={i}>
+                                    <div className="col-12 col-sm-4"><Campo rotulo="Nome" value={p.nome} erro={err(`pacotes.${i}.nome`)} maxLength={40} onChange={(e) => mudarLista('pacotes', i, 'nome', e.target.value)} /></div>
+                                    <div className="col-6 col-sm-4"><CampoMinutos rotulo="Minutos" min="1" value={p.duracao_min ?? ''} erro={err(`pacotes.${i}.duracao_min`)} onChange={(v) => mudarLista('pacotes', i, 'duracao_min', v)} /></div>
+                                    <div className="col-6 col-sm-4"><CampoValor rotulo="Valor" value={p.valor} erro={err(`pacotes.${i}.valor`)} onChange={(v) => mudarLista('pacotes', i, 'valor', v)} /></div>
+                                    <div className="col-5 col-sm-4"><Campo rotulo="Início" placeholder="19:00" value={p.hora_inicio ?? ''} erro={err(`pacotes.${i}.hora_inicio`)} maxLength={5} onChange={(e) => mudarLista('pacotes', i, 'hora_inicio', e.target.value)} /></div>
+                                    <div className="col-5 col-sm-4"><Campo rotulo="Fim" value={p.hora_fim ?? ''} erro={err(`pacotes.${i}.hora_fim`)} maxLength={5} onChange={(e) => mudarLista('pacotes', i, 'hora_fim', e.target.value)} /></div>
+                                    <div className="col-2 col-sm-4 pt-2"><button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Tirar pacote" onClick={() => tirar('pacotes', i)}><Icone nome="lixeira" tamanho={16} /></button></div>
                                 </div>
                             ))}
                             <button type="button" className="btn btn-sm btn-outline-secondary mb-3" onClick={() => setData('pacotes', [...data.pacotes, { nome: 'Diária', duracao_min: 720, valor: '', hora_inicio: '', hora_fim: '' }])}>+ Pacote</button>
