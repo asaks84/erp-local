@@ -4,6 +4,8 @@ use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\CartaoController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\MensalistasController;
+use App\Http\Controllers\AtualizacaoController;
+use App\Http\Controllers\AtualizarPublicoController;
 use App\Http\Controllers\BoletoController;
 use App\Http\Controllers\CadastroPublicoController;
 use App\Http\Controllers\ClienteController;
@@ -55,6 +57,10 @@ Route::middleware('publica')->group(function () {
     Route::get('/cadastro/{codigo}', [CadastroPublicoController::class, 'formulario']);
     Route::post('/cadastro/{codigo}', [CadastroPublicoController::class, 'enviar'])->middleware('throttle:10,60');
     Route::get('/cadastro/{codigo}/enviado', [CadastroPublicoController::class, 'enviado']);
+    // atualização cadastral do cliente (link individual, confirmação pela placa)
+    Route::get('/atualizar/{token}', [AtualizarPublicoController::class, 'mostrar'])->middleware('throttle:60,1');
+    Route::post('/atualizar/{token}/placa', [AtualizarPublicoController::class, 'placa'])->middleware('throttle:20,10');
+    Route::post('/atualizar/{token}', [AtualizarPublicoController::class, 'enviar'])->middleware('throttle:10,60');
 });
 
 Route::middleware('auth')->group(function () {
@@ -174,6 +180,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/pendentes/{pendente}', [PendenteController::class, 'show']);
         Route::post('/pendentes/{pendente}/aprovar', [PendenteController::class, 'aprovar']);
         Route::post('/pendentes/{pendente}/recusar', [PendenteController::class, 'recusar']);
+        Route::get('/atualizacao-cadastral', [AtualizacaoController::class, 'index']);
+        Route::post('/atualizacao-cadastral/gerar', [AtualizacaoController::class, 'gerar']);
+        Route::post('/atualizacao-cadastral/enviado', [AtualizacaoController::class, 'enviado']);
+        Route::get('/atualizacao-cadastral/cartoes', [AtualizacaoController::class, 'cartoes']);
+        Route::get('/atualizacao-cadastral/{atualizacao}', [AtualizacaoController::class, 'show']);
+        Route::post('/atualizacao-cadastral/{atualizacao}/aprovar', [AtualizacaoController::class, 'aprovar']);
+        Route::post('/atualizacao-cadastral/{atualizacao}/recusar', [AtualizacaoController::class, 'recusar']);
     });
 
     Route::middleware('permissao:contas_pagar')->group(function () {

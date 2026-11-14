@@ -13,7 +13,7 @@ function guardar(chave, valor) {
 }
 
 export default function AppLayout({ children }) {
-    const { auth, empresa, fila } = usePage().props
+    const { auth, empresa, fila, atualizacoes } = usePage().props
     const [buscaAberta, setBuscaAberta] = useState(false)
     const pagina = usePage()
     const pode = usePode()
@@ -81,6 +81,7 @@ export default function AppLayout({ children }) {
                                         <Icone nome={it.icone} />
                                         <span className="app-txt">{it.rotulo}</span>
                                         {it.contador === 'fila' && fila > 0 && <span className="app-badge" aria-label={`${fila} na fila`}>{fila}</span>}
+                                        {it.contador === 'atualizacoes' && atualizacoes > 0 && <span className="app-badge" aria-label={`${atualizacoes} para revisar`}>{atualizacoes}</span>}
                                     </Link>
                                 ))}
                             </div>

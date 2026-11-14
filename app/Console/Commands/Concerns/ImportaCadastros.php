@@ -220,7 +220,7 @@ trait ImportaCadastros
             if ($novo && ! Cliente::withoutGlobalScopes()->whereKey($c->cli_id)->exists()) {
                 $cliente->id = (int) $c->cli_id;
             }
-            $cliente->fill([
+            $dados = [
                 'nome' => $this->texto($c->cli_nome, 100) ?? 'SEM NOME',
                 'documento' => $doc,
                 'telefone' => $this->texto(preg_replace('/\D/', '', (string) ($c->clitel_telefone_fixo ?? '')), 15),
@@ -234,7 +234,12 @@ trait ImportaCadastros
                 'uf' => $this->texto(strtoupper((string) ($c->cliend_estado ?? '')), 2),
                 'dia_vencimento' => min(31, max(1, (int) ($c->cli_dia_vencimento ?: 5))),
                 'cliente_desde' => $this->data($c->cli_cadastrado_em ?? null),
-            ]);
+            ];
+            // campos que o cliente atualizou pela atualização cadastral (aprovada) valem pelo ERP
+            foreach ((array) ($cliente->campos_locais ?? []) as $campo) {
+                unset($dados[$campo]);
+            }
+            $cliente->fill($dados);
             $cliente->legado_id = $c->cli_id;
             $cliente->save();
             $mapa[(int) $c->cli_id] = $cliente->id;

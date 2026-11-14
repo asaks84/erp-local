@@ -4,6 +4,18 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 13/11/2026 — Recadastro (atualização cadastral dos clientes)
+
+- **Clientes › Recadastro** (`/atualizacao-cadastral`, permissão de aprovar cadastros): resumo e duas tabelas, **CPF/CNPJ com problema** (dígitos que não conferem, quantidade errada, em branco, repetido em outro cliente) e **sem celular válido** (sem celular, telefone fixo, sem o 9, formato inválido, número suspeito tipo 99999-9999). Contador no menu com as respostas para revisar.
+- **Cartões: escolher o que imprimir.** A tela de cartões abre com todos os links abertos (ou só os clientes marcados na lista) e tem busca, marcar/desmarcar todos e um checkbox por cliente. Os cartões escolhidos são distribuídos em folhas A4 em pé, 8 por folha (2 × 4), com quebra de página entre as folhas. "Marcar como entregues" vale só para os escolhidos.
+- **Link individual** por cliente (código aleatório de 40 caracteres, válido 30 dias; gerar de novo mantém o aberto, "Novo link" cancela o anterior). Envio por **WhatsApp** (abre a conversa com a mensagem pronta, pelo celular de quem envia), **copiar** a mensagem, ou **cartão impresso** (folha A4 com 8 cartões e QR Code, para quem não tem celular válido; o cartão não mostra a placa). Enquanto o link estiver aberto, o **QR Code sai no pé da cobrança impressa**.
+- **Formulário do cliente** (`/atualizar/<código>`, celular): confirma a placa de um veículo dele (5 erros bloqueiam 30 minutos); depois vê os dados para conferir. O CPF não aparece inteiro: ele digita o CPF completo para confirmar (pega os inventados). Celular tem que ser celular válido. Autorização LGPD.
+- **Revisão:** tabela antes → depois com o que mudou destacado; Aprovar ou Recusar (com motivo). CPF já usado por outro cliente não aprova.
+- **Paralelo (decisão a):** ao aprovar, os campos que mudaram passam a valer pelo ERP (`clientes.campos_locais`) e o espelho do sistema atual não os sobrescreve mais; os outros campos continuam vindo do sistema atual.
+- Banco: tabela `atualizacoes_cadastrais` e coluna `clientes.campos_locais` (`php artisan migrate` no PC; o Publicar já roda).
+- **180 testes automáticos.**
+- Arquivos: `app/Servicos/Atualizacoes.php`, `app/Models/AtualizacaoCadastral.php`, `app/Http/Controllers/AtualizacaoController.php`, `AtualizarPublicoController.php`, `CobrancaController.php`, `app/Http/Middleware/HandleInertiaRequests.php`, `app/Console/Commands/Concerns/ImportaCadastros.php`, `app/Models/Cliente.php`, `routes/web.php`, migration `2026_11_20_000001`, `resources/js/Pages/Atualizacao/` (Index, Revisar, Cartoes, Publico), `resources/js/Pages/Cobrancas/Imprimir.jsx`, `resources/js/Layouts/AppLayout.jsx`, `resources/js/lib/menu.js`, `resources/scss/_impressao.scss`, `tests/Feature/AtualizacaoCadastralTest.php`, `ImportacaoCadastrosTest.php`.
+
 ## 13/11/2026 — Telas com a mesma largura (grid do Bootstrap) e prazo do boleto na aba do Inter
 
 - **Prazo do boleto** saiu de Configurações gerais e foi para Configurações › Banco Inter, junto das regras (só faz sentido com o Inter ligado). Rótulos mais curtos: "Prazo do boleto (dias)" e "Baixa automática (dias)", lado a lado.

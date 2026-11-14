@@ -13,6 +13,7 @@ export const MENU = [
         itens: [
             { rotulo: 'Clientes', href: '/clientes', icone: 'pessoas', rapido: true, acende: ['/clientes', '/veiculos'] },
             { rotulo: 'Fila de espera', href: '/pendentes', icone: 'fila', permissao: 'aprovar', contador: 'fila', acende: ['/pendentes'] },
+            { rotulo: 'Recadastro', href: '/atualizacao-cadastral', icone: 'documento', permissao: 'aprovar', contador: 'atualizacoes', acende: ['/atualizacao-cadastral'] },
         ],
     },
     {

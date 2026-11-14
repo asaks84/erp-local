@@ -33,6 +33,7 @@ class HandleInertiaRequests extends Middleware
             ] : null,
             // cadastros esperando aprovação (número no menu)
             'fila' => fn () => $usuario?->pode('aprovar') ? \App\Models\CadastroPendente::count() : 0,
+            'atualizacoes' => fn () => $usuario?->pode('aprovar') ? \App\Models\AtualizacaoCadastral::where('situacao', 'respondida')->count() : 0,
             'flash' => fn () => [
                 'sucesso' => $request->session()->get('sucesso'),
                 'erro' => $request->session()->get('erro'),

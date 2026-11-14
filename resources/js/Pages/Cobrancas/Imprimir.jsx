@@ -1,4 +1,6 @@
 import { Head } from '@inertiajs/react'
+import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
 import { data as fData, mesAno, moeda } from '../../lib/formato'
 
 // "Via do cliente", no formato do sistema atual: folha A4 deitada com duas cobranças lado a lado.
@@ -89,8 +91,21 @@ function Via({ c, empresa }) {
 
             {temAnterior && <p className="via-nota">* Não pago na cobrança anterior.</p>}
             {empresa.instrucoes && <p className="via-instrucoes">{empresa.instrucoes}</p>}
+            {c.atualizacao_link && <QrAtualizacao link={c.atualizacao_link} />}
             <p className="via-rodape">{[empresa.nome, empresa.documento && `CNPJ ${empresa.documento}`, empresa.telefone].filter(Boolean).join(' · ')}</p>
         </section>
+    )
+}
+
+/** atualização cadastral pendente: QR Code no pé da cobrança */
+function QrAtualizacao({ link }) {
+    const [qr, setQr] = useState(null)
+    useEffect(() => { QRCode.toDataURL(link, { width: 240, margin: 0 }).then(setQr) }, [link])
+    return (
+        <div className="via-atualizacao">
+            {qr && <img src={qr} alt="" width="64" height="64" />}
+            <span><strong>Atualize seu cadastro.</strong> Aponte a câmera para o código, confirme a placa do seu veículo e confira seus dados (CPF, celular e endereço).</span>
+        </div>
     )
 }
 

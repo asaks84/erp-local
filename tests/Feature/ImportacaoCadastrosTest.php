@@ -127,6 +127,21 @@ class ImportacaoCadastrosTest extends TestCase
         $this->assertSame(1, Tarifa::count());
     }
 
+    public function test_campos_da_atualizacao_cadastral_valem_pelo_erp(): void
+    {
+        $this->importar();
+        $c = Cliente::where('legado_id', 5)->first();
+        // o cliente atualizou celular e CEP pela atualização cadastral (aprovada)
+        $c->update(['celular' => '13991112222', 'cep' => '11111111', 'campos_locais' => ['celular', 'cep']]);
+        DB::connection('legado')->table('CLIENTES')->where('cli_id', 5)->update(['cli_nome' => 'JOSÉ DA CONCEIÇÃO FILHO']);
+        $this->importar();
+
+        $c->refresh();
+        $this->assertSame('13991112222', $c->celular);       // não voltou para o do sistema atual
+        $this->assertSame('11111111', $c->cep);
+        $this->assertSame('JOSÉ DA CONCEIÇÃO FILHO', $c->nome); // o resto continua vindo do sistema atual
+    }
+
     public function test_exclusoes_e_mensalidade_zero_no_sistema_atual(): void
     {
         $this->importar();

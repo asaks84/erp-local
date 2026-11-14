@@ -200,6 +200,9 @@ class CobrancaController extends Controller
         $ids = array_slice(array_map('intval', (array) $request->query('ids', [])), 0, 200);
         $empresa = Empresa::atual();
         $cobrancas = Cobranca::with(['cliente', 'itens.ordem:id,competencia,veiculo_descricao'])->whereIn('id', $ids)->get()->sortBy(fn ($c) => $c->cliente->nome)->values();
+        // atualização cadastral pendente: o QR Code sai no pé da cobrança
+        $atualizacoes = \App\Models\AtualizacaoCadastral::whereIn('cliente_id', $cobrancas->pluck('cliente_id'))->where('situacao', 'aberta')
+            ->where('expira_em', '>', now())->get()->keyBy('cliente_id');
 
         return Inertia::render('Cobrancas/Imprimir', [
             'empresa' => [
@@ -211,6 +214,7 @@ class CobrancaController extends Controller
             ],
             'cobrancas' => $cobrancas->map(fn (Cobranca $c) => self::resumo($c) + [
                 'cliente' => ['id' => $c->cliente->id, 'nome' => $c->cliente->nome, 'documento' => Documento::formatar($c->cliente->documento)],
+                'atualizacao_link' => isset($atualizacoes[$c->cliente_id]) ? $atualizacoes[$c->cliente_id]->link() : null,
                 'mes' => Carbon::parse($c->competencia.'-01')->format('m/Y'),
                 'itens' => $c->itens->map(fn ($i) => [
                     'grupo' => $i->grupo, 'numero' => $i->numero, 'descricao' => $i->descricao,

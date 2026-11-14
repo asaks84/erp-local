@@ -20,6 +20,7 @@ class Cliente extends Modelo
             'ativo' => 'boolean',
             'nao_recebe_avisos' => 'boolean',
             'regras_boleto' => 'array',
+            'campos_locais' => 'array',
             'cliente_desde' => 'date:Y-m-d',
             'dia_vencimento' => 'integer',
         ];
