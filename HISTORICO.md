@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 14/11/2026 — Extrato e saldo pela API do Inter
+
+- **Extrato bancário › Banco Inter:** saldo disponível no Inter (carregado depois da tela, guardado por 10 minutos) e **Buscar do Inter** por período (até 90 dias, sem datas futuras). Abre a mesma conferência do CSV: o sistema sugere o cliente de cada Pix (nome e CPF/CNPJ do pagador vêm da API) e nada é baixado sem confirmar. O CSV continua como reserva.
+- Recebimentos de boleto (e o Pix do boleto, pelo txid, código ou nosso número) não entram: já foram baixados pela cobrança; a conferência mostra quantos ficaram de fora. Pix já baixado antes pelo CSV (outro identificador, mesma data, valor e pagador) aparece como processado.
+- **Saídas do período** na conferência: cada saída é comparada com contas pagas e estornos a clientes (mesmo valor, até 3 dias de diferença); as que não batem aparecem como "Sem registro", com atalho para lançar a conta paga.
+- Token do extrato pedido à parte (permissão `extrato.read`): se a permissão faltar, o boleto continua funcionando.
+- **Aviso de vencimento do certificado** do Inter (30 dias antes) no Início e em Configurações › Banco Inter: boleto, baixa automática e extrato param juntos quando vence.
+
 ## 14/11/2026 — Estorno ao cliente
 
 - **Estornar** (ficha do cliente, com crédito a favor dele; permissão de editar contas): registra a devolução do crédito. O Pix ou a transferência é feito no app do banco; aqui vão valor (até o crédito livre, descontadas as contas em aberto), data, como foi devolvido (Pix, transferência, dinheiro) e motivo obrigatório. Usa os créditos mais antigos primeiro; se o estorno for parcial, a sobra vira um crédito novo. Lista "Estornos" na ficha, com **Desfazer** (o crédito volta).

@@ -22,6 +22,9 @@ class InterCliente
 
     public const ESCOPOS = 'boleto-cobranca.read boleto-cobranca.write';
 
+    /** extrato e saldo: token separado, para que a falta dessa permissão não pare o boleto */
+    public const ESCOPOS_EXTRATO = 'extrato.read';
+
     /** arquivos temporários do certificado e da chave (apagados ao fim; o Guzzle só aceita arquivo) */
     private array $temporarios = [];
 
@@ -81,9 +84,9 @@ class InterCliente
     }
 
     /** token OAuth (vale 1 hora; o Inter limita a 5 pedidos de token por minuto, por isso fica guardado) */
-    public function token(bool $novo = false): string
+    public function token(bool $novo = false, string $escopos = self::ESCOPOS): string
     {
-        $chave = 'inter_token_'.$this->integracao->empresa_id.'_'.md5($this->integracao->ambiente.$this->integracao->credencial('client_id'));
+        $chave = 'inter_token_'.$this->integracao->empresa_id.'_'.md5($this->integracao->ambiente.$this->integracao->credencial('client_id').'|'.$escopos);
         if (! $novo && ($t = Cache::get($chave))) {
             return $t;
         }
@@ -91,32 +94,33 @@ class InterCliente
             'client_id' => $this->integracao->credencial('client_id'),
             'client_secret' => $this->integracao->credencial('client_secret'),
             'grant_type' => 'client_credentials',
-            'scope' => self::ESCOPOS,
+            'scope' => $escopos,
         ]);
         if (! $r->successful() || ! $r->json('access_token')) {
-            throw new InterErro('O Inter recusou as credenciais: '.self::mensagem($r).' Confira o client id, o client secret, o certificado e se a integração tem as permissões de boleto.');
+            throw new InterErro('O Inter recusou as credenciais: '.self::mensagem($r).' Confira o client id, o client secret, o certificado e se a integração tem as permissões de '
+                .($escopos === self::ESCOPOS_EXTRATO ? '"Conferir saldo e movimentações".' : 'boleto.'));
         }
         Cache::put($chave, $r->json('access_token'), max(60, (int) $r->json('expires_in', 3600) - 120));
 
         return $r->json('access_token');
     }
 
-    private function chamar(string $metodo, string $caminho, array $corpo = [], bool $repetiu = false): Response
+    private function chamar(string $metodo, string $caminho, array $corpo = [], bool $repetiu = false, string $prefixo = '/cobranca/v3', string $escopos = self::ESCOPOS): Response
     {
-        $req = $this->http()->withToken($this->token());
+        $req = $this->http()->withToken($this->token(false, $escopos));
         if ($this->integracao->conta_corrente) {
             $req = $req->withHeaders(['x-conta-corrente' => $this->integracao->conta_corrente]);
         }
-        $url = $this->base().'/cobranca/v3'.$caminho;
+        $url = $this->base().$prefixo.$caminho;
         $r = match ($metodo) {
             'GET' => $req->get($url, $corpo),
             default => $req->send($metodo, $url, $corpo ? ['json' => $corpo] : []),
         };
         // token vencido ou revogado: pede outro uma vez
         if ($r->status() === 401 && ! $repetiu) {
-            $this->token(true);
+            $this->token(true, $escopos);
 
-            return $this->chamar($metodo, $caminho, $corpo, true);
+            return $this->chamar($metodo, $caminho, $corpo, true, $prefixo, $escopos);
         }
         if (! $r->successful()) {
             throw new InterErro(self::mensagem($r), $r->status());
@@ -148,6 +152,33 @@ class InterCliente
         $b64 = (string) $this->chamar('GET', '/cobrancas/'.$codigo.'/pdf')->json('pdf');
 
         return base64_decode($b64, true) ?: throw new InterErro('O Inter não devolveu o PDF do boleto.');
+    }
+
+    /** saldo disponível da conta agora (banking v2) */
+    public function saldo(): float
+    {
+        return round((float) $this->chamar('GET', '/saldo', [], false, '/banking/v2', self::ESCOPOS_EXTRATO)->json('disponivel'), 2);
+    }
+
+    /**
+     * Extrato completo (com o pagador do Pix) do período, todas as páginas. Cada transação:
+     * idTransacao, dataEntrada, tipoTransacao (PIX, BOLETO_COBRANCA...), tipoOperacao (C/D), valor, titulo,
+     * descricao, detalhes (nomePagador, cpfCnpjPagador, txId, endToEndId, nomeRecebedor...).
+     */
+    public function extrato(string $de, string $ate): array
+    {
+        $todas = [];
+        for ($pagina = 0; $pagina < 50; $pagina++) {
+            $j = $this->chamar('GET', '/extrato/completo', ['dataInicio' => $de, 'dataFim' => $ate, 'pagina' => $pagina, 'tamanhoPagina' => 1000],
+                false, '/banking/v2', self::ESCOPOS_EXTRATO)->json() ?? [];
+            array_push($todas, ...($j['transacoes'] ?? []));
+            $total = (int) ($j['totalPaginas'] ?? 1);
+            if (! empty($j['ultimaPagina']) || $pagina + 1 >= $total || empty($j['transacoes'])) {
+                break;
+            }
+        }
+
+        return $todas;
     }
 
     /** teste de conexão: pede um token e consulta o resumo do dia */

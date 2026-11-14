@@ -42,7 +42,46 @@ class ExtratoController extends Controller
                 'cliente' => $e->cliente?->only(['id', 'nome']), 'processado_em' => $e->processado_em->format('Y-m-d H:i'), 'usuario' => $e->usuario_nome,
             ]),
             'tamanho_max_kb' => Extrato::TAMANHO_MAX_KB,
+            'inter' => CobrancaController::interLigado(),
+            // saldo do Inter carregado depois da tela (não segura a página se o banco demorar)
+            'saldo_inter' => Inertia::defer(fn () => self::saldoInter()),
+            'periodo_inter' => ['de' => now()->subDays(7)->toDateString(), 'ate' => now()->toDateString()],
         ]);
+    }
+
+    private static function saldoInter(): array
+    {
+        if (! CobrancaController::interLigado()) {
+            return ['valor' => null, 'erro' => null];
+        }
+        try {
+            return ['valor' => \App\Servicos\Inter\ExtratoInter::saldo(), 'erro' => null, 'em' => now()->format('Y-m-d H:i')];
+        } catch (\App\Servicos\Inter\InterErro $e) {
+            return ['valor' => null, 'erro' => mb_substr($e->getMessage(), 0, 240)];
+        } catch (\Throwable) {
+            return ['valor' => null, 'erro' => 'sem conexão com o Inter agora. Tente de novo daqui a pouco.'];
+        }
+    }
+
+    /** busca o extrato do período direto do Inter e abre a mesma conferência do CSV */
+    public function inter(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['de' => ['required', 'date_format:Y-m-d'], 'ate' => ['required', 'date_format:Y-m-d', 'after_or_equal:de', 'before_or_equal:today']],
+            ['ate.after_or_equal' => 'O fim do período precisa ser depois do início.', 'ate.before_or_equal' => 'O fim do período não pode ser no futuro.']);
+        if (\Carbon\Carbon::parse($d['de'])->diffInDays(\Carbon\Carbon::parse($d['ate'])) > 90) {
+            throw ValidationException::withMessages(['de' => 'Busque no máximo 90 dias por vez.']);
+        }
+        try {
+            $lido = \App\Servicos\Inter\ExtratoInter::buscar($d['de'], $d['ate']);
+        } catch (\App\Servicos\Inter\InterErro $e) {
+            throw ValidationException::withMessages(['de' => 'O Inter respondeu: '.$e->getMessage()]);
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+            throw ValidationException::withMessages(['de' => 'Sem conexão com o Inter agora. Tente de novo daqui a pouco.']);
+        }
+        $token = Str::random(24);
+        Cache::put($this->chave($token), $lido + ['origem' => 'inter'], now()->addHours(3));
+
+        return redirect("/extrato/conferir/{$token}");
     }
 
     public function enviar(Request $request): RedirectResponse
@@ -68,6 +107,11 @@ class ExtratoController extends Controller
         FormasPagamento::garantirPadrao();
         $clientes = Extrato::clientes();
         $ja = Extrato::jaProcessados(array_column($lote['entradas'], 'id'));
+        // pela API: o mesmo Pix pode ter sido baixado antes pelo CSV, com outro identificador
+        $parecidos = ($lote['origem'] ?? '') === 'inter' ? \App\Servicos\Inter\ExtratoInter::parecidos($lote['entradas']) : [];
+        foreach ($parecidos as $id => $l) {
+            $ja->put($id, $l);
+        }
         $abertas = OrdemServico::abertas()->whereNotNull('cliente_id')->orderByRaw('COALESCE(vencimento, data)')->orderBy('numero')->get()->groupBy('cliente_id');
 
         $entradas = [];
@@ -96,6 +140,8 @@ class ExtratoController extends Controller
             'token' => $token,
             'arquivo' => $lote['arquivo'],
             'saidas' => $lote['saidas'],
+            'boletos' => $lote['boletos'] ?? 0,
+            'lista_saidas' => $lote['lista_saidas'] ?? null,
             'entradas' => $entradas,
             'clientes' => collect(array_keys($sugeridos))->mapWithKeys(fn ($id) => [$id => $this->dadosCliente($clientes[$id]->id, $clientes[$id]->nome, $abertas->get($id, collect()))]),
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo']),

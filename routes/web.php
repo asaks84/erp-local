@@ -160,6 +160,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:extrato')->group(function () {
         Route::get('/extrato', [ExtratoController::class, 'index']);
         Route::post('/extrato', [ExtratoController::class, 'enviar']);
+        Route::post('/extrato/inter', [ExtratoController::class, 'inter']);
         Route::get('/extrato/conferir/{token}', [ExtratoController::class, 'conferir']);
         Route::post('/extrato/confirmar', [ExtratoController::class, 'confirmar']);
         Route::get('/extrato/resultado/{token}', [ExtratoController::class, 'resultado']);

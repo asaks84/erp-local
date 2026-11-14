@@ -1,13 +1,48 @@
-import { Link, useForm } from '@inertiajs/react'
+import { Deferred, Link, useForm } from '@inertiajs/react'
 import TituloPagina from '../../Components/TituloPagina'
+import CampoData from '../../Components/CampoData'
 import { dataHora, data as fData, moeda } from '../../lib/formato'
 
-export default function ExtratoIndex({ ultimas, tamanho_max_kb }) {
+function Saldo({ saldo }) {
+    if (!saldo) return null
+    if (saldo.erro) return <div className="small text-danger-emphasis">Saldo indisponível: {saldo.erro}</div>
+    if (saldo.valor === null) return null
+    return (
+        <div>
+            <div className="small text-muted">Saldo disponível no Inter</div>
+            <div className="fs-4 fw-semibold">{moeda(saldo.valor)}</div>
+            {saldo.em && <div className="small text-muted">consultado {dataHora(saldo.em)}</div>}
+        </div>
+    )
+}
+
+export default function ExtratoIndex({ ultimas, tamanho_max_kb, inter = false, saldo_inter, periodo_inter }) {
     const { data, setData, post, processing, errors, progress } = useForm({ arquivo: null })
+    const api = useForm({ de: periodo_inter?.de ?? '', ate: periodo_inter?.ate ?? '' })
 
     return (
         <div className="pagina">
-            <TituloPagina titulo="Extrato bancário" descricao="Envie o extrato em CSV (exportado pelo app do banco). O sistema sugere o cliente de cada PIX recebido e você confere antes de dar baixa." />
+            <TituloPagina titulo="Extrato bancário" descricao={inter ? 'Busque as movimentações direto do Inter (ou envie um CSV). O sistema sugere o cliente de cada PIX recebido e você confere antes de dar baixa.' : 'Envie o extrato em CSV (exportado pelo app do banco). O sistema sugere o cliente de cada PIX recebido e você confere antes de dar baixa.'} />
+            {inter && (
+                <form className="card mb-4" onSubmit={(e) => { e.preventDefault(); api.post('/extrato/inter') }}>
+                    <div className="card-header">Banco Inter</div>
+                    <div className="card-body">
+                        <div className="row g-3 align-items-center">
+                            <div className="col-lg-3">
+                                <Deferred data="saldo_inter" fallback={<div className="small text-muted"><span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />Consultando o saldo…</div>}>
+                                    <Saldo saldo={saldo_inter} />
+                                </Deferred>
+                            </div>
+                            <div className="col-sm-6 col-lg-3"><CampoData rotulo="De" value={api.data.de} onChange={(v) => api.setData('de', v)} erro={api.errors.de} /></div>
+                            <div className="col-sm-6 col-lg-3"><CampoData rotulo="Até" value={api.data.ate} onChange={(v) => api.setData('ate', v)} erro={api.errors.ate} /></div>
+                            <div className="col-lg-3 text-lg-end">
+                                <button type="submit" className="btn btn-primary" disabled={api.processing}>{api.processing ? 'Buscando…' : 'Buscar do Inter'}</button>
+                            </div>
+                        </div>
+                        <p className="form-text mb-0">Entradas de boleto já baixadas pela cobrança não aparecem. As saídas do período são comparadas com as contas pagas e os estornos registrados.</p>
+                    </div>
+                </form>
+            )}
             <form className="card mb-4" onSubmit={(e) => { e.preventDefault(); post('/extrato', { forceFormData: true }) }}>
                 <div className="card-body">
                     <div className="row g-3 align-items-end">

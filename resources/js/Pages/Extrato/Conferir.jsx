@@ -98,7 +98,43 @@ function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
     )
 }
 
-export default function Conferir({ token, arquivo, saidas, entradas, clientes: iniciais, formas, servicos }) {
+function Saidas({ lista }) {
+    const sem = lista.filter((s) => !s.registro)
+    const [todas, setTodas] = useState(false)
+    const mostrar = todas ? lista : sem
+    return (
+        <div className="card mt-4">
+            <div className="card-header d-flex flex-wrap align-items-center gap-2">
+                <span className="flex-grow-1">Saídas do período</span>
+                <span className="small text-muted">{lista.length - sem.length} de {lista.length} conferida(s) com o sistema</span>
+                {sem.length !== lista.length && <button type="button" className="btn btn-sm btn-link p-0" onClick={() => setTodas(!todas)}>{todas ? 'Só as sem registro' : 'Ver todas'}</button>}
+            </div>
+            {mostrar.length === 0 ? (
+                <div className="card-body small text-muted">Todas as saídas batem com uma conta paga ou um estorno registrado.</div>
+            ) : (
+                <div className="table-responsive">
+                    <table className="table align-middle mb-0">
+                        <thead><tr><th>Data</th><th>Descrição</th><th className="text-end">Valor</th><th>No sistema</th></tr></thead>
+                        <tbody>
+                            {mostrar.map((s) => (
+                                <tr key={s.id}>
+                                    <td className="text-nowrap">{fData(s.data)}</td>
+                                    <td className="small">{s.descricao}</td>
+                                    <td className="text-end text-nowrap">−{moeda(s.valor)}</td>
+                                    <td className="small">{s.registro
+                                        ? <span className="selo selo-ok">{s.registro.texto}</span>
+                                        : <><span className="selo selo-aviso">Sem registro</span> <Link href="/pagar/nova" className="ms-1">Lançar conta paga</Link></>}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default function Conferir({ token, arquivo, saidas, entradas, clientes: iniciais, formas, servicos, boletos = 0, lista_saidas: listaSaidas = null }) {
     const [clientes, setClientes] = useState(iniciais)
     const [carregando, setCarregando] = useState({})
     const pix = formas.find((f) => f.tipo === 'pix') || formas[0]
@@ -132,7 +168,8 @@ export default function Conferir({ token, arquivo, saidas, entradas, clientes: i
 
     return (
         <div className="pagina">
-            <TituloPagina titulo="Conferir extrato" descricao={`${arquivo} · ${entradas.length} entrada(s) (${novas.length} nova(s))${saidas ? ` · ${saidas} saída(s) ignorada(s)` : ''}`} />
+            <TituloPagina titulo="Conferir extrato" descricao={`${arquivo} · ${entradas.length} entrada(s) (${novas.length} nova(s))${saidas && !listaSaidas ? ` · ${saidas} saída(s) ignorada(s)` : ''}`} />
+            {boletos > 0 && <div className="alert aviso-neutro small">{boletos} recebimento(s) de boleto do período não aparecem aqui: já foram baixados pela cobrança.</div>}
             <div className="alert aviso-neutro small">Marque só o que tem certeza. Sugestões com selo verde vêm marcadas; as amarelas, confira o cliente. O valor e a data que dão baixa são os do arquivo.</div>
             <form onSubmit={enviar}>
                 {entradas.map((e) => (
@@ -152,6 +189,7 @@ export default function Conferir({ token, arquivo, saidas, entradas, clientes: i
                     </div>
                 </div>
             </form>
+            {listaSaidas && listaSaidas.length > 0 && <Saidas lista={listaSaidas} />}
         </div>
     )
 }

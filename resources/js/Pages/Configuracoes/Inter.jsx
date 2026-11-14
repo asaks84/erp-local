@@ -76,7 +76,12 @@ export default function Inter({ integracao: i, regras, boletos }) {
         <div className="pagina">
             <AbasConfiguracoes />
             <div>
-                <TituloPagina titulo="Banco Inter" descricao="Boleto com Pix gerado a partir da cobrança. O sistema consulta o Inter a cada 10 minutos: boleto pago dá baixa sozinho." />
+                <TituloPagina titulo="Banco Inter" descricao="Boleto com Pix gerado a partir da cobrança (o sistema consulta o Inter a cada 10 minutos: boleto pago dá baixa sozinho) e extrato e saldo em Extrato bancário." />
+                {vence !== null && vence <= 30 && (
+                    <div className={`alert ${vence <= 7 ? 'alert-danger' : 'alert-warning'}`}>
+                        {vence < 0 ? 'O certificado venceu' : `O certificado vence em ${vence} dia(s)`}: boleto, baixa automática e extrato param juntos. Gere um certificado novo no Internet Banking do Inter (Integrações) e envie aqui.
+                    </div>
+                )}
                 <div className="card mb-4">
                     <div className="card-body d-flex flex-wrap align-items-center gap-3">
                         <div className="flex-grow-1">

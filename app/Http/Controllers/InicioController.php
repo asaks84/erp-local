@@ -41,7 +41,20 @@ class InicioController extends Controller
 
         return Inertia::render('Inicio', ['aberto' => $aberto, 'recebido' => $recebido, 'anotacoes' => Anotacao::doUsuario((int) $request->user()->id),
             'conferencia' => ConferenciaController::resumo(),
-            'pagar' => $u->pode('contas_pagar') ? Despesas::resumo() : null]);
+            'pagar' => $u->pode('contas_pagar') ? Despesas::resumo() : null,
+            // certificado da integração do Inter vencendo (boleto, baixa automática e extrato param juntos)
+            'inter_vence' => $u->pode('configuracoes') ? self::interVence() : null]);
+    }
+
+    private static function interVence(): ?array
+    {
+        $i = \App\Models\Integracao::inter();
+        if (! $i || ! $i->ativo || ! $i->certificado_validade) {
+            return null;
+        }
+        $dias = (int) today()->diffInDays($i->certificado_validade, false);
+
+        return $dias <= 30 ? ['data' => $i->certificado_validade->format('Y-m-d'), 'dias' => $dias] : null;
     }
 
     /** total baixado (soma dos itens dos pagamentos confirmados) e quantas contas, sem contar créditos */
