@@ -142,6 +142,32 @@ class ImportacaoCadastrosTest extends TestCase
         $this->assertSame('JOSÉ DA CONCEIÇÃO FILHO', $c->nome); // o resto continua vindo do sistema atual
     }
 
+    public function test_celular_no_campo_telefone_vai_para_o_celular(): void
+    {
+        $db = DB::connection('legado');
+        $this->importar();
+        // celular no campo do fixo, celular vazio: vai para o celular
+        $db->table('CLIENTES_TELEFONE')->where('clitel_id', 1)->update(['clitel_telefone_fixo' => '13 991234567', 'clitel_telefone_celular' => '']);
+        $this->importar();
+        $c = Cliente::where('legado_id', 5)->first();
+        $this->assertSame(['13991234567', null], [$c->celular, $c->telefone]);
+        // fixo de verdade fica onde está; com celular preenchido, nada muda
+        $db->table('CLIENTES_TELEFONE')->where('clitel_id', 1)->update(['clitel_telefone_fixo' => '1332221111', 'clitel_telefone_celular' => '']);
+        $this->importar();
+        $this->assertSame(['1332221111', null], [$c->refresh()->telefone, $c->celular]);
+        $db->table('CLIENTES_TELEFONE')->where('clitel_id', 1)->update(['clitel_telefone_fixo' => '13991234567', 'clitel_telefone_celular' => '13988887777']);
+        $this->importar();
+        $this->assertSame(['13991234567', '13988887777'], [$c->refresh()->telefone, $c->celular]);
+    }
+
+    public function test_arrumar_telefone(): void
+    {
+        $this->assertSame([null, '13991234567'], \App\Support\Telefone::arrumar('+55 13 99123-4567', null));
+        $this->assertSame([null, '13991234567'], \App\Support\Telefone::arrumar('13991234567', '0'));
+        $this->assertSame(['13999999999', null], \App\Support\Telefone::arrumar('13999999999', null)); // cara de inventado: não mexe
+        $this->assertSame(['1391234567', null], \App\Support\Telefone::arrumar('1391234567', null));   // sem o 9: não mexe
+    }
+
     public function test_exclusoes_e_mensalidade_zero_no_sistema_atual(): void
     {
         $this->importar();

@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 14/11/2026 — Celular gravado no campo telefone
+
+- Cliente com o celular vazio e um número de celular (DDD + 9 + 8 dígitos, com ou sem 55) no campo telefone: o número passa para o celular e o telefone fica vazio. Feito na importação (a cada hora, para não voltar) e uma vez para todos na publicação (migration `2026_11_21_000005_celular_no_campo_telefone`, inclui os clientes criados no ERP). Fixo de verdade, número com cara de inventado, número sem o 9 e cliente que atualizou o telefone pelo recadastro não mudam. `App\Support\Telefone`.
+- Sistema atual: `celular-legado.sql` (entregue à parte, rodado pelo Cauê no phpMyAdmin) faz a mesma correção na origem.
+
 ## 14/11/2026 — Placas sem traço
 
 - Placa exibida sempre junta, só letras e números (antes as antigas apareciam como "ABC-1234" e as Mercosul juntas). Os campos de placa só aceitam letras e números.

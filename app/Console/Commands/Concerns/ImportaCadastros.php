@@ -15,6 +15,7 @@ use App\Models\Unidade;
 use App\Models\Veiculo;
 use App\Support\Legado;
 use App\Support\Placa;
+use App\Support\Telefone;
 
 /**
  * Etapa 2 da importação: tipos de veículo, tabelas de estadia, serviços e preços, clientes,
@@ -235,8 +236,13 @@ trait ImportaCadastros
                 'dia_vencimento' => min(31, max(1, (int) ($c->cli_dia_vencimento ?: 5))),
                 'cliente_desde' => $this->data($c->cli_cadastrado_em ?? null),
             ];
+            // celular gravado no campo telefone (e celular vazio): vai para o celular, onde o WhatsApp procura
+            $locais = (array) ($cliente->campos_locais ?? []);
+            if (! in_array('telefone', $locais, true) && ! in_array('celular', $locais, true)) {
+                [$dados['telefone'], $dados['celular']] = Telefone::arrumar($dados['telefone'], $dados['celular']);
+            }
             // campos que o cliente atualizou pela atualização cadastral (aprovada) valem pelo ERP
-            foreach ((array) ($cliente->campos_locais ?? []) as $campo) {
+            foreach ($locais as $campo) {
                 unset($dados[$campo]);
             }
             $cliente->fill($dados);
