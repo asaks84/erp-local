@@ -139,6 +139,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/ordens/{ordem}', [OrdemController::class, 'update']);
         Route::post('/ordens/{ordem}/cancelar', [OrdemController::class, 'cancelar']);
         Route::post('/pagamentos/{pagamento}/estornar', [ContaController::class, 'estornar']);
+        Route::post('/clientes/{cliente}/estornos', [ContaController::class, 'estornoCliente']);
+        Route::post('/estornos/{estorno}/desfazer', [ContaController::class, 'desfazerEstorno']);
         Route::post('/cobrancas/{cobranca}/cancelar', [CobrancaController::class, 'cancelar']);
         Route::post('/boletos/{boleto}/cancelar', [BoletoController::class, 'cancelar']);
     });

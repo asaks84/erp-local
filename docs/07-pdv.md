@@ -10,6 +10,7 @@ O PDV é online primeiro: o celular com 4G manda os eventos e o servidor calcula
 - Celular do cliente (opcional) na entrada da estadia e na venda de lavagem, para o ticket e o aviso de lavagem pronta, dizendo para que serve o número (LGPD).
 - Saída: estadia → devolve o valor já com tarifa e convênio aplicados.
 - Pagamento: valor, forma, caixa → baixa pelo serviço único.
+- **Pix pelo Inter com confirmação automática:** o PDV mostra o QR Code / copia e cola de um Pix gerado pelo Inter e fica consultando sozinho (a cada poucos segundos, enquanto a tela estiver aberta) até o banco confirmar; confirmado, a baixa é feita e o ticket libera a saída sem o operador apertar nada. Se o tempo esgotar, o operador consulta de novo ou registra outra forma. De preferência com o aviso do próprio Inter (webhook), e a consulta como garantia. Decidido em 14/11/2026, depois do teste real do boleto: a emissão já atualiza sozinha, mas a confirmação do pagamento na tela da cobrança precisou do botão "Atualizar" (ali a baixa vem pela consulta de 10 em 10 minutos).
 - Venda de serviço: placa, serviço, adicionais → ordem de serviço com preço da tabela.
 - Caixa: abrir, sangria, suprimento, fechar com saldo informado.
 - Consulta: veículos no pátio, mensalista ativo, convênio da placa.

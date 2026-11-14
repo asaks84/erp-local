@@ -59,6 +59,15 @@ class Resultado
             ->whereBetween('p.recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])->sum('a.valor'), 2);
     }
 
+    /** estornos (devoluções) a clientes no mês, pelo dia em que o dinheiro saiu (só no olhar de caixa) */
+    private static function estornosCaixa(string $ym): float
+    {
+        [$de, $ate] = self::limites($ym);
+
+        return round((float) DB::table('estornos')->where('empresa_id', self::empresa())->where('situacao', 'feito')
+            ->whereBetween('estornado_em', [$de, $ate])->sum('valor'), 2);
+    }
+
     /** receitas do mês por chave de conta do plano (multa/juros e descontos ficam em linhas próprias) */
     private static function receitas(string $ym, string $regime): array
     {
@@ -197,6 +206,10 @@ class Resultado
         if ($desconto > 0) {
             $receitas[] = ['id' => 'descontos', 'codigo' => '', 'nome' => '(−) Descontos dados', 'nivel' => 1, 'valor' => -$desconto, 'tem_filhas' => false];
         }
+        $estornos = $regime === 'caixa' ? self::estornosCaixa($ym) : 0;
+        if ($estornos > 0) {
+            $receitas[] = ['id' => 'estornos', 'codigo' => '', 'nome' => '(−) Estornos a clientes', 'nivel' => 1, 'valor' => -$estornos, 'tem_filhas' => false];
+        }
         $todas = self::arvore($contas, 'despesa', $valores);
         // investimentos (equipamentos) ficam abaixo do resultado da operação
         $inv = $chaves['despesa_investimentos'] ?? null;
@@ -319,6 +332,12 @@ class Resultado
             ->get(['d.pago_em', 'd.descricao', 'd.valor', 'd.valor_pago']);
         foreach ($pagas as $d) {
             $add((string) $d->pago_em, 'saidas', $d->descricao, (float) ($d->valor_pago ?? $d->valor), false);
+        }
+
+        // estornos a clientes (devolução feita no app do banco)
+        $est = DB::table('estornos')->where('empresa_id', $e)->where('situacao', 'feito')->whereBetween('estornado_em', [$de, $ate])->get(['estornado_em', 'valor']);
+        foreach ($est as $x) {
+            $add((string) $x->estornado_em, 'saidas', 'Estorno a cliente', (float) $x->valor, false);
         }
 
         // previsto: a receber (ordens em aberto com vencimento de hoje em diante) e a pagar

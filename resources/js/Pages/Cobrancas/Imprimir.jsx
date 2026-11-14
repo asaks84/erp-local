@@ -86,7 +86,9 @@ function Via({ c, empresa }) {
                 {(creditos !== 0 || debitos !== 0) && <tr><td>Subtotal</td><td className="via-num">{moeda(subtotal)}</td></tr>}
                 {creditos !== 0 && <tr><td>Créditos</td><td className="via-num">-{moeda(creditos)}</td></tr>}
                 {debitos !== 0 && <tr><td>Débitos</td><td className="via-num">{moeda(debitos)}</td></tr>}
-                <tr className="via-final"><td>Total</td><td className="via-num">{moeda(c.total)}</td></tr>
+                {c.desconto > 0 && <tr><td>Total</td><td className="via-num">{moeda(c.total)}</td></tr>}
+                {c.desconto > 0 && <tr><td>Desconto</td><td className="via-num">-{moeda(c.desconto)}</td></tr>}
+                <tr className="via-final"><td>{c.desconto > 0 ? 'Total a pagar' : 'Total'}</td><td className="via-num">{moeda(c.total - (c.desconto || 0))}</td></tr>
             </tbody></table>
 
             {temAnterior && <p className="via-nota">* Não pago na cobrança anterior.</p>}

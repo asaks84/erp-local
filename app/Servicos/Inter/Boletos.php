@@ -265,9 +265,11 @@ class Boletos
         if ($falta = self::faltaNoCadastro($cob->cliente)) {
             self::erro("{$cob->cliente->nome}: o Inter exige ".implode(', ', $falta).' no cadastro do cliente.');
         }
-        $valor = self::valorEmAberto($cob);
+        // desconto negociado na cobrança: o boleto sai com o valor em aberto menos ele
+        $negociado = round((float) $cob->desconto, 2);
+        $valor = round(self::valorEmAberto($cob) - $negociado, 2);
         if ($valor < 2.5) {
-            self::erro("Cobrança {$cob->numero}: o Inter só emite boleto a partir de R$ 2,50.");
+            self::erro("Cobrança {$cob->numero}: o Inter só emite boleto a partir de R$ 2,50".($negociado > 0 ? ' (já com o desconto negociado).' : '.'));
         }
         $empresa = Empresa::atual();
         // o boleto vence alguns dias depois do vencimento combinado com o cliente (prazo da empresa)
@@ -282,7 +284,9 @@ class Boletos
         if (! ($aplicarRegras ?? self::aplicarRegrasSugerido($cob))) {
             $regras = self::semRegras($regras);
         }
-        $regras['desconto_calculado'] = self::descontoPontualidade($cob, $regras);
+        // com desconto negociado, o de pontualidade não soma (o valor combinado já é o final)
+        $regras['desconto_calculado'] = $negociado > 0 ? 0 : self::descontoPontualidade($cob, $regras);
+        $regras['desconto_negociado'] = $negociado;
         $regras['desconto_ate_dias'] = $prazo;
         $regras['prazo_dias'] = $prazo;
         $seq = Boleto::where('cobranca_id', $cob->id)->count() + 1;
@@ -384,7 +388,8 @@ class Boletos
             $devido = round((float) OrdemServico::whereIn('id', $ordens)->sum('valor') - $creditos, 2);
             $dif = round($valor - $devido, 2);
             $encargos = max(0, round($valor - (float) $b->valor, 2));
-            $desconto = max(0, round((float) $b->valor - $valor, 2));
+            $negociado = round((float) ($b->regras['desconto_negociado'] ?? 0), 2);
+            $desconto = max(0, round((float) $b->valor - $valor, 2)) + $negociado;
 
             $d = [
                 'ordens' => $ordens, 'valor' => $valor, 'forma_pagamento_id' => $forma?->id, 'recebido_em' => $b->recebido_em->toDateString(),
@@ -397,7 +402,8 @@ class Boletos
                 $d['motivo'] = $ordens ? 'Pagou o boleto com valor acima do devido' : 'Boleto pago com a cobrança já quitada por outro meio';
             } elseif ($dif < 0) {
                 $d['falta'] = -$dif <= $desconto + 0.01 ? 'desconto' : 'debito';
-                $d['motivo'] = $d['falta'] === 'desconto' ? 'Desconto do boleto (pagamento antecipado)' : 'Boleto pago com valor abaixo do devido';
+                $d['motivo'] = $d['falta'] !== 'desconto' ? 'Boleto pago com valor abaixo do devido'
+                    : ($negociado > 0 ? mb_substr('Desconto negociado na cobrança: '.($cob->desconto_motivo ?: 'sem motivo'), 0, 200) : 'Desconto do boleto (pagamento antecipado)');
             }
             [$pagamento] = Baixa::receber($cob->cliente, $d);
             $b->update(['pagamento_id' => $pagamento->id, 'erro' => $ordens ? null : 'A cobrança já estava paga quando o boleto foi pago: o valor virou crédito do cliente.']);

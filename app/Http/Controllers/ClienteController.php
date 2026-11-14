@@ -142,6 +142,12 @@ class ClienteController extends Controller
                 'id' => $p->id, 'recebido_em' => $p->recebido_em->format('Y-m-d H:i'), 'valor' => (float) $p->valor, 'forma' => $p->forma?->nome,
                 'situacao' => $p->situacao, 'origem' => $p->origem, 'motivo_estorno' => $p->motivo_estorno,
             ]),
+            'estornos' => \App\Models\Estorno::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('estornado_em')->orderByDesc('id')->limit(5)->get()->map(fn ($e) => [
+                'id' => $e->id, 'estornado_em' => $e->estornado_em->format('Y-m-d'), 'valor' => (float) $e->valor, 'forma' => $e->forma?->nome,
+                'motivo' => $e->motivo, 'situacao' => $e->situacao, 'motivo_desfeito' => $e->motivo_desfeito,
+            ]),
+            'credito_estornavel' => \App\Servicos\Estornos::disponivel($cliente),
+            'formas_estorno' => \App\Models\FormaPagamento::where('ativa', true)->whereIn('tipo', ['pix', 'transferencia', 'dinheiro'])->orderBy('ordem')->get(['id', 'nome', 'tipo']),
             'mes_atual' => now()->format('Y-m'),
             'periodos' => Empresa::atual()->config('periodos'),
             'unidades' => \App\Models\Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
@@ -165,13 +171,27 @@ class ClienteController extends Controller
         // ordens que um pagamento confirmado baixou (as demais pagas foram baixadas sem pagamento registrado)
         $cobertas = \App\Models\PagamentoItem::whereIn('ordem_id', $ids ?: [0])
             ->whereHas('pagamento', fn ($q) => $q->where('situacao', 'confirmado'))->pluck('ordem_id')->flip();
+        // estornos ao cliente: a linha do estorno conta o valor devolvido; os créditos usados e a sobra
+        // (crédito novo) não aparecem por conta própria, senão o saldo contaria duas vezes
+        $estornos = \App\Models\Estorno::where('cliente_id', $cliente->id)->get();
+        $pular = $estornos->pluck('credito_restante_id')->filter()->flip();
+        $usadosEstorno = $estornos->where('situacao', 'feito')->flatMap(fn ($e) => $e->creditos ?? [])->flip();
+        foreach ($estornos as $e) {
+            $mov->push(['quando' => $e->estornado_em->format('Y-m-d').' 23:00:00', 'ordem' => 4, 'descricao' => 'Estorno ao cliente ('.$e->motivo.')', 'tipo' => 'estorno', 'valor' => (float) $e->valor]);
+            if ($e->situacao === 'desfeito' && $e->desfeito_em) {
+                $mov->push(['quando' => $e->desfeito_em->format('Y-m-d H:i:s'), 'ordem' => 4, 'descricao' => 'Estorno desfeito ('.$e->motivo_desfeito.')', 'tipo' => 'estorno', 'valor' => -(float) $e->valor]);
+            }
+        }
         foreach ($ordens as $o) {
+            if (isset($pular[$o->id]) && ! isset($cobertas[$o->id])) {
+                continue;
+            }
             $mov->push(['quando' => $o->data->format('Y-m-d').' 00:00:00', 'ordem' => 1, 'descricao' => '#'.$o->numero.' '.$o->descricao.($o->competencia ? ' '.\Carbon\Carbon::parse($o->competencia.'-01')->format('m/Y') : '').($o->placa ? ' · '.\App\Support\Placa::formatar($o->placa) : ''),
                 'tipo' => $o->tipo, 'valor' => $o->valorComSinal()]);
             if ($o->situacao === 'cancelada' && $o->cancelada_em) {
                 $mov->push(['quando' => $o->cancelada_em->format('Y-m-d H:i:s'), 'ordem' => 2, 'descricao' => 'Cancelada #'.$o->numero.' ('.$o->motivo_cancelamento.')', 'tipo' => 'cancelamento', 'valor' => -$o->valorComSinal()]);
             }
-            if ($o->situacao === 'paga' && ! isset($cobertas[$o->id])) {
+            if ($o->situacao === 'paga' && ! isset($cobertas[$o->id]) && ! isset($usadosEstorno[$o->id])) {
                 // ex.: data de pagamento "0000-00-00" no sistema atual: paga, mas sem data nem pagamento
                 $quando = $o->pago_em?->format('Y-m-d H:i:s') ?? ($o->vencimento ?? $o->data)->format('Y-m-d').' 00:00:01';
                 $mov->push(['quando' => $quando, 'ordem' => 3, 'descricao' => 'Baixada no sistema atual sem data de pagamento #'.$o->numero, 'tipo' => 'pagamento', 'valor' => -$o->valorComSinal()]);
@@ -187,7 +207,7 @@ class ClienteController extends Controller
             $mov->push(['quando' => $p->recebido_em->format('Y-m-d H:i:s'), 'ordem' => 3, 'descricao' => 'Pagamento '.\App\Support\Formato::moeda($p->valor).' ('.($p->forma?->nome ?? 'forma não informada').') · ordens '.$itens->map(fn ($i) => '#'.$i->ordem->numero)->implode(', ').$obs,
                 'tipo' => 'pagamento', 'valor' => -$baixado]);
             if ($p->situacao === 'estornado' && $p->estornado_em) {
-                $mov->push(['quando' => $p->estornado_em->format('Y-m-d H:i:s'), 'ordem' => 4, 'descricao' => 'Estorno do pagamento ('.$p->motivo_estorno.')', 'tipo' => 'estorno', 'valor' => $baixado]);
+                $mov->push(['quando' => $p->estornado_em->format('Y-m-d H:i:s'), 'ordem' => 4, 'descricao' => 'Pagamento desfeito ('.$p->motivo_estorno.')', 'tipo' => 'estorno', 'valor' => $baixado]);
             }
         }
         $mov = $mov->sortBy([['quando', 'asc'], ['ordem', 'asc']])->values();

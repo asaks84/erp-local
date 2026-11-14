@@ -19,7 +19,7 @@ class Cobranca extends Modelo
 
     protected function casts(): array
     {
-        return ['emitida_em' => 'datetime', 'vencimento' => 'date:Y-m-d', 'total' => 'decimal:2', 'cancelada_em' => 'datetime'];
+        return ['emitida_em' => 'datetime', 'vencimento' => 'date:Y-m-d', 'total' => 'decimal:2', 'desconto' => 'decimal:2', 'cancelada_em' => 'datetime'];
     }
 
     public function cliente(): BelongsTo

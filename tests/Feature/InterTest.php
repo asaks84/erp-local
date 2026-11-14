@@ -221,6 +221,49 @@ class InterTest extends TestCase
         }
     }
 
+    public function test_desconto_negociado_na_cobranca_unitaria(): void
+    {
+        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10]]);
+        $estado = ['situacao' => 'A_RECEBER'];
+        $this->fakeInter($estado);
+        Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $this->x->cliente->id, 'valor' => 250, 'descricao' => 'Mensalidade',
+            'data' => '2026-11-01', 'vencimento' => '2026-11-20', 'competencia' => '2026-11']);
+        $url = '/clientes/'.$this->x->cliente->id.'/cobrancas';
+
+        // sem motivo e sem permissão: recusa (nada é emitido)
+        $this->actingAs($this->a->admin)->post($url, ['mes' => '2026-11', 'desconto' => 30])->assertSessionHasErrors('desconto_motivo');
+        $this->actingAs($this->a->operador)->post($url, ['mes' => '2026-11', 'desconto' => 30, 'desconto_motivo' => 'x'])->assertSessionHasErrors('desconto');
+        $this->assertSame(0, Cobranca::count());
+
+        // emite com desconto e boleto: o total das ordens fica; o boleto sai com 250 − 30 = 220, sem o de pontualidade
+        $this->actingAs($this->a->admin)->post($url, ['mes' => '2026-11', 'boleto' => true, 'regras' => true, 'desconto' => 30, 'desconto_motivo' => 'Negociado no balcão'])
+            ->assertSessionHasNoErrors();
+        $cob = Cobranca::first();
+        $this->assertSame(250.0, (float) $cob->total);
+        $this->assertSame(30.0, (float) $cob->desconto);
+        $this->assertSame('Negociado no balcão', $cob->desconto_motivo);
+        $this->assertSame(220.0, (float) $estado['emitido']['valorNominal']);
+        $this->assertArrayNotHasKey('desconto', $estado['emitido']);
+
+        // com boleto ativo, o desconto não muda
+        try {
+            Cobrancas::definirDesconto($cob, 50, 'outro');
+            $this->fail('Mudou o desconto com boleto ativo.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('desconto', $e->errors());
+        }
+
+        // pago 220: a cobrança fica paga e os 30 viram desconto com o motivo
+        $estado = ['situacao' => 'RECEBIDO', 'recebido' => '220.00', 'data' => '2026-11-13', 'origem' => 'BOLETO'];
+        $this->fakeInter($estado);
+        Boletos::rotina(null, true);
+        $this->assertSame('paga', $cob->refresh()->situacao);
+        $aj = Ajuste::where('tipo', 'desconto')->first();
+        $this->assertSame(30.0, (float) $aj->valor);
+        $this->assertStringContainsString('Negociado no balcão', $aj->motivo);
+        $this->assertSame(0, OrdemServico::abertas()->where('cliente_id', $this->x->cliente->id)->count());
+    }
+
     public function test_desconto_do_boleto_vira_desconto(): void
     {
         $estado = ['situacao' => 'A_RECEBER'];

@@ -16,8 +16,12 @@ class BoletoController extends Controller
 {
     public function emitir(Request $request, Cobranca $cobranca): RedirectResponse
     {
-        $d = $request->validate(['regras' => ['nullable', 'boolean'], 'vencimento' => ['nullable', 'date_format:Y-m-d']],
+        $d = $request->validate(['regras' => ['nullable', 'boolean'], 'vencimento' => ['nullable', 'date_format:Y-m-d'],
+            'desconto' => ['nullable', 'numeric', 'min:0', 'max:99999'], 'desconto_motivo' => ['nullable', 'string', 'max:120']],
             ['vencimento.date_format' => 'Data de vencimento inválida.']);
+        if (array_key_exists('desconto', $d)) {
+            \App\Servicos\Cobrancas::definirDesconto($cobranca, (float) ($d['desconto'] ?? 0), $d['desconto_motivo'] ?? null);
+        }
         $b = Boletos::emitir($cobranca, null, isset($d['regras']) ? (bool) $d['regras'] : null,
             ! empty($d['vencimento']) ? \Illuminate\Support\Carbon::parse($d['vencimento']) : null);
 

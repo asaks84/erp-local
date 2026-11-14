@@ -67,6 +67,36 @@ class Cobrancas
     }
 
     /** Emite a cobrança do mês para um cliente com todas as ordens em aberto. */
+    /**
+     * Desconto negociado na cobrança (só a unitária): fica gravado com motivo e quem deu; o total das
+     * ordens não muda. Vale para o boleto (total em aberto menos o desconto). 0 tira o desconto.
+     */
+    public static function definirDesconto(Cobranca $cob, float $desconto, ?string $motivo = null): void
+    {
+        $desconto = round(max(0, $desconto), 2);
+        if ($desconto === round((float) $cob->desconto, 2) && ($desconto == 0 || $motivo === $cob->desconto_motivo)) {
+            return;
+        }
+        if (! in_array($cob->situacao, ['aberta', 'parcial'], true)) {
+            self::erro('desconto', 'Só dá para dar desconto em cobrança em aberto.');
+        }
+        if (\App\Servicos\Inter\Boletos::ativo($cob)) {
+            self::erro('desconto', 'A cobrança já tem boleto. Cancele o boleto para mudar o desconto.');
+        }
+        if ($desconto > 0 && ! Auth::user()?->pode('desconto')) {
+            self::erro('desconto', 'Seu nível de acesso não permite dar desconto.');
+        }
+        if ($desconto > 0 && ! trim((string) $motivo)) {
+            self::erro('desconto_motivo', 'Informe o motivo do desconto (ex.: negociado com o cliente).');
+        }
+        $aberto = \App\Servicos\Inter\Boletos::valorEmAberto($cob);
+        if ($desconto >= $aberto) {
+            self::erro('desconto', 'O desconto precisa ser menor que o valor em aberto ('.Formato::moeda($aberto).').');
+        }
+        $cob->update(['desconto' => $desconto, 'desconto_motivo' => $desconto > 0 ? mb_substr(trim($motivo), 0, 120) : null, 'desconto_por' => $desconto > 0 ? Auth::id() : null]);
+        Atividades::registrar('cobranca_desconto', 'cobrança '.$cob->numero.': '.($desconto > 0 ? 'desconto de '.Formato::moeda($desconto).' ('.$cob->desconto_motivo.')' : 'desconto retirado'));
+    }
+
     public static function emitir(Cliente $cliente, string $competencia, ?string $vencimento = null): Cobranca
     {
         if (! Mensalidades::competenciaValida($competencia)) {

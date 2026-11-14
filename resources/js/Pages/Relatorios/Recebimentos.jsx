@@ -84,9 +84,9 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
                                     <td className="d-none d-lg-table-cell d-print-table-cell small">{p.itens.map((i) => `#${i.numero} ${i.descricao}`).join(', ')}</td>
                                     <td className="text-end text-nowrap">
                                         <span className={p.situacao === 'estornado' ? 'text-decoration-line-through' : ''}>{moeda(p.valor)}</span>
-                                        {p.situacao === 'estornado' && <div><span className="selo" title={p.motivo_estorno || undefined}>Estornado</span></div>}
+                                        {p.situacao === 'estornado' && <div><span className="selo" title={p.motivo_estorno || undefined}>Desfeito</span></div>}
                                     </td>
-                                    <td className="text-end nao-imprimir">{pode('contas_editar') && p.situacao === 'confirmado' && p.origem !== 'importacao' && <button type="button" className="btn btn-sm btn-link" onClick={() => { form.reset(); setEstornar(p) }}>Estornar</button>}</td>
+                                    <td className="text-end nao-imprimir">{pode('contas_editar') && p.situacao === 'confirmado' && p.origem !== 'importacao' && <button type="button" className="btn btn-sm btn-link" onClick={() => { form.reset(); setEstornar(p) }} title="Pagamento lançado errado: as contas voltam a ficar em aberto">Desfazer</button>}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -95,9 +95,9 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
             </div>
             {limitado && <p className="small text-muted mt-2">Mostrando os 500 mais recentes. Baixe a planilha para ver todos.</p>}
 
-            <Janela aberta={!!estornar} titulo="Estornar pagamento" perigo rotuloOk="Estornar" onFechar={() => setEstornar(null)}
+            <Janela aberta={!!estornar} titulo="Desfazer pagamento" perigo rotuloOk="Desfazer" onFechar={() => setEstornar(null)}
                 onEnviar={() => form.post(`/pagamentos/${estornar.id}/estornar`, { preserveScroll: true, onSuccess: () => setEstornar(null) })} ocupado={form.processing}>
-                <p>{estornar && `${dataHora(estornar.recebido_em)} · ${moeda(estornar.valor)}${estornar.cliente ? ` · ${estornar.cliente.nome}` : ''}`}. As contas pagas por ele voltam a ficar em aberto.</p>
+                <p>{estornar && `${dataHora(estornar.recebido_em)} · ${moeda(estornar.valor)}${estornar.cliente ? ` · ${estornar.cliente.nome}` : ''}`}. As contas pagas por ele voltam a ficar em aberto. Para devolver dinheiro ao cliente, use "Estornar" na ficha dele.</p>
                 <Campo rotulo="Motivo" value={form.data.motivo} onChange={(e) => form.setData('motivo', e.target.value)} erro={form.errors.motivo} maxLength={200} autoFocus />
             </Janela>
         </div>

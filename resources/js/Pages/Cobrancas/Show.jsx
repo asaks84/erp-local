@@ -47,6 +47,7 @@ export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], i
                 <SeloCobranca situacao={cobranca.situacao} />
                 <span>Vencimento <strong>{fData(cobranca.vencimento)}</strong></span>
                 <span>Total <strong>{moeda(cobranca.total)}</strong></span>
+                {cobranca.desconto > 0 && <span title={cobranca.desconto_motivo || undefined}>Desconto negociado <strong>−{moeda(cobranca.desconto)}</strong> · A pagar <strong>{moeda(cobranca.total - cobranca.desconto)}</strong></span>}
                 <span className="text-muted small">Emitida em {dataHora(cobranca.emitida_em)}</span>
                 <Link href={`/clientes/${cliente.id}`} className="ms-auto">Abrir cliente</Link>
             </div>

@@ -82,7 +82,7 @@ deploy/                   scripts que rodam no servidor na publicação (servido
 ## Testes
 
 - Rodam num banco MySQL separado, `erp_teste` (e `erp_teste_legado` para a importação). Criar os dois vazios no phpMyAdmin uma vez.
-- `php artisan test` roda todos. Hoje: 182 testes (Banco Inter com a API simulada, isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
+- `php artisan test` roda todos. Hoje: 185 testes (Banco Inter com a API simulada, isolamento entre empresas, rotas, login, permissões, usuários e níveis, clientes, veículos, mensalidades, cadastro público, configurações, tarifador com as tabelas do Local, dinheiro: geração, primeira cobrança, baixa, estorno, cobranças, extrato; estadias, convênios e vendas; importação e comparação).
 - Regra de dinheiro nova: escrever o teste com casos reais antes de ligar na tela.
 
 ## Comandos

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import Janela from './Janela'
 import Campo from './Campo'
+import CampoValor from './CampoValor'
 import { data as fData, dataHora, moeda } from '../lib/formato'
 import { usePode } from '../lib/permissoes'
 
@@ -59,6 +60,10 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
     // vencimento do boleto: sugerido pelo sistema (vencimento + prazo; mês seguinte se já passou), sempre editável
     const hoje = iso(new Date())
     const [vencimento, setVencimento] = useState(vencimentoSugerido || hoje)
+    const [desconto, setDesconto] = useState(cobranca.desconto || '')
+    const [motivo, setMotivo] = useState(cobranca.desconto_motivo || '')
+    const podeDesconto = pode('desconto')
+    const valorBoleto = Math.max(0, Math.round((emAberto - (Number(desconto) || 0)) * 100) / 100)
     const mudouMes = vencimentoSugerido && vencimentoSugerido.slice(0, 7) !== cobranca.vencimento.slice(0, 7) && cobranca.vencimento < hoje
     const [cancelar, setCancelar] = useState(null)
     const [ocupado, setOcupado] = useState(false)
@@ -105,7 +110,7 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                     <>
                         <div className="d-flex flex-wrap align-items-center gap-3">
                             <span className="small text-muted flex-grow-1">
-                                Gera um boleto de {moeda(emAberto)}. Quando for pago, a baixa é automática.
+                                Gera um boleto de <strong>{moeda(valorBoleto)}</strong>{Number(desconto) > 0 && <> ({moeda(emAberto)} − {moeda(Number(desconto))} de desconto)</>}. Quando for pago, a baixa é automática.
                                 {mudouMes && <> O vencimento da cobrança ({fData(cobranca.vencimento)}) já passou: a data sugerida foi para o mês seguinte.</>}
                             </span>
                             <div>
@@ -114,8 +119,21 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                                     onChange={(e) => setVencimento(e.target.value)} />
                             </div>
                             <button type="button" className="btn btn-primary align-self-end" disabled={ocupado || !vencimento}
-                                onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, { regras, vencimento })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
+                                onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, podeDesconto ? { regras, vencimento, desconto: Number(desconto) || 0, desconto_motivo: motivo } : { regras, vencimento })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
                         </div>
+                        {podeDesconto && (
+                            <div className="row g-2 mt-1">
+                                <div className="col-sm-4 col-lg-3">
+                                    <CampoValor rotulo="Desconto negociado" value={desconto} onChange={setDesconto} erro={errors.desconto} ajuda="Opcional" />
+                                </div>
+                                {Number(desconto) > 0 && (
+                                    <div className="col-sm-8 col-lg-6">
+                                        <Campo rotulo="Motivo do desconto" value={motivo} onChange={(e) => setMotivo(e.target.value)} erro={errors.desconto_motivo} maxLength={120} placeholder="Ex.: negociado com o cliente" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {!podeDesconto && cobranca.desconto > 0 && <p className="small text-muted mt-2 mb-0">Desconto negociado: {moeda(cobranca.desconto)}{cobranca.desconto_motivo && ` (${cobranca.desconto_motivo})`}.</p>}
                         {(errors.boleto || errors.vencimento) && <div className="alert alert-danger small mt-2 mb-0">{errors.boleto || errors.vencimento}</div>}
                         <div className="form-check mt-2 mb-0">
                             <input className="form-check-input" type="checkbox" id="bol-regras" checked={regras} onChange={(e) => setRegras(e.target.checked)} />

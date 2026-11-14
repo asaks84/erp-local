@@ -63,6 +63,8 @@ class CobrancaController extends Controller
             'emitida_em' => $c->emitida_em->format('Y-m-d H:i'),
             'vencimento' => $c->vencimento->format('Y-m-d'),
             'total' => (float) $c->total,
+            'desconto' => (float) $c->desconto,
+            'desconto_motivo' => $c->desconto_motivo,
             'situacao' => $c->situacao,
             'motivo_cancelamento' => $c->motivo_cancelamento,
         ];
@@ -108,8 +110,23 @@ class CobrancaController extends Controller
 
     public function emitir(Request $request, Cliente $cliente): RedirectResponse
     {
-        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d'], 'boleto' => ['nullable', 'boolean'], 'regras' => ['nullable', 'boolean']]);
-        $c = Cobrancas::emitir($cliente, $d['mes'], $d['vencimento'] ?? null);
+        $d = $request->validate(['mes' => ['required', 'date_format:Y-m'], 'vencimento' => ['nullable', 'date_format:Y-m-d'], 'boleto' => ['nullable', 'boolean'], 'regras' => ['nullable', 'boolean'],
+            'desconto' => ['nullable', 'numeric', 'min:0', 'max:99999'], 'desconto_motivo' => ['nullable', 'string', 'max:120']]);
+        $desconto = round((float) ($d['desconto'] ?? 0), 2);
+        if ($desconto > 0 && ! $request->user()->pode('desconto')) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['desconto' => 'Seu nível de acesso não permite dar desconto.']);
+        }
+        if ($desconto > 0 && ! trim((string) ($d['desconto_motivo'] ?? ''))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['desconto_motivo' => 'Informe o motivo do desconto (ex.: negociado com o cliente).']);
+        }
+        $c = \Illuminate\Support\Facades\DB::transaction(function () use ($cliente, $d, $desconto) {
+            $c = Cobrancas::emitir($cliente, $d['mes'], $d['vencimento'] ?? null);
+            if ($desconto > 0) {
+                Cobrancas::definirDesconto($c, $desconto, $d['desconto_motivo'] ?? null);
+            }
+
+            return $c;
+        });
         $r = redirect("/cobrancas/{$c->id}")->with('sucesso', 'Cobrança '.$c->numero.' emitida.');
         if (! empty($d['boleto'])) {
             [$ok, $falhas] = self::gerarBoletos([$c], array_key_exists('regras', $d) && $d['regras'] !== null ? (bool) $d['regras'] : null);

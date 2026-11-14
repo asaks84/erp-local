@@ -148,6 +148,26 @@ class ContaController extends Controller
         $d = $request->validate(['motivo' => ['required', 'string', 'max:200']]);
         Baixa::estornar($pagamento, $d['motivo']);
 
-        return back()->with('sucesso', 'Pagamento estornado; as contas voltaram a ficar em aberto.');
+        return back()->with('sucesso', 'Pagamento desfeito; as contas voltaram a ficar em aberto.');
+    }
+
+    /** estorno ao cliente: devolve o crédito dele (o Pix ou a transferência é feito no app do banco) */
+    public function estornoCliente(Request $request, Cliente $cliente): RedirectResponse
+    {
+        $d = $request->validate([
+            'valor' => ['required', 'numeric', 'min:0.01'], 'estornado_em' => ['required', 'date_format:Y-m-d'],
+            'forma_pagamento_id' => ['nullable', 'integer'], 'motivo' => ['required', 'string', 'max:200'],
+        ], ['motivo.required' => 'Informe o motivo do estorno.', 'valor.required' => 'Informe o valor do estorno.']);
+        $e = \App\Servicos\Estornos::estornar($cliente, $d);
+
+        return back()->with('sucesso', 'Estorno de '.\App\Support\Formato::moeda((float) $e->valor).' registrado. O crédito do cliente foi baixado.');
+    }
+
+    public function desfazerEstorno(Request $request, \App\Models\Estorno $estorno): RedirectResponse
+    {
+        $d = $request->validate(['motivo' => ['required', 'string', 'max:200']], ['motivo.required' => 'Informe o motivo.']);
+        \App\Servicos\Estornos::desfazer($estorno, $d['motivo']);
+
+        return back()->with('sucesso', 'Estorno desfeito; o crédito voltou para o cliente.');
     }
 }

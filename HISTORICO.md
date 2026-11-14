@@ -4,6 +4,19 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 14/11/2026 — Estorno ao cliente
+
+- **Estornar** (ficha do cliente, com crédito a favor dele; permissão de editar contas): registra a devolução do crédito. O Pix ou a transferência é feito no app do banco; aqui vão valor (até o crédito livre, descontadas as contas em aberto), data, como foi devolvido (Pix, transferência, dinheiro) e motivo obrigatório. Usa os créditos mais antigos primeiro; se o estorno for parcial, a sobra vira um crédito novo. Lista "Estornos" na ficha, com **Desfazer** (o crédito volta).
+- O estorno entra no **fluxo de caixa** como saída ("Estorno a cliente") e no **Resultado pelo olhar de caixa** como "(−) Estornos a clientes" (no olhar de referência não entra: o crédito nunca foi receita do mês). O extrato do cliente mostra a linha do estorno.
+- O antigo "Estornar" dos pagamentos (ficha e Recebimentos) passou a se chamar **Desfazer** ("Desfeito" no selo): desfaz um pagamento lançado errado e as contas voltam a ficar em aberto. Não devolve dinheiro.
+- Migration `2026_11_21_000002_create_estornos`. Serviço `App\Servicos\Estornos`.
+
+## 14/11/2026 — Desconto negociado na cobrança; Inter confirmado em produção
+
+- **Desconto negociado** (só na cobrança unitária): campos "Desconto negociado" e "Motivo do desconto" na emissão pela ficha do cliente e no quadro do boleto da cobrança. Exige a permissão de dar desconto; o motivo é obrigatório. O total das ordens continua o mesmo (relatórios); a tela da cobrança e a impressão mostram Total, Desconto e **Total a pagar**. O boleto sai com o valor em aberto menos o desconto e, nesse caso, sem o desconto de pontualidade. Pago, a diferença vira desconto na baixa, com o motivo. Com boleto ativo, o desconto só muda cancelando o boleto. Migration `2026_11_21_000001_add_desconto_to_cobrancas` (cobrancas.desconto, desconto_motivo, desconto_por).
+- **Inter confirmado em produção:** boleto emitido, QR Code e Pix na tela sozinhos, pago com Pix e baixa automática conferida (cobrança e mensalidade pagas).
+- **Registrado para o PDV** (docs/07-pdv.md): Pix com confirmação automática na tela, sem botão de atualizar.
+
 ## 14/11/2026 — Boleto de cobrança vencida
 
 - **Correção:** "Gerar boleto" numa cobrança cujo vencimento já passou não fazia nada na tela. O sistema recusava, mas a mensagem não aparecia. Agora o erro do boleto aparece no quadro do boleto.
