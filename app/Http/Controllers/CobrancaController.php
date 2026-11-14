@@ -161,6 +161,7 @@ class CobrancaController extends Controller
 
         return Inertia::render('Cobrancas/Show', [
             'inter' => self::interLigado(),
+            'boleto_prazo' => Boletos::prazo(),
             'regras_sugerido' => Boletos::aplicarRegrasSugerido($cobranca),
             'em_aberto' => Boletos::valorEmAberto($cobranca),
             'falta_cadastro' => Boletos::faltaNoCadastro($cobranca->cliente),

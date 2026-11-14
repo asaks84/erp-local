@@ -1,4 +1,4 @@
-import { Link, router, useForm } from '@inertiajs/react'
+import { Link, router, useForm, usePage } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import Janela from './Janela'
@@ -50,8 +50,17 @@ function Ativo({ b, esgotou }) {
 }
 
 /** Quadro do boleto com Pix (Banco Inter) na tela da cobrança. */
-export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId, regrasSugerido = true }) {
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const somarDias = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return iso(d) }
+
+export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId, regrasSugerido = true, prazo = 0 }) {
     const pode = usePode()
+    const { errors = {} } = usePage().props
+    // vencimento do boleto = vencimento da cobrança + prazo; se já passou, escolhe uma data (padrão: daqui a 3 dias)
+    const hoje = iso(new Date())
+    const previsto = somarDias(cobranca.vencimento, prazo)
+    const vencido = previsto < hoje
+    const [vencimento, setVencimento] = useState(vencido ? somarDias(hoje, 3) : previsto)
     const [cancelar, setCancelar] = useState(null)
     const [ocupado, setOcupado] = useState(false)
     const [regras, setRegras] = useState(regrasSugerido)
@@ -83,6 +92,7 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                 {atual && pode('contas_editar') && <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => { form.reset(); setCancelar(atual) }}>Cancelar boleto</button>}
             </div>
             <div className="card-body">
+                {atual && errors.boleto && <div className="alert alert-danger small">{errors.boleto}</div>}
                 {atual && (
                     <>
                         <p className="small text-muted">{moeda(atual.valor)} · vence {fData(atual.vencimento)} · nº {atual.seu_numero}{atual.sem_regras && ' · sem multa, juros e desconto'}{atual.consultado_em && ` · consultado ${dataHora(atual.consultado_em)}`}</p>
@@ -95,9 +105,19 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                 {!atual && podeGerar && faltaCadastro.length === 0 && (
                     <>
                         <div className="d-flex flex-wrap align-items-center gap-3">
-                            <span className="small text-muted flex-grow-1">Gera um boleto de {moeda(emAberto)} com vencimento em {fData(cobranca.vencimento)}. Quando for pago, a baixa é automática.</span>
-                            <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, { regras })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
+                            <span className="small text-muted flex-grow-1">
+                                {vencido
+                                    ? <>O vencimento desta cobrança ({fData(cobranca.vencimento)}) já passou. Escolha quando o boleto de {moeda(emAberto)} vai vencer.</>
+                                    : <>Gera um boleto de {moeda(emAberto)} com vencimento em {fData(previsto)}.</>} Quando for pago, a baixa é automática.
+                            </span>
+                            {vencido && (
+                                <input type="date" className="form-control" style={{ maxWidth: 170 }} aria-label="Vencimento do boleto" value={vencimento} min={hoje} max={somarDias(hoje, 60)}
+                                    onChange={(e) => setVencimento(e.target.value)} />
+                            )}
+                            <button type="button" className="btn btn-primary" disabled={ocupado || (vencido && !vencimento)}
+                                onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, vencido ? { regras, vencimento } : { regras })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
                         </div>
+                        {(errors.boleto || errors.vencimento) && <div className="alert alert-danger small mt-2 mb-0">{errors.boleto || errors.vencimento}</div>}
                         <div className="form-check mt-2 mb-0">
                             <input className="form-check-input" type="checkbox" id="bol-regras" checked={regras} onChange={(e) => setRegras(e.target.checked)} />
                             <label className="form-check-label small" htmlFor="bol-regras">Aplicar as regras do boleto (multa, juros e desconto)</label>

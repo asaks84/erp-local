@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 14/11/2026 — Boleto de cobrança vencida
+
+- **Correção:** "Gerar boleto" numa cobrança cujo vencimento já passou não fazia nada na tela. O sistema recusava, mas a mensagem não aparecia. Agora o erro do boleto aparece no quadro do boleto.
+- **Novo vencimento:** quando o vencimento da cobrança (mais o prazo do boleto) já passou, o quadro pede a data de vencimento do boleto (padrão: daqui a 3 dias; entre hoje e 60 dias). A cobrança continua com o vencimento original; só o boleto vence na data escolhida. O desconto de pontualidade não entra (a cobrança já venceu); multa e juros, se marcados, contam a partir da nova data.
+
 ## 13/11/2026 — Recadastro (atualização cadastral dos clientes)
 
 - **Clientes › Recadastro** (`/atualizacao-cadastral`, permissão de aprovar cadastros): resumo e duas tabelas, **CPF/CNPJ com problema** (dígitos que não conferem, quantidade errada, em branco, repetido em outro cliente) e **sem celular válido** (sem celular, telefone fixo, sem o 9, formato inválido, número suspeito tipo 99999-9999). Contador no menu com as respostas para revisar.

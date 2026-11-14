@@ -238,7 +238,7 @@ class Boletos
      * Emite o boleto da cobrança. $aplicarRegras: null = automático (sem regras quando há primeira
      * mensalidade ou proporcional). Erro de cadastro ou do Inter: ValidationException com a mensagem.
      */
-    public static function emitir(Cobranca $cob, ?InterCliente $api = null, ?bool $aplicarRegras = null): Boleto
+    public static function emitir(Cobranca $cob, ?InterCliente $api = null, ?bool $aplicarRegras = null, ?Carbon $vencimentoEscolhido = null): Boleto
     {
         $integracao = self::integracao();
         if (! in_array($cob->situacao, ['aberta', 'parcial'], true)) {
@@ -259,8 +259,15 @@ class Boletos
         // o boleto vence alguns dias depois do vencimento combinado com o cliente (prazo da empresa)
         $prazo = self::prazo($empresa);
         $vencimento = $cob->vencimento->copy()->addDays($prazo);
-        if ($vencimento->isBefore(today())) {
-            self::erro("Cobrança {$cob->numero}: o vencimento do boleto ({$vencimento->format('d/m/Y')}) já passou. Emita uma cobrança nova com vencimento futuro.");
+        if ($vencimentoEscolhido) {
+            // cobrança atrasada (ou vencimento combinado na hora): o boleto vence na data escolhida
+            $vencimento = $vencimentoEscolhido->copy()->startOfDay();
+            if ($vencimento->isBefore(today()) || $vencimento->isAfter(today()->addDays(60))) {
+                self::erro('O vencimento do boleto precisa ser entre hoje e '.today()->addDays(60)->format('d/m/Y').'.');
+            }
+            $prazo = max(0, (int) $cob->vencimento->copy()->startOfDay()->diffInDays($vencimento, false));
+        } elseif ($vencimento->isBefore(today())) {
+            self::erro("Cobrança {$cob->numero}: o vencimento do boleto ({$vencimento->format('d/m/Y')}) já passou. Escolha um novo vencimento para o boleto.");
         }
         $regras = self::regras($empresa, $cob->cliente);
         if (! ($aplicarRegras ?? self::aplicarRegrasSugerido($cob))) {

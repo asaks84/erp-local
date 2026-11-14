@@ -16,8 +16,10 @@ class BoletoController extends Controller
 {
     public function emitir(Request $request, Cobranca $cobranca): RedirectResponse
     {
-        $d = $request->validate(['regras' => ['nullable', 'boolean']]);
-        $b = Boletos::emitir($cobranca, null, isset($d['regras']) ? (bool) $d['regras'] : null);
+        $d = $request->validate(['regras' => ['nullable', 'boolean'], 'vencimento' => ['nullable', 'date_format:Y-m-d']],
+            ['vencimento.date_format' => 'Data de vencimento inválida.']);
+        $b = Boletos::emitir($cobranca, null, isset($d['regras']) ? (bool) $d['regras'] : null,
+            ! empty($d['vencimento']) ? \Illuminate\Support\Carbon::parse($d['vencimento']) : null);
 
         return back()->with('sucesso', $b->situacao === 'em_processamento'
             ? 'Boleto pedido ao Inter. A linha digitável e o Pix aparecem em instantes (clique em Atualizar).'

@@ -127,6 +127,31 @@ class InterTest extends TestCase
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/oauth/v2/token') && $r['scope'] === 'boleto-cobranca.read boleto-cobranca.write');
     }
 
+    public function test_cobranca_vencida_pede_novo_vencimento_do_boleto(): void
+    {
+        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10]]);
+        $estado = ['situacao' => 'A_RECEBER'];
+        $this->fakeInter($estado);
+        $cob = $this->cobranca();
+        Carbon::setTestNow($cob->vencimento->copy()->addDays(9)->setTime(10, 0));
+
+        // sem data: recusa e a mensagem chega à tela (errors.boleto)
+        $this->actingAs($this->a->admin)->from('/cobrancas/'.$cob->id)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true])
+            ->assertSessionHasErrors('boleto');
+        $this->assertStringContainsString('Escolha um novo vencimento', session('errors')->first('boleto'));
+        // data no passado: recusa
+        $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true, 'vencimento' => today()->subDay()->toDateString()])
+            ->assertSessionHasErrors('boleto');
+        $this->assertArrayNotHasKey('emitido', $estado);
+
+        // com a data escolhida: emite nela, sem desconto de pontualidade (a cobrança já venceu)
+        $nova = today()->addDays(3)->toDateString();
+        $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true, 'vencimento' => $nova])->assertSessionHasNoErrors();
+        $this->assertSame($nova, $estado['emitido']['dataVencimento']);
+        $this->assertArrayNotHasKey('desconto', $estado['emitido']);
+        Carbon::setTestNow();
+    }
+
     public function test_cadastro_incompleto_e_boleto_repetido_sao_barrados(): void
     {
         $estado = ['situacao' => 'A_RECEBER'];
