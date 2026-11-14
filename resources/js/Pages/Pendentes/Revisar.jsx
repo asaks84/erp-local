@@ -36,6 +36,11 @@ export default function PendenteRevisar({ pendente, existente, tipos, unidades, 
                     Se for a mesma pessoa, use <strong>Adicionar veículo ao cliente</strong>.
                 </div>
             )}
+            {pendente.do_sistema_atual && (
+                <div className="alert alert-warning">
+                    <strong>Esta ficha veio do link do sistema atual.</strong> Aprove ou recuse lá: aprovar aqui cria o cliente duas vezes (com códigos diferentes). Ela sai desta lista na próxima importação.
+                </div>
+            )}
             {errors.modo && <div className="alert alert-danger">{errors.modo}</div>}
             <form onSubmit={(e) => e.preventDefault()} className="card" noValidate>
                 <div className="card-header">Cliente</div>
@@ -49,9 +54,9 @@ export default function PendenteRevisar({ pendente, existente, tipos, unidades, 
                     <CamposMensalidade data={data} setData={setData} errors={errors} periodos={periodos} unidades={unidades} />
                 </div>
                 <div className="card-footer bg-transparent d-flex flex-wrap gap-2 p-3">
-                    <button type="button" className="btn btn-outline-danger me-auto" onClick={() => setRecusar(true)}>Recusar</button>
-                    <Link href="/pendentes" className="btn btn-outline-secondary">Voltar</Link>
-                    {existente
+                    {!pendente.do_sistema_atual && <button type="button" className="btn btn-outline-danger me-auto" onClick={() => setRecusar(true)}>Recusar</button>}
+                    <Link href="/pendentes" className={`btn btn-outline-secondary ${pendente.do_sistema_atual ? 'ms-auto' : ''}`}>Voltar</Link>
+                    {pendente.do_sistema_atual ? null : existente
                         ? <button type="button" className="btn btn-primary" disabled={processing} onClick={() => aprovar('vincular')}>Adicionar veículo ao cliente</button>
                         : <button type="button" className="btn btn-primary" disabled={processing} onClick={() => aprovar('novo')}>Aprovar como cliente novo</button>}
                 </div>

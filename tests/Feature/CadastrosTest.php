@@ -63,7 +63,7 @@ class CadastrosTest extends TestCase
         $r = MensalidadeContrato::where('veiculo_id', $v->id)->value('id');
         $this->actingAs($a->operador)->get("/mensalidades/{$r}/primeira-cobranca?de=veiculo")->assertOk();
         $this->assertSame('GOL', $v->modelo);
-        $this->assertSame('ABC-1234', $v->rotulo());
+        $this->assertSame('ABC1234', $v->rotulo());
         $c = MensalidadeContrato::where('veiculo_id', $v->id)->firstOrFail();
         $this->assertSame('180.50', $c->valor);
         $this->assertSame($x->cliente->id, $c->cliente_id);

@@ -18,14 +18,20 @@ class Placa
         return (bool) preg_match('/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/', (string) self::normalizar($placa));
     }
 
-    /** "ABC1234" → "ABC-1234"; Mercosul fica junto: "ABC1D23" */
+    /** para exibir: sempre junto, só letras e números ("ABC1234", "ABC1D23") */
     public static function formatar(?string $placa): string
     {
-        $p = (string) self::normalizar($placa);
-        if (preg_match('/^[A-Z]{3}[0-9]{4}$/', $p)) {
-            return substr($p, 0, 3).'-'.substr($p, 3);
+        return (string) self::normalizar($placa);
+    }
+
+    /** identificação de veículo sem placa: se for uma placa brasileira, fica no padrão (sem traço); senão, texto livre */
+    public static function identificacao(?string $texto): ?string
+    {
+        $t = trim((string) $texto);
+        if ($t === '') {
+            return null;
         }
 
-        return $p;
+        return self::brasileira($t) ? self::normalizar($t) : $t;
     }
 }

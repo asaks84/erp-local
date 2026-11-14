@@ -6,7 +6,7 @@ import Icone from '../../Components/Icone'
 import { moeda } from '../../lib/formato'
 
 /** Clientes › Mensalistas: resumo por tipo e período (controle) e a lista, com filtro por tipo de veículo. */
-export default function Mensalistas({ controle, grupos, periodos, receita, tipos, escolhidos, lista }) {
+export default function Mensalistas({ controle, grupos, periodos, receita, tipos, escolhidos, lista, so_erp: soErp }) {
     const todosMarcados = escolhidos.length === 0
     const marcado = (id) => todosMarcados || escolhidos.includes(id)
     const filtrar = (ids) => router.get('/clientes/mensalistas', ids.length && ids.length < tipos.length ? { tipos: ids } : {}, { preserveScroll: true, preserveState: true })
@@ -90,7 +90,8 @@ export default function Mensalistas({ controle, grupos, periodos, receita, tipos
                             {lista.length === 0 && <tr><td colSpan="5" className="text-center text-muted py-4">Nenhum mensalista neste filtro.</td></tr>}
                             {lista.map((l) => (
                                 <tr key={l.contrato_id}>
-                                    <td><Link href={`/clientes/${l.cliente_id}`} className="fw-semibold text-body text-decoration-none">{l.cliente}</Link><small className="d-block text-muted">Cód. {l.cliente_id}</small></td>
+                                    <td><Link href={`/clientes/${l.cliente_id}`} className="fw-semibold text-body text-decoration-none">{l.cliente}</Link>
+                                        <small className="d-block text-muted">Cód. {l.cliente_id}{l.so_erp && <span className="selo selo-aviso ms-2" title="Cadastrado só no ERP: o relatório do sistema atual não conta">Só no ERP</span>}</small></td>
                                     <td>{l.veiculo}{l.descricao && <small className="d-block text-muted">{l.descricao}</small>}</td>
                                     <td className="d-none d-md-table-cell d-print-table-cell">{l.tipo}</td>
                                     <td>{l.periodo}</td>
@@ -102,7 +103,8 @@ export default function Mensalistas({ controle, grupos, periodos, receita, tipos
                     </table>
                 </div>
             </div>
-            <p className="small text-muted mt-2 nao-imprimir">Conta os veículos com mensalidade maior que zero, de clientes e veículos ativos. Mensalidade pausada continua contando.</p>
+            <p className="small text-muted mt-2 nao-imprimir">Conta os veículos com mensalidade maior que zero, de clientes e veículos ativos. Mensalidade pausada continua contando.
+                {soErp?.qtd > 0 && <> Inclui {soErp.qtd} veículo(s) cadastrado(s) só no ERP{soErp.valor !== null && <> ({moeda(soErp.valor)})</>}, marcado(s) com "Só no ERP": por isso o total fica acima do relatório do sistema atual.</>}</p>
         </div>
     )
 }

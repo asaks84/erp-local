@@ -276,7 +276,7 @@ trait ImportaCadastros
             $veiculo = Veiculo::where('legado_id', $v->vcl_id)->first();
             if ($placa && Veiculo::where('placa', $placa)->where('ativo', true)->when($veiculo, fn ($q) => $q->where('id', '<>', $veiculo->id))->exists()) {
                 $this->warn("Veículo {$v->vcl_id}: placa {$placa} repetida; importado sem placa.");
-                $identificacao = $original;
+                $identificacao = Placa::identificacao($original);
                 $placa = null;
             }
             $veiculo ? $a++ : $n++;

@@ -19,6 +19,7 @@ export default function PendentesIndex({ pendentes }) {
                                     <td>
                                         <span className="fw-semibold">{p.nome}</span>
                                         {p.cliente_existente && <span className="selo selo-aviso ms-2">Já é cliente</span>}
+                                        {p.do_sistema_atual && <span className="selo ms-2" title="Veio do link do sistema atual: aprove ou recuse lá">Aprovar no sistema atual</span>}
                                     </td>
                                     <td>{p.placa} <span className="text-muted small">{p.modelo}</span></td>
                                     <td className="text-end"><Link href={`/pendentes/${p.id}`} className="btn btn-sm btn-outline-secondary" onClick={(e) => e.stopPropagation()}>Revisar</Link></td>

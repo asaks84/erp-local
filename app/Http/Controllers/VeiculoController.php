@@ -129,6 +129,7 @@ class VeiculoController extends Controller
         foreach (['marca', 'modelo', 'cor', 'identificacao'] as $c) {
             $dados[$c] = isset($dados[$c]) ? mb_strtoupper(trim($dados[$c])) : null;
         }
+        $dados['identificacao'] = Placa::identificacao($dados['identificacao'] ?? null);
 
         return $dados;
     }

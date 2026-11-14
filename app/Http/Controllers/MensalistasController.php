@@ -92,7 +92,10 @@ class MensalistasController extends Controller
                 'contrato_id' => $c->id, 'cliente_id' => $c->cliente->id, 'cliente' => $c->cliente->nome,
                 'veiculo' => $c->veiculo->rotulo(), 'descricao' => trim($c->veiculo->marca.' '.$c->veiculo->modelo),
                 'tipo' => $c->veiculo->tipo?->nome, 'periodo' => self::periodo($c->periodo), 'valor' => $receita ? (float) $c->valor : null,
+                // contrato criado no ERP (não veio do sistema atual): o relatório do sistema atual não conta
+                'so_erp' => $c->legado_id === null,
             ]);
+        $soErp = $todos->whereNull('legado_id');
 
         if ($request->boolean('csv')) {
             return Csv::baixar('mensalistas-'.now()->format('Y-m-d').'.csv',
@@ -103,6 +106,7 @@ class MensalistasController extends Controller
         return Inertia::render('Clientes/Mensalistas', [
             'controle' => $controle, 'grupos' => self::GRUPOS, 'periodos' => self::PERIODOS, 'receita' => $receita,
             'tipos' => $tipos, 'escolhidos' => $escolhidos, 'lista' => $lista,
+            'so_erp' => ['qtd' => $soErp->count(), 'valor' => $receita ? round((float) $soErp->sum('valor'), 2) : null],
         ]);
     }
 }

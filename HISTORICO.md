@@ -4,6 +4,24 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 14/11/2026 — Placas sem traço
+
+- Placa exibida sempre junta, só letras e números (antes as antigas apareciam como "ABC-1234" e as Mercosul juntas). Os campos de placa só aceitam letras e números.
+- Migration `2026_11_21_000004_placas_sem_traco`: tira traço e espaço de todas as placas gravadas (veículos, histórico de placas, fila de cadastro, ordens, itens de cobrança, estadias). Na identificação de veículo sem placa, só o que for placa brasileira entra no padrão (o resto é texto livre: quadro, série, apelido).
+- A importação já gravava a placa limpa; a identificação de placa repetida também passa a vir limpa.
+- Sistema atual: `placas-legado.sql` (entregue à parte, rodado pelo Cauê no phpMyAdmin) tira espaço e traço das placas de lá, com conferência antes e depois.
+
+## 14/11/2026 — Código dos clientes: correção do cliente duplicado
+
+- **Problema:** o código do cliente é o id. O cliente de teste, criado no ERP, ficou com o 1009. O Matheus mandou a ficha pelo link do sistema atual, que foi aprovada primeiro no ERP por engano (virou 1010, com a placa) e depois no sistema atual (1009 lá); a importação o trouxe como 1011, sem placa e sem CPF por estarem repetidos.
+- **Correção automática na publicação** (migration `2026_11_21_000003_corrigir_numeracao_clientes`, serviço `NumeracaoClientes`): o cadastro criado no ERP que é o mesmo cliente de um importado (mesmo CPF ou mesma placa) é **excluído** com veículo, mensalidade e contas geradas no ERP, liberando o código (só se não tiver pagamento, boleto ou outro registro; senão fica um aviso). O CPF e a placa passam para o importado. Importado com código diferente volta ao código do sistema atual; cliente criado no ERP que estiver nesse código vai para o próximo número livre. Cada mudança fica no Registro de atividades ("Sistema").
+- A numeração continua a sequência normal (sem faixa separada para o ERP).
+- **Fila de espera:** ficha que veio do link do sistema atual não se aprova nem se recusa mais no ERP (selo "Aprovar no sistema atual" e aviso na revisão).
+
+## 14/11/2026 — Mensalistas: marcar os cadastrados só no ERP
+
+- Clientes › Mensalistas contava também os contratos criados no ERP (cliente de teste, cadastro feito aqui), por isso ficava acima do relatório do sistema atual, enquanto a Conferência (que compara só o que veio do sistema atual) dava "Igual". Agora esses veículos têm o selo **Só no ERP** na lista e a nota abaixo diz quantos são e quanto somam.
+
 ## 14/11/2026 — Extrato e saldo pela API do Inter
 
 - **Extrato bancário › Banco Inter:** saldo disponível no Inter (carregado depois da tela, guardado por 10 minutos) e **Buscar do Inter** por período (até 90 dias, sem datas futuras). Abre a mesma conferência do CSV: o sistema sugere o cliente de cada Pix (nome e CPF/CNPJ do pagador vêm da API) e nada é baixado sem confirmar. O CSV continua como reserva.

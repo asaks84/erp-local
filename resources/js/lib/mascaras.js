@@ -27,12 +27,12 @@ export function cep(v) {
     return digitos(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2')
 }
 
+/** placa no campo: só letras e números, maiúsculas (sem traço nem espaço) */
 export function placa(v) {
-    return String(v ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 10)
+    return String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
 }
 
-/** placa para exibir: ABC1234 → ABC-1234; Mercosul fica junto */
+/** placa para exibir: sempre junta (ABC1234, ABC1D23) */
 export function placaFormatada(v) {
-    const p = String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
-    return /^[A-Z]{3}\d{4}$/.test(p) ? `${p.slice(0, 3)}-${p.slice(3)}` : p
+    return String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
