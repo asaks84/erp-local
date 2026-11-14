@@ -53,14 +53,13 @@ function Ativo({ b, esgotou }) {
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const somarDias = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return iso(d) }
 
-export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId, regrasSugerido = true, prazo = 0 }) {
+export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, faltaCadastro, clienteId, regrasSugerido = true, vencimentoSugerido }) {
     const pode = usePode()
     const { errors = {} } = usePage().props
-    // vencimento do boleto = vencimento da cobrança + prazo; se já passou, escolhe uma data (padrão: daqui a 3 dias)
+    // vencimento do boleto: sugerido pelo sistema (vencimento + prazo; mês seguinte se já passou), sempre editável
     const hoje = iso(new Date())
-    const previsto = somarDias(cobranca.vencimento, prazo)
-    const vencido = previsto < hoje
-    const [vencimento, setVencimento] = useState(vencido ? somarDias(hoje, 3) : previsto)
+    const [vencimento, setVencimento] = useState(vencimentoSugerido || hoje)
+    const mudouMes = vencimentoSugerido && vencimentoSugerido.slice(0, 7) !== cobranca.vencimento.slice(0, 7) && cobranca.vencimento < hoje
     const [cancelar, setCancelar] = useState(null)
     const [ocupado, setOcupado] = useState(false)
     const [regras, setRegras] = useState(regrasSugerido)
@@ -106,16 +105,16 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                     <>
                         <div className="d-flex flex-wrap align-items-center gap-3">
                             <span className="small text-muted flex-grow-1">
-                                {vencido
-                                    ? <>O vencimento desta cobrança ({fData(cobranca.vencimento)}) já passou. Escolha quando o boleto de {moeda(emAberto)} vai vencer.</>
-                                    : <>Gera um boleto de {moeda(emAberto)} com vencimento em {fData(previsto)}.</>} Quando for pago, a baixa é automática.
+                                Gera um boleto de {moeda(emAberto)}. Quando for pago, a baixa é automática.
+                                {mudouMes && <> O vencimento da cobrança ({fData(cobranca.vencimento)}) já passou: a data sugerida foi para o mês seguinte.</>}
                             </span>
-                            {vencido && (
-                                <input type="date" className="form-control" style={{ maxWidth: 170 }} aria-label="Vencimento do boleto" value={vencimento} min={hoje} max={somarDias(hoje, 60)}
+                            <div>
+                                <label className="form-label small mb-1" htmlFor="bol-venc">Vencimento do boleto</label>
+                                <input type="date" id="bol-venc" className="form-control" style={{ maxWidth: 170 }} value={vencimento} min={hoje} max={somarDias(hoje, 90)}
                                     onChange={(e) => setVencimento(e.target.value)} />
-                            )}
-                            <button type="button" className="btn btn-primary" disabled={ocupado || (vencido && !vencimento)}
-                                onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, vencido ? { regras, vencimento } : { regras })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
+                            </div>
+                            <button type="button" className="btn btn-primary align-self-end" disabled={ocupado || !vencimento}
+                                onClick={() => acao(`/cobrancas/${cobranca.id}/boleto`, { regras, vencimento })}>{ocupado ? 'Gerando…' : 'Gerar boleto'}</button>
                         </div>
                         {(errors.boleto || errors.vencimento) && <div className="alert alert-danger small mt-2 mb-0">{errors.boleto || errors.vencimento}</div>}
                         <div className="form-check mt-2 mb-0">

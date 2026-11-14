@@ -127,18 +127,20 @@ class InterTest extends TestCase
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/oauth/v2/token') && $r['scope'] === 'boleto-cobranca.read boleto-cobranca.write');
     }
 
-    public function test_cobranca_vencida_pede_novo_vencimento_do_boleto(): void
+    public function test_vencimento_do_boleto_sugerido_e_editavel(): void
     {
-        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10]]);
+        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10, 'boleto_prazo_dias' => 2]]);
         $estado = ['situacao' => 'A_RECEBER'];
         $this->fakeInter($estado);
-        $cob = $this->cobranca();
-        Carbon::setTestNow($cob->vencimento->copy()->addDays(9)->setTime(10, 0));
+        $cob = $this->cobranca(); // vence 20/11; hoje 13/11
+        $this->assertSame('2026-11-22', Boletos::vencimentoSugerido($cob)->toDateString()); // + prazo de 2 dias
+        $this->actingAs($this->a->admin)->get('/cobrancas/'.$cob->id)->assertInertia(fn ($p) => $p->where('boleto_vencimento', '2026-11-22'));
 
-        // sem data: recusa e a mensagem chega à tela (errors.boleto)
-        $this->actingAs($this->a->admin)->from('/cobrancas/'.$cob->id)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true])
-            ->assertSessionHasErrors('boleto');
-        $this->assertStringContainsString('Escolha um novo vencimento', session('errors')->first('boleto'));
+        // passou: o mesmo dia no mês seguinte
+        Carbon::setTestNow('2026-11-29 10:00');
+        $this->assertSame('2026-12-22', Boletos::vencimentoSugerido($cob)->toDateString());
+        $this->a->empresa->update(['configuracoes' => ['boleto_desconto_tipo' => 'valor', 'boleto_desconto_valor' => 10]]);
+
         // data no passado: recusa
         $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true, 'vencimento' => today()->subDay()->toDateString()])
             ->assertSessionHasErrors('boleto');
@@ -149,6 +151,17 @@ class InterTest extends TestCase
         $this->actingAs($this->a->admin)->post('/cobrancas/'.$cob->id.'/boleto', ['regras' => true, 'vencimento' => $nova])->assertSessionHasNoErrors();
         $this->assertSame($nova, $estado['emitido']['dataVencimento']);
         $this->assertArrayNotHasKey('desconto', $estado['emitido']);
+        Carbon::setTestNow();
+    }
+
+    public function test_lote_com_cobranca_vencida_usa_o_mes_seguinte(): void
+    {
+        $estado = ['situacao' => 'A_RECEBER'];
+        $this->fakeInter($estado);
+        $cob = $this->cobranca(); // vence 20/11
+        Carbon::setTestNow('2026-11-25 10:00');
+        Boletos::emitir($cob); // sem data (geração em lote)
+        $this->assertSame('2026-12-20', $estado['emitido']['dataVencimento']);
         Carbon::setTestNow();
     }
 

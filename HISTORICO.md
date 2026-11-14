@@ -7,7 +7,9 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 ## 14/11/2026 — Boleto de cobrança vencida
 
 - **Correção:** "Gerar boleto" numa cobrança cujo vencimento já passou não fazia nada na tela. O sistema recusava, mas a mensagem não aparecia. Agora o erro do boleto aparece no quadro do boleto.
-- **Novo vencimento:** quando o vencimento da cobrança (mais o prazo do boleto) já passou, o quadro pede a data de vencimento do boleto (padrão: daqui a 3 dias; entre hoje e 60 dias). A cobrança continua com o vencimento original; só o boleto vence na data escolhida. O desconto de pontualidade não entra (a cobrança já venceu); multa e juros, se marcados, contam a partir da nova data.
+- **Vencimento do boleto sempre editável:** o quadro do boleto mostra o campo "Vencimento do boleto", já preenchido com o vencimento da cobrança + o prazo do boleto (Configurações › Banco Inter). Se essa data já passou, a sugestão vai para o mesmo dia no mês seguinte. Dá para trocar a data (entre hoje e 90 dias). A cobrança continua com o vencimento original; só o boleto vence na data do campo.
+- A geração em lote (Gerar cobranças com boleto) segue a mesma regra: cobrança vencida sai com o boleto para o mês seguinte, em vez de dar erro.
+- O desconto de pontualidade só entra se a cobrança ainda não venceu (vale até o vencimento combinado); multa e juros contam a partir do vencimento do boleto.
 
 ## 13/11/2026 — Recadastro (atualização cadastral dos clientes)
 

@@ -32,7 +32,7 @@ function Grupo({ titulo, itens }) {
     )
 }
 
-export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_prazo: boletoPrazo = 0 }) {
+export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_vencimento: boletoVencimento }) {
     const pode = usePode()
     const [cancelar, setCancelar] = useState(false)
     const form = useForm({ motivo: '' })
@@ -51,7 +51,7 @@ export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], i
                 <Link href={`/clientes/${cliente.id}`} className="ms-auto">Abrir cliente</Link>
             </div>
             {cobranca.situacao === 'cancelada' && <div className="alert alert-secondary">Cancelada: {cobranca.motivo_cancelamento}</div>}
-            <BoletoCobranca cobranca={cobranca} boletos={boletos} inter={inter} emAberto={emAberto} faltaCadastro={faltaCadastro} clienteId={cliente.id} regrasSugerido={regrasSugerido} prazo={boletoPrazo} />
+            <BoletoCobranca cobranca={cobranca} boletos={boletos} inter={inter} emAberto={emAberto} faltaCadastro={faltaCadastro} clienteId={cliente.id} regrasSugerido={regrasSugerido} vencimentoSugerido={boletoVencimento} />
             <div className="card">
                 <div className="table-responsive">
                     <table className="table align-middle mb-0">

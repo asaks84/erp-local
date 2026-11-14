@@ -235,6 +235,20 @@ class Boletos
     }
 
     /**
+     * Vencimento sugerido do boleto: vencimento da cobrança + prazo da empresa. Se essa data já
+     * passou, o mesmo dia no mês seguinte (ou no primeiro mês em que ainda não passou).
+     */
+    public static function vencimentoSugerido(Cobranca $cob, ?Empresa $empresa = null): Carbon
+    {
+        $v = $cob->vencimento->copy()->startOfDay()->addDays(self::prazo($empresa));
+        while ($v->isBefore(today())) {
+            $v->addMonthNoOverflow();
+        }
+
+        return $v;
+    }
+
+    /**
      * Emite o boleto da cobrança. $aplicarRegras: null = automático (sem regras quando há primeira
      * mensalidade ou proporcional). Erro de cadastro ou do Inter: ValidationException com a mensagem.
      */
@@ -257,18 +271,13 @@ class Boletos
         }
         $empresa = Empresa::atual();
         // o boleto vence alguns dias depois do vencimento combinado com o cliente (prazo da empresa)
-        $prazo = self::prazo($empresa);
-        $vencimento = $cob->vencimento->copy()->addDays($prazo);
-        if ($vencimentoEscolhido) {
-            // cobrança atrasada (ou vencimento combinado na hora): o boleto vence na data escolhida
-            $vencimento = $vencimentoEscolhido->copy()->startOfDay();
-            if ($vencimento->isBefore(today()) || $vencimento->isAfter(today()->addDays(60))) {
-                self::erro('O vencimento do boleto precisa ser entre hoje e '.today()->addDays(60)->format('d/m/Y').'.');
-            }
-            $prazo = max(0, (int) $cob->vencimento->copy()->startOfDay()->diffInDays($vencimento, false));
-        } elseif ($vencimento->isBefore(today())) {
-            self::erro("Cobrança {$cob->numero}: o vencimento do boleto ({$vencimento->format('d/m/Y')}) já passou. Escolha um novo vencimento para o boleto.");
+        // data escolhida na tela; sem ela, a sugerida (vencimento + prazo, ou o mês seguinte se já passou)
+        $vencimento = ($vencimentoEscolhido ?? self::vencimentoSugerido($cob, $empresa))->copy()->startOfDay();
+        if ($vencimento->isBefore(today()) || $vencimento->isAfter(today()->addDays(90))) {
+            self::erro('O vencimento do boleto precisa ser entre hoje e '.today()->addDays(90)->format('d/m/Y').'.');
         }
+        // dias entre o vencimento combinado e o do boleto (o desconto de pontualidade vale até o combinado)
+        $prazo = max(0, (int) $cob->vencimento->copy()->startOfDay()->diffInDays($vencimento, false));
         $regras = self::regras($empresa, $cob->cliente);
         if (! ($aplicarRegras ?? self::aplicarRegrasSugerido($cob))) {
             $regras = self::semRegras($regras);
