@@ -68,14 +68,22 @@ export default function Avisos({ pendentes, enviados, api, automatico, hora, pas
                 {enviados.length === 0 ? <div className="card-body text-muted small">Nenhum aviso enviado ainda.</div> : (
                     <div className="table-responsive">
                         <table className="table align-middle mb-0">
-                            <thead><tr><th>Quando</th><th>Cliente</th><th className="d-none d-md-table-cell">Aviso</th><th>Situação</th></tr></thead>
+                            <thead><tr><th className="d-none d-sm-table-cell">Quando</th><th>Cliente</th><th className="d-none d-md-table-cell">Aviso</th><th>Situação</th><th className="text-end" /></tr></thead>
                             <tbody>
                                 {enviados.map((a) => (
                                     <tr key={a.id} title={a.texto}>
-                                        <td className="text-nowrap">{dataHora(a.enviado_em)}</td>
-                                        <td>{a.cliente ? <Link href={`/clientes/${a.cliente.id}`}>{a.cliente.nome}</Link> : '—'}</td>
+                                        <td className="text-nowrap d-none d-sm-table-cell">{dataHora(a.enviado_em)}</td>
+                                        <td>{a.cliente ? <Link href={`/clientes/${a.cliente.id}`}>{a.cliente.nome}</Link> : '—'}<div className="small text-muted d-sm-none">{dataHora(a.enviado_em)}</div></td>
                                         <td className="d-none d-md-table-cell small">{a.rotulo}</td>
-                                        <td><span className={`selo ${(SITUACAO[a.situacao] || [])[1]}`}>{(SITUACAO[a.situacao] || [a.situacao])[0]}</span> <span className="small text-muted">{a.canal === 'api' ? 'automático' : 'manual'}</span></td>
+                                        <td><span className={`selo ${(SITUACAO[a.situacao] || [])[1]}`}>{(SITUACAO[a.situacao] || [a.situacao])[0]}</span> <span className="small text-muted">{a.canal === 'api' ? 'pela API' : 'manual'}</span></td>
+                                        <td className="text-end text-nowrap">
+                                            {a.impedimento ? <span className="small text-muted" title={a.impedimento}>Não dá para reenviar</span> : (
+                                                <>
+                                                    {a.celular && <button type="button" className="btn btn-sm btn-outline-success me-1" disabled={ocupado === a.id} onClick={() => manual(a)} title="Abrir o WhatsApp com o texto de novo">Reenviar</button>}
+                                                    {api && <button type="button" className="btn btn-sm btn-outline-primary" disabled={ocupado === a.id} onClick={() => post(`/avisos/${a.id}/enviar`, a.id)}>Reenviar pela API</button>}
+                                                </>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

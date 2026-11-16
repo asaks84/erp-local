@@ -154,22 +154,30 @@ class Regua
         return $ids->count();
     }
 
-    /** envio manual: o operador abriu o WhatsApp com o texto pronto */
+    /** situações de aviso que já saiu (dá para reenviar) */
+    public const SAIU = ['enviado', 'entregue', 'lido'];
+
+    /** envio manual: o operador abriu o WhatsApp com o texto pronto (também reenvio) */
     public static function marcarManual(Aviso $a): void
     {
-        if (! in_array($a->situacao, ['pendente', 'falha'], true)) {
+        if (! in_array($a->situacao, ['pendente', 'falha', ...self::SAIU], true)) {
             return;
         }
         $a->update(['situacao' => 'enviado', 'canal' => 'manual', 'celular' => Telefone::celular($a->cliente->celular), 'enviado_em' => now(), 'enviado_por' => Auth::id(), 'erro' => null]);
     }
 
-    /** envio pela API oficial (modelo aprovado). Devolve true se saiu. */
-    public static function enviar(Aviso $a, ?WhatsAppCliente $api = null): bool
+    /** envio pela API oficial (modelo aprovado). $reenviar: manda de novo um aviso que já saiu. Devolve true se saiu. */
+    public static function enviar(Aviso $a, ?WhatsAppCliente $api = null, bool $reenviar = false): bool
     {
-        if (! in_array($a->situacao, ['pendente', 'falha'], true)) {
+        if (! in_array($a->situacao, $reenviar ? ['pendente', 'falha', ...self::SAIU] : ['pendente', 'falha'], true)) {
             return false;
         }
         if ($motivo = self::impedimento($a)) {
+            if (in_array($a->situacao, self::SAIU, true)) {
+                $a->setAttribute('erro', $motivo);
+
+                return false;
+            }
             $a->update(['situacao' => in_array($a->cobranca?->situacao, ['aberta', 'parcial'], true) ? 'falha' : 'cancelado', 'erro' => mb_substr($motivo, 0, 255)]);
 
             return false;
@@ -184,6 +192,11 @@ class Regua
             $api ??= new WhatsAppCliente(Integracao::whatsapp() ?? throw new WhatsAppErro('WhatsApp não configurado.'));
             $id = $api->enviarModelo($celular, $modelo, $valores, $c->token);
         } catch (WhatsAppErro $e) {
+            if (in_array($a->situacao, self::SAIU, true)) {
+                $a->setAttribute('erro', mb_substr($e->getMessage(), 0, 255)); // reenvio falhou: o aviso já tinha saído, fica como estava
+
+                return false;
+            }
             $a->update(['situacao' => 'falha', 'canal' => 'api', 'celular' => $celular, 'erro' => mb_substr($e->getMessage(), 0, 255)]);
 
             return false;

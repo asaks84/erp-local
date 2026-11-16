@@ -150,6 +150,35 @@ class WhatsAppTest extends TestCase
         $this->assertStringContainsString('lista de números permitidos', $b->erro);
     }
 
+    public function test_aviso_enviado_manual_pode_ser_reenviado_pela_api(): void
+    {
+        $this->ligar();
+        $this->cobranca();
+        Regua::gerar();
+        $a = Aviso::first();
+        $this->actingAs($this->a->admin)->post("/avisos/{$a->id}/manual");
+        $this->assertSame('manual', $a->refresh()->canal);
+        $this->actingAs($this->a->admin)->get('/avisos')->assertInertia(fn ($p) => $p->has('enviados', 1)->where('enviados.0.impedimento', null));
+
+        // reenvio pela API: sai de novo e fica registrado como API
+        $falhar = false;
+        Http::fake(function () use (&$falhar) {
+            return $falhar ? Http::response(['error' => ['message' => 'x', 'code' => 132001]], 400) : Http::response(['messages' => [['id' => 'wamid.R1']]]);
+        });
+        $this->actingAs($this->a->admin)->post("/avisos/{$a->id}/enviar")->assertSessionHas('sucesso', 'Aviso reenviado para MARIA DA SILVA.');
+        $this->assertSame(['enviado', 'api', 'wamid.R1'], [$a->refresh()->situacao, $a->canal, $a->mensagem_id]);
+
+        // reenvio manual de novo
+        $this->actingAs($this->a->admin)->post("/avisos/{$a->id}/manual");
+        $this->assertSame('manual', $a->refresh()->canal);
+
+        // reenvio que falha: o aviso continua como enviado, só mostra o erro
+        $falhar = true;
+        $this->actingAs($this->a->admin)->post("/avisos/{$a->id}/enviar")->assertSessionHas('erro');
+        $this->assertSame('enviado', $a->refresh()->situacao);
+        $this->assertNull($a->erro);
+    }
+
     public function test_rotina_automatica_so_envia_depois_do_horario(): void
     {
         $this->ligar();

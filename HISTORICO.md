@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — Abas das Configurações quebram linha
+
+- As abas de Configurações (Empresa e unidades, Tipos de veículo... WhatsApp) ficavam numa linha só, rolando para o lado, e parte sumia da tela. Agora quebram linha e ficam todas à vista, como botões arredondados; a aba atual fica destacada. No celular, um pouco menores.
+
+## 16/11/2026 — Avisos: reenviar
+
+- Em Cobranças › Avisos, os avisos já enviados ganham **Reenviar** (abre o WhatsApp com o texto de novo) e, com a API ligada, **Reenviar pela API**. Antes, o aviso enviado à mão sumia de "Para enviar" e não dava mais para mandar pela API. Reenvio que falha não muda o aviso (ele já tinha saído); só mostra o erro. Se a cobrança não está mais em aberto ou o celular é inválido, aparece "Não dá para reenviar".
+
 ## 16/11/2026 — Botões de WhatsApp e Ligar nos clientes
 
 - Ficha do cliente (quadro Dados) e lista de clientes: botão **WhatsApp** (abre a conversa no wa.me; só aparece se o número for de celular, DDD + 9 + 8 dígitos) e **Ligar** (abre o discador no celular ou o aplicativo de chamadas no computador). Na lista, só os ícones; no celular, o botão "Abrir" sai da lista (a linha toda já abre o cliente). Componente `Contato`.

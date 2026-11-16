@@ -21,7 +21,7 @@ class AvisoController extends Controller
             'vencimento' => $a->vencimento->format('Y-m-d'), 'situacao' => $a->situacao, 'canal' => $a->canal, 'celular' => $a->celular, 'texto' => $a->texto,
             'erro' => $a->erro, 'enviado_em' => $a->enviado_em?->format('Y-m-d H:i'),
             'cliente' => $a->cliente?->only(['id', 'nome']), 'cobranca' => $a->cobranca ? ['id' => $a->cobranca->id, 'numero' => $a->cobranca->numero] : null,
-            'impedimento' => in_array($a->situacao, ['pendente', 'falha'], true) ? Regua::impedimento($a) : null,
+            'impedimento' => Regua::impedimento($a),
         ];
         $pendentes = Aviso::with(['cliente', 'cobranca'])->whereIn('situacao', ['pendente', 'falha'])->orderBy('previsto_para')->orderBy('id')->get();
         $enviados = Aviso::with(['cliente', 'cobranca'])->whereIn('situacao', ['enviado', 'entregue', 'lido'])->orderByDesc('enviado_em')->limit(100)->get();
@@ -51,8 +51,12 @@ class AvisoController extends Controller
             return back()->with('erro', 'O WhatsApp (API) não está ligado. Use o envio manual.');
         }
         $aviso->load(['cobranca', 'cliente']);
+        $reenvio = in_array($aviso->situacao, Regua::SAIU, true);
+        if (Regua::enviar($aviso, null, $reenvio)) {
+            return back()->with('sucesso', ($reenvio ? 'Aviso reenviado para ' : 'Aviso enviado para ').$aviso->cliente->nome.'.');
+        }
 
-        return Regua::enviar($aviso) ? back()->with('sucesso', 'Aviso enviado para '.$aviso->cliente->nome.'.') : back()->with('erro', 'Não saiu: '.$aviso->refresh()->erro);
+        return back()->with('erro', 'Não saiu: '.($aviso->erro ?: $aviso->refresh()->erro));
     }
 
     /** envia pela API todos os que podem sair */
