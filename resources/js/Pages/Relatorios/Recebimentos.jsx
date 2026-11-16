@@ -13,6 +13,8 @@ import { usePode } from '../../lib/permissoes'
 const ORIGEM = { gestao: 'Gestão', extrato: 'Extrato', importacao: 'Sistema atual', pdv: 'PDV', inter: 'Inter' }
 
 export default function Recebimentos({ filtros, resumo, por_forma, por_categoria, formas, pagamentos, limitado, periodo }) {
+    const totalCategoria = Math.round(por_categoria.reduce((s, x) => s + x.total, 0) * 100) / 100
+    const totalForma = Math.round(por_forma.reduce((s, x) => s + x.total, 0) * 100) / 100
     const pode = usePode()
     const [f, setF] = useState(filtros)
     const [estornar, setEstornar] = useState(null)
@@ -55,6 +57,7 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
                         <ul className="list-group list-group-flush">
                             {por_forma.length === 0 && <li className="list-group-item text-muted">Nada no período.</li>}
                             {por_forma.map((x) => <li key={x.nome} className="list-group-item d-flex justify-content-between"><span>{x.nome} <span className="small text-muted">({x.qtd})</span></span><strong>{moeda(x.total)}</strong></li>)}
+                            {por_forma.length > 0 && <li className="list-group-item d-flex justify-content-between fw-bold"><span>Total</span><span>{moeda(totalForma)}</span></li>}
                         </ul>
                     </div>
                 </div>
@@ -65,7 +68,17 @@ export default function Recebimentos({ filtros, resumo, por_forma, por_categoria
                             {por_categoria.length === 0 && <li className="list-group-item text-muted">Nada no período.</li>}
                             {por_categoria.map((x) => <li key={x.tipo} className="list-group-item d-flex justify-content-between"><span>{x.rotulo} <span className="small text-muted">({x.qtd})</span></span><strong className={x.total < 0 ? 'text-success' : ''}>{moeda(x.total)}</strong></li>)}
                         </ul>
-                        <div className="card-footer small text-muted">Soma das contas baixadas, como no sistema atual (crédito usado entra negativo). Pode diferir do dinheiro recebido quando sobrou crédito ou houve desconto.</div>
+                        {por_categoria.length > 0 && (
+                            <ul className="list-group list-group-flush border-top">
+                                <li className="list-group-item d-flex justify-content-between fw-bold"><span>Total</span><span>{moeda(totalCategoria)}</span></li>
+                            </ul>
+                        )}
+                        <div className="card-footer small text-muted">
+                            Soma das contas baixadas, como no sistema atual (crédito usado entra negativo).
+                            {filtros.forma ? ' Não segue o filtro de forma de pagamento.' : Math.abs(totalCategoria - resumo.total) >= 0.005
+                                ? <span className="text-danger-emphasis"> Diferença de {moeda(Math.abs(resumo.total - totalCategoria))} para o total recebido: pagamento que virou crédito do cliente (ou entrou sem conta), multa e juros ou sobra não lançada.</span>
+                                : ' Bate com o total recebido.'}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -268,4 +268,50 @@ class Extrato
 
         return is_numeric($s) ? round((float) $s, 2) : null;
     }
+
+    public const DIAS_JA_BAIXADO = 10;
+
+    /**
+     * Pagamentos que vieram do sistema atual (baixa feita lá) e ainda não estão ligados a uma entrada do
+     * extrato: candidatos a "esta entrada já foi baixada lá". Últimos 90 dias.
+     */
+    public static function importadosLivres(int $clienteId): \Illuminate\Support\Collection
+    {
+        $ligados = \App\Models\ExtratoLancamento::whereNotNull('pagamento_id')->where('cliente_id', $clienteId)->pluck('pagamento_id');
+
+        return \App\Models\Pagamento::where('cliente_id', $clienteId)->where('origem', 'importacao')->where('situacao', 'confirmado')
+            ->where('recebido_em', '>=', now()->subDays(90))->whereNotIn('id', $ligados)->orderBy('recebido_em')->get(['id', 'valor', 'recebido_em']);
+    }
+
+    /** o pagamento do sistema atual com o mesmo valor e a data mais próxima (até DIAS_JA_BAIXADO dias) */
+    public static function acharImportado(int $clienteId, float $valor, string $data): ?\App\Models\Pagamento
+    {
+        $dia = \Carbon\Carbon::parse($data)->startOfDay();
+
+        return self::importadosLivres($clienteId)
+            ->filter(fn ($p) => abs((float) $p->valor - $valor) < 0.005 && abs($p->recebido_em->copy()->startOfDay()->diffInDays($dia, false)) <= self::DIAS_JA_BAIXADO)
+            ->sortBy(fn ($p) => abs($p->recebido_em->copy()->startOfDay()->diffInDays($dia, false)))->first();
+    }
+
+    /**
+     * Depois da importação (que refaz os pagamentos vindos do sistema atual): religa as entradas "só
+     * registradas" ao pagamento de lá e reaplica a forma escolhida (o sistema atual não guarda a forma).
+     */
+    public static function religarRegistros(): int
+    {
+        $n = 0;
+        foreach (\App\Models\ExtratoLancamento::where('so_registro', true)->whereNull('pagamento_id')->whereNotNull('cliente_id')->orderBy('id')->get() as $l) {
+            $p = self::acharImportado($l->cliente_id, (float) $l->valor, $l->data->format('Y-m-d'));
+            if (! $p) {
+                continue;
+            }
+            if ($l->forma_pagamento_id) {
+                \Illuminate\Support\Facades\DB::table('pagamentos')->where('id', $p->id)->update(['forma_pagamento_id' => $l->forma_pagamento_id]);
+            }
+            $l->update(['pagamento_id' => $p->id]);
+            $n++;
+        }
+
+        return $n;
+    }
 }

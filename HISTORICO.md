@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — Extrato: entrada já baixada no sistema atual; totais em Recebimentos
+
+- **Problema:** mensalidade baixada à mão no sistema atual e, depois, o Pix dela confirmado no Extrato bancário do ERP. Como o cliente não tinha mais conta em aberto, a conferência lançou um pagamento novo (Pix) que virou crédito do cliente: o dinheiro contou duas vezes em "Por forma de pagamento" e não apareceu em "Pelo que foi pago".
+- **Conferência do extrato:** quando o cliente tem uma baixa vinda do sistema atual com o mesmo valor e data próxima (até 10 dias), a entrada mostra o aviso e vem marcada como **Só registrar**: não lança pagamento nem crédito, só registra a entrada e passa a forma escolhida (Pix) para o pagamento de lá. A importação reaplica a forma a cada hora (`Extrato::religarRegistros`). Cliente sem contas em aberto e sem essa baixa: aviso em vermelho de que o valor vai virar pagamento novo/crédito.
+- **Recebimentos:** linha de **Total** nas duas tabelas; quando os totais diferem, o rodapé mostra de quanto é a diferença e os motivos possíveis.
+- Migration `2026_11_22_000001_add_so_registro_to_extrato_lancamentos`.
+
 ## 14/11/2026 — Celular gravado no campo telefone
 
 - Cliente com o celular vazio e um número de celular (DDD + 9 + 8 dígitos, com ou sem 55) no campo telefone: o número passa para o celular e o telefone fica vazio. Feito na importação (a cada hora, para não voltar) e uma vez para todos na publicação (migration `2026_11_21_000005_celular_no_campo_telefone`, inclui os clientes criados no ERP). Fixo de verdade, número com cara de inventado, número sem o 9 e cliente que atualizou o telefone pelo recadastro não mudam. `App\Support\Telefone`.

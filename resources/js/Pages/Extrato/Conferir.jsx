@@ -8,6 +8,16 @@ import { data as fData, dataHora, moeda } from '../../lib/formato'
 import { usePode } from '../../lib/permissoes'
 
 const centavos = (v) => Math.round(Number(v || 0) * 100)
+const dias = (a, b) => Math.abs(Math.round((new Date(`${a}T12:00:00`) - new Date(`${b}T12:00:00`)) / 86400000))
+
+/** baixa feita no sistema atual com o mesmo valor e data próxima: a entrada provavelmente é esse pagamento */
+export function jaBaixadoLa(e, cliente) {
+    if (!cliente?.importados?.length) return null
+    const limite = cliente.dias_ja_baixado ?? 10
+    return cliente.importados.filter((p) => centavos(p.valor) === centavos(e.valor) && dias(p.data, e.data) <= limite)
+        .sort((a, b) => dias(a.data, e.data) - dias(b.data, e.data))[0] ?? null
+}
+const soRegistro = (linha, e, cliente) => (linha.so_registro ?? !!jaBaixadoLa(e, cliente))
 
 function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
     const pode = usePode()
@@ -26,6 +36,8 @@ function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
     const marcadas = linha.modo === 'parcial' ? contas.filter((o) => linha.ordens.includes(o.id)) : contas
     const total = (marcadas.reduce((s, o) => s + centavos(o.valor), 0) - creditos) / 100
     const dif = (centavos(e.valor) - centavos(total)) / 100
+    const la = jaBaixadoLa(e, cliente)
+    const registrar = la && soRegistro(linha, e, cliente)
 
     return (
         <div className={`card mb-2 ${linha.usar ? 'border-primary' : ''}`}>
@@ -51,9 +63,18 @@ function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
                     </div>
                     <div className="col-md-6">
                         {carregando && <p className="text-muted small">Carregando contas…</p>}
-                        {cliente && !carregando && (
+                        {cliente && !carregando && la && (
+                            <div className="alert alert-warning small py-2 mb-2">
+                                Já tem uma baixa de {moeda(la.valor)} em {fData(la.data)} feita no sistema atual para este cliente. Deve ser este mesmo pagamento.
+                                <div className="form-check mt-1">
+                                    <input className="form-check-input" type="checkbox" id={`reg-${e.indice}`} checked={registrar} onChange={(ev) => mudar({ so_registro: ev.target.checked })} />
+                                    <label className="form-check-label" htmlFor={`reg-${e.indice}`}>Só registrar (não lançar outro pagamento)</label>
+                                </div>
+                            </div>
+                        )}
+                        {cliente && !carregando && !registrar && (
                             <>
-                                {contas.length === 0 ? <p className="small text-muted mb-1">Sem contas em aberto.</p> : (
+                                {contas.length === 0 ? <p className="small text-danger-emphasis mb-1">Sem contas em aberto: se der baixa, o valor entra como um pagamento novo{linha.sobra === 'credito' ? ' e vira crédito do cliente' : ''}. Confira se a conta já não foi baixada.</p> : (
                                     <>
                                         <div className="btn-group btn-group-sm mb-1">
                                             <button type="button" className={`btn ${linha.modo !== 'parcial' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => mudar({ modo: 'tudo' })}>Todas ({moeda((contas.reduce((s, o) => s + centavos(o.valor), 0) - creditos) / 100)})</button>
@@ -162,7 +183,8 @@ export default function Conferir({ token, arquivo, saidas, entradas, clientes: i
 
     function enviar(ev) {
         ev.preventDefault()
-        form.transform((d) => ({ ...d, linhas: d.linhas.filter((l) => l.usar && l.cliente_id) }))
+        form.transform((d) => ({ ...d, linhas: d.linhas.filter((l) => l.usar && l.cliente_id)
+            .map((l) => ({ ...l, so_registro: soRegistro(l, entradas.find((e) => e.indice === l.indice), clientes[l.cliente_id]) })) }))
         form.post('/extrato/confirmar')
     }
 

@@ -130,6 +130,48 @@ class ExtratoInterTest extends TestCase
         $this->actingAs($this->a->admin)->post('/extrato/inter', ['de' => '2026-07-01', 'ate' => '2026-11-14'])->assertSessionHasErrors('de');
     }
 
+    private function pagamentoDoSistemaAtual(string $quando): int
+    {
+        return \Illuminate\Support\Facades\DB::table('pagamentos')->insertGetId([
+            'empresa_id' => $this->a->empresa->id, 'unidade_id' => $this->a->unidade->id, 'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'cliente_id' => $this->x->cliente->id, 'forma_pagamento_id' => FormasPagamento::naoInformada()->id, 'parcelas' => 1,
+            'valor' => 250, 'taxa' => 0, 'liquido' => 250, 'previsto_para' => substr($quando, 0, 10), 'recebido_em' => $quando,
+            'situacao' => 'confirmado', 'origem' => 'importacao', 'legado_chave' => 'c|'.$quando, 'criado_em' => now(), 'atualizado_em' => now(),
+        ]);
+    }
+
+    public function test_entrada_ja_baixada_no_sistema_atual_so_registra(): void
+    {
+        // a mensalidade foi baixada no sistema atual (dia 13); o Pix do dia 12 chega pelo extrato do Inter
+        $id = $this->pagamentoDoSistemaAtual('2026-11-13 00:00:00');
+        $pix = \App\Models\FormaPagamento::where('tipo', 'pix')->first();
+        $token = 'tk';
+        Cache::put('extrato:'.$this->a->empresa->id.':'.$this->a->admin->id.':'.$token, ExtratoInter::buscar('2026-11-07', '2026-11-14', [$this->transacoes()[0]]) + ['origem' => 'inter'], 600);
+
+        // a conferência avisa: o cliente tem uma baixa de lá com o mesmo valor
+        $r = $this->actingAs($this->a->admin)->getJson('/extrato/cliente/'.$this->x->cliente->id)->assertOk();
+        $this->assertEquals([['data' => '2026-11-13', 'valor' => 250]], $r->json('importados'));
+
+        $this->actingAs($this->a->admin)->post('/extrato/confirmar', ['token' => $token, 'forma_pagamento_id' => $pix->id,
+            'linhas' => [['indice' => 0, 'cliente_id' => $this->x->cliente->id, 'so_registro' => true]]])->assertRedirect();
+
+        // nenhum pagamento novo, nenhum crédito; a entrada ficou registrada e o pagamento de lá ganhou a forma
+        $this->assertSame(1, \App\Models\Pagamento::count());
+        $this->assertSame(0, \App\Models\OrdemServico::where('tipo', 'credito')->count());
+        $l = ExtratoLancamento::first();
+        $this->assertTrue((bool) $l->so_registro);
+        $this->assertSame($id, $l->pagamento_id);
+        $this->assertSame($pix->id, \App\Models\Pagamento::find($id)->forma_pagamento_id);
+        $this->assertSame([], $this->actingAs($this->a->admin)->getJson('/extrato/cliente/'.$this->x->cliente->id)->json('importados'));
+
+        // a importação refaz os pagamentos de lá: a forma e a ligação voltam
+        \Illuminate\Support\Facades\DB::table('pagamentos')->delete();
+        $novo = $this->pagamentoDoSistemaAtual('2026-11-13 00:00:00');
+        $this->assertSame(1, \App\Servicos\Extrato::religarRegistros());
+        $this->assertSame($pix->id, \App\Models\Pagamento::find($novo)->forma_pagamento_id);
+        $this->assertSame($novo, $l->refresh()->pagamento_id);
+    }
+
     public function test_pix_ja_baixado_pelo_csv_aparece_como_processado(): void
     {
         ExtratoLancamento::create(['identificador' => 'csv-123', 'data' => '2026-11-12', 'valor' => 250, 'nome' => 'MARIA DA SILVA', 'documento' => '068258',

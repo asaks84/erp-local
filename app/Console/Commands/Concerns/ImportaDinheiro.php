@@ -240,5 +240,7 @@ trait ImportaDinheiro
             $n++;
         }
         $this->contar('Extrato importado', $n, 0, $ign);
+        // entradas do extrato do ERP marcadas como "já baixado no sistema atual": religa e reaplica a forma
+        \App\Servicos\Extrato::religarRegistros();
     }
 }

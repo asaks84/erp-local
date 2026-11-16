@@ -158,6 +158,9 @@ class ExtratoController extends Controller
             'ordens' => $ordens->map(fn ($o) => ['id' => $o->id, 'numero' => $o->numero, 'tipo' => $o->tipo, 'descricao' => $o->descricao,
                 'competencia' => $o->competencia, 'placa' => $o->placa, 'data' => $o->dataReferencia(), 'valor' => (float) $o->valor])->values(),
             'veiculos' => \App\Models\Veiculo::where('cliente_id', $id)->where('ativo', true)->get()->map(fn ($v) => ['id' => $v->id, 'rotulo' => $v->rotulo()]),
+            // baixas feitas no sistema atual ainda sem entrada do extrato: a entrada pode ser uma delas
+            'importados' => Extrato::importadosLivres($id)->map(fn ($p) => ['data' => $p->recebido_em->format('Y-m-d'), 'valor' => (float) $p->valor])->values(),
+            'dias_ja_baixado' => Extrato::DIAS_JA_BAIXADO,
         ];
     }
 
@@ -182,6 +185,7 @@ class ExtratoController extends Controller
             'linhas.*.servico_id' => ['nullable', 'string', 'max:10'], // id do serviço ou "estadia"
             'linhas.*.veiculo_id' => ['nullable', 'integer'],
             'linhas.*.lembrar' => ['nullable', 'boolean'],
+            'linhas.*.so_registro' => ['nullable', 'boolean'],
         ]);
         $lote = Cache::get($this->chave($d['token']));
         if (! $lote) {
@@ -201,6 +205,26 @@ class ExtratoController extends Controller
                 $msg = DB::transaction(function () use ($e, $l, $cliente, $forma) {
                     if (ExtratoLancamento::where('identificador', $e['id'])->lockForUpdate()->exists()) {
                         throw ValidationException::withMessages(['linha' => 'já tinha sido importado']);
+                    }
+                    if (! empty($l['so_registro'])) {
+                        // a conta já foi baixada no sistema atual: não lança outro pagamento, só registra a entrada
+                        $la = Extrato::acharImportado($cliente->id, (float) $e['valor'], $e['data']);
+                        if (! $la) {
+                            throw ValidationException::withMessages(['linha' => 'não achei baixa do sistema atual com esse valor perto dessa data']);
+                        }
+                        DB::table('pagamentos')->where('id', $la->id)->update(['forma_pagamento_id' => $forma->id]);
+                        ExtratoLancamento::create([
+                            'identificador' => $e['id'], 'data' => $e['data'], 'valor' => $e['valor'],
+                            'nome' => mb_substr(Extrato::normalNome($e['nome']), 0, 100) ?: null, 'documento' => $e['documento'] ?: null,
+                            'cliente_id' => $cliente->id, 'pagamento_id' => $la->id, 'total_contas' => $e['valor'],
+                            'so_registro' => true, 'forma_pagamento_id' => $forma->id,
+                            'processado_em' => now(), 'usuario_id' => auth()->id(), 'usuario_nome' => auth()->user()->nome,
+                        ]);
+                        if (! empty($l['lembrar'])) {
+                            Extrato::vincular($e, $cliente->id);
+                        }
+
+                        return 'já estava baixado no sistema atual em '.$la->recebido_em->format('d/m/Y').': só registrado ('.$forma->nome.'), sem pagamento novo';
                     }
                     $abertas = OrdemServico::abertas()->where('cliente_id', $cliente->id)->where('tipo', '<>', 'credito')->pluck('id')->all();
                     $ordens = ($l['modo'] ?? 'tudo') === 'parcial' ? array_map('intval', $l['ordens'] ?? []) : $abertas;
