@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
             CabecalhosSeguranca::class,
         ]);
 
+        // a Meta chama o webhook do WhatsApp sem o token de formulário
+        $middleware->validateCsrfTokens(except: ['webhooks/whatsapp']);
+
         $middleware->alias([
             'permissao' => Permissao::class,
             'publica' => Publica::class,

@@ -4,6 +4,22 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — Botões de WhatsApp e Ligar nos clientes
+
+- Ficha do cliente (quadro Dados) e lista de clientes: botão **WhatsApp** (abre a conversa no wa.me; só aparece se o número for de celular, DDD + 9 + 8 dígitos) e **Ligar** (abre o discador no celular ou o aplicativo de chamadas no computador). Na lista, só os ícones; no celular, o botão "Abrir" sai da lista (a linha toda já abre o cliente). Componente `Contato`.
+
+## 16/11/2026 — WhatsApp: régua de cobrança (etapa 7b)
+
+- **Decisão:** API oficial da Meta (Cloud API), direto, sem plataforma intermediária, com número próprio para os avisos. Empresa verificada no Meta Business e app "ERP Local Estacionamento" criado em 16/11/2026.
+- **Régua de cobrança** (`App\Servicos\WhatsApp\Regua`): cada cobrança em aberto recebe um aviso por passo (padrão: 3 dias antes, no dia, 3 e 10 dias depois do vencimento), uma vez só. Com boleto, conta o vencimento do boleto. Para quando a cobrança é paga ou cancelada. Ligar a régua tarde não despeja avisos atrasados (tolerância de 2 dias; só o passo mais recente). Cliente "não recebe avisos" fica de fora; celular inválido aparece com o motivo.
+- **Cobranças › Avisos** (`/avisos`): lista do dia com "Abrir WhatsApp" (wa.me, texto pronto, marca como enviado), "Enviar pela API"/"Enviar todos" quando a API está ligada, "Dispensar" e os enviados (enviado, entregue, lido).
+- **Configurações › WhatsApp**: credenciais (token, ID do número, ID da conta, chave secreta do app) guardadas criptografadas, teste de conexão, régua (passos, horário, envio automático), modelos de mensagem (3 textos fixos, criados na Meta pelo botão; aprovação da Meta) e os dados para colar no app da Meta (URL e código do webhook, URL da política de privacidade).
+- **Envio automático:** rotina `whatsapp:regua` a cada 10 minutos (7h–20h): cria os avisos do dia e, com a API ligada e o automático marcado, envia a partir do horário escolhido.
+- **Webhook** `/webhooks/whatsapp`: confirmação do endereço e status de entrega (entregue, lido, falha); confere a assinatura quando a chave secreta do app está guardada.
+- **Página pública da cobrança** `/c/<código>`: valor, vencimento, Pix (QR e copia e cola) e linha digitável do boleto, itens. É o botão "Ver cobrança" dos avisos. **Política de privacidade** pública em `/privacidade` (exigida pela Meta para publicar o app).
+- Migration `2026_11_23_000001_create_avisos_whatsapp` (tabela avisos, cobrancas.token).
+- **Ainda não:** textos editáveis (são fixos, iguais aos modelos da Meta), receber e mostrar as respostas dos clientes, resposta automática, envio do recadastro em lote pela API.
+
 ## 16/11/2026 — Extrato: entrada já baixada no sistema atual; totais em Recebimentos
 
 - **Problema:** mensalidade baixada à mão no sistema atual e, depois, o Pix dela confirmado no Extrato bancário do ERP. Como o cliente não tinha mais conta em aberto, a conferência lançou um pagamento novo (Pix) que virou crédito do cliente: o dinheiro contou duas vezes em "Por forma de pagamento" e não apareceu em "Pelo que foi pago".

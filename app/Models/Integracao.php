@@ -26,6 +26,11 @@ class Integracao extends Modelo
         return static::where('tipo', 'inter')->first();
     }
 
+    public static function whatsapp(): ?self
+    {
+        return static::where('tipo', 'whatsapp')->first();
+    }
+
     public function credencial(string $chave): ?string
     {
         return ($this->credenciais ?? [])[$chave] ?? null;

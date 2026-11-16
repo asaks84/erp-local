@@ -1,6 +1,7 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
+import Contato from '../../Components/Contato'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Confirmar from '../../Components/Confirmar'
@@ -166,7 +167,8 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                         <div className="card-body">
                             <dl className="ficha-dados mb-0">
                                 <dt>CPF/CNPJ</dt><dd>{cliente.documento || '—'}</dd>
-                                <dt>Celular</dt><dd>{cliente.celular ? telefone(cliente.celular) : '—'}{cliente.telefone && <span className="d-block text-muted small">Tel. {telefone(cliente.telefone)}</span>}</dd>
+                                <dt>Celular</dt><dd>{cliente.celular ? telefone(cliente.celular) : '—'}{cliente.telefone && <span className="d-block text-muted small">Tel. {telefone(cliente.telefone)}</span>}
+                                    <div className="mt-2"><Contato celular={cliente.celular} telefone={cliente.telefone} /></div></dd>
                                 {cliente.email && (<><dt>E-mail</dt><dd>{cliente.email}</dd></>)}
                                 <dt>Endereço</dt><dd>{endereco || '—'}{cidade && <span className="d-block text-muted small">{cidade}</span>}</dd>
                                 <dt>Vencimento</dt><dd>Todo dia {cliente.dia_vencimento}</dd>

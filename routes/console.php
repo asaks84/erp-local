@@ -20,5 +20,9 @@ Schedule::call(fn () => Artisan::call('pagar:gerar-fixas'))->name('pagar:gerar-f
 // cobranças já resolvidas). Sem Inter configurado e ligado, não faz nada.
 Schedule::call(fn () => Artisan::call('inter:consultar'))->name('inter:consultar')->everyTenMinutes()->withoutOverlapping(15);
 
+// WhatsApp: cria os avisos de cobrança do dia e, com a API ligada e o envio automático marcado, envia
+// (só depois do horário escolhido em Configurações › WhatsApp, até as 20h).
+Schedule::call(fn () => Artisan::call('whatsapp:regua'))->name('whatsapp:regua')->everyTenMinutes()->between('7:00', '20:00')->withoutOverlapping(15);
+
 // Backup diário dos bancos às 3h10.
 Schedule::call(fn () => Artisan::call('backup:banco'))->name('backup:banco')->dailyAt('03:10')->withoutOverlapping(60);

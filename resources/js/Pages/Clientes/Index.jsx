@@ -5,6 +5,7 @@ import Icone from '../../Components/Icone'
 import Paginacao from '../../Components/Paginacao'
 import AbasClientes from '../../Components/AbasClientes'
 import { telefone } from '../../lib/mascaras'
+import Contato from '../../Components/Contato'
 
 export default function ClientesIndex({ clientes, filtros }) {
     const [q, setQ] = useState(filtros.q)
@@ -61,7 +62,13 @@ export default function ClientesIndex({ clientes, filtros }) {
                                     <td className="d-none d-md-table-cell">{c.documento}</td>
                                     <td className="small">{c.veiculos.join(', ')}</td>
                                     <td className="d-none d-lg-table-cell text-nowrap">{telefone(c.celular)}</td>
-                                    <td className="text-end"><Link href={`/clientes/${c.id}`} className="btn btn-sm btn-outline-secondary" onClick={(e) => e.stopPropagation()}>Abrir</Link></td>
+                                    <td className="text-end text-nowrap">
+                                        <span className="d-inline-flex align-items-center gap-1">
+                                            <Contato celular={c.celular} compacto />
+                                            {/* no celular a linha toda já abre o cliente */}
+                                            <Link href={`/clientes/${c.id}`} className="btn btn-sm btn-outline-secondary d-none d-md-inline-block" onClick={(e) => e.stopPropagation()}>Abrir</Link>
+                                        </span>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

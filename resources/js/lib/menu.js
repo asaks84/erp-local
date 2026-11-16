@@ -30,6 +30,7 @@ export const MENU = [
         itens: [
             { rotulo: 'Contas em aberto', href: '/contas/abertas', icone: 'dinheiro', permissao: 'contas_aberto', rapido: true, acende: ['/contas'] },
             { rotulo: 'Cobranças', href: '/cobrancas', icone: 'documento', acende: ['/cobrancas'] },
+            { rotulo: 'Avisos de cobrança', href: '/avisos', icone: 'alerta', acende: ['/avisos'] },
             { rotulo: 'Contas a pagar', href: '/pagar', icone: 'documento', permissao: 'contas_pagar', acende: ['/pagar', '/fornecedores'] },
             { rotulo: 'Resultado e caixa', href: '/resultado', icone: 'grafico', permissao: 'resultado', acende: ['/resultado'] },
             { rotulo: 'Funcionários', href: '/funcionarios', icone: 'pessoas', permissao: 'contas_pagar', acende: ['/funcionarios'] },
@@ -60,6 +61,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Plano de contas', href: '/configuracoes/plano-contas', permissao: 'configuracoes', acende: ['/configuracoes/plano-contas'] },
     { rotulo: 'Formas de pagamento', href: '/configuracoes/pagamentos', permissao: 'configuracoes', acende: ['/configuracoes/pagamentos'] },
     { rotulo: 'Banco Inter', href: '/configuracoes/inter', permissao: 'configuracoes', acende: ['/configuracoes/inter'] },
+    { rotulo: 'WhatsApp', href: '/configuracoes/whatsapp', permissao: 'configuracoes', acende: ['/configuracoes/whatsapp'] },
 ]
 
 /** item aceso: o endereço que mais combina com a página atual */
