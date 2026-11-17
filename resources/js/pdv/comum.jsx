@@ -20,18 +20,36 @@ export function Formas({ formas, value, onChange }) {
     )
 }
 
+/**
+ * campo de dinheiro estilo maquininha: sempre mostra 0,00 e cada número digitado entra pelos centavos
+ * (1 → 0,01 → 0,15 → 1,50 → 15,00). value e onChange em reais (número).
+ */
+export function CampoDinheiro({ value, onChange, className = '', ...resto }) {
+    const centavos = Math.round((Number(value) || 0) * 100)
+    const texto = (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const fim = (el) => { const n = el.value.length; requestAnimationFrame(() => { try { el.setSelectionRange(n, n) } catch { /* sem seleção */ } }) }
+    return (
+        <input {...resto} type="text" inputMode="numeric" autoComplete="off" className={`form-control form-control-lg pdv-valor ${className}`} value={texto}
+            onFocus={(e) => fim(e.target)} onClick={(e) => fim(e.target)}
+            onChange={(e) => {
+                const digitos = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7)
+                onChange(Number(digitos || 0) / 100)
+                fim(e.target)
+            }} />
+    )
+}
+
 /** dinheiro: quanto o cliente deu e o troco */
 export function Troco({ total, value, onChange, erro }) {
-    const recebido = numero(value) || 0
+    const recebido = Number(value) || 0
     const atalhos = [...new Set([Math.ceil(total / 10) * 10, Math.ceil(total / 50) * 50, 100].filter((v) => v > total))].slice(0, 3)
     return (
         <div className="mb-3">
             <label className="form-label small mb-1" htmlFor="recebido">Valor recebido</label>
-            <input id="recebido" className={`form-control form-control-lg ${erro ? 'is-invalid' : ''}`} inputMode="decimal" autoComplete="off" value={value} placeholder={moeda(total)}
-                onChange={(e) => onChange(e.target.value.replace(/[^\d,.]/g, ''))} />
+            <CampoDinheiro id="recebido" className={erro ? 'is-invalid' : ''} value={value} onChange={onChange} />
             {erro && <div className="invalid-feedback">{erro}</div>}
             <div className="d-flex gap-2 mt-2">
-                {atalhos.map((v) => <button key={v} type="button" className="btn btn-sm btn-outline-secondary" onClick={() => onChange(String(v))}>{moeda(v)}</button>)}
+                {atalhos.map((v) => <button key={v} type="button" className="btn btn-sm btn-outline-secondary" onClick={() => onChange(v)}>{moeda(v)}</button>)}
             </div>
             {recebido > 0 && (recebido + 0.001 >= total
                 ? <div className="pdv-troco">Troco: <strong>{moeda(recebido - total)}</strong></div>

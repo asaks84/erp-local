@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda, numero } from '../comum'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda } from '../comum'
 import { montarRecibo } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 
@@ -18,7 +18,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
     const [convenio, setConvenio] = useState(undefined)
     const [destino, setDestino] = useState(null)
     const [forma, setForma] = useState(null)
-    const [recebido, setRecebido] = useState('')
+    const [recebido, setRecebido] = useState(0)
     const [contaDe, setContaDe] = useState(null)
     const [busca, setBusca] = useState('')
     const [achados, setAchados] = useState([])
@@ -80,7 +80,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
     const aPagar = destino === 'mensalista' ? 0 : c.a_pagar
     const formaObj = opcoes.formas.find((f) => f.id === forma)
     const perdidoOk = !perdido || (retirada.nome.trim().length >= 3 && retirada.documento.trim().length >= 4)
-    const valorRecebido = numero(recebido) || 0
+    const valorRecebido = recebido || 0
 
     function finalizar(extra = {}) {
         const d = { destino: 'pago', ...extra }
@@ -99,7 +99,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
         setForma(fid)
         setErro(null)
         const f = opcoes.formas.find((x) => x.id === fid)
-        if (f?.tipo === 'dinheiro') { setRecebido(''); setEtapa('dinheiro') }
+        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') }
     }
     const voltarEtapa = () => { setErro(null); setEtapa(etapa === 'dinheiro' ? 'forma' : 'como') }
     const cancelar = () => pedirPin('PIN de gerente para cancelar').then(({ pin }) => {
@@ -184,12 +184,11 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
             {etapa === 'dinheiro' && (
                 <div className="mt-3">
                     <label className="form-label fw-semibold mb-1" htmlFor="recebido">Quanto o cliente deu?</label>
-                    <input id="recebido" className="form-control form-control-lg pdv-valor" inputMode="decimal" autoComplete="off" autoFocus value={recebido} placeholder="0,00"
-                        onChange={(ev) => setRecebido(ev.target.value.replace(/[^\d,.]/g, ''))} />
+                    <CampoDinheiro id="recebido" autoFocus value={recebido} onChange={setRecebido} />
                     <div className="pdv-opcoes mt-2">
-                        <button type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(String(aPagar).replace('.', ','))}>Valor exato</button>
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(aPagar)}>Valor exato</button>
                         {[...new Set([Math.ceil(aPagar / 10) * 10, Math.ceil(aPagar / 50) * 50, 100, 200].filter((v) => v > aPagar))].slice(0, 3)
-                            .map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(String(v))}>{moeda(v)}</button>)}
+                            .map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(v)}>{moeda(v)}</button>)}
                     </div>
                     {valorRecebido > 0 && valorRecebido + 0.001 < aPagar && <div className="text-danger small mt-2">Menor que {moeda(aPagar)}.</div>}
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}

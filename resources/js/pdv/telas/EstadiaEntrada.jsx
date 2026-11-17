@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { Folha, Formas, PerguntaImprimir, Previa, Troco, linhasTicket, moeda, numero } from '../comum'
+import { Folha, Formas, PerguntaImprimir, Previa, Troco, linhasTicket, moeda } from '../comum'
 import { montarTicket, ticketDaEstadia } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 
@@ -20,7 +20,7 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
     const [pagarAgora, setPagarAgora] = useState(false)
     const dinheiro = opcoes.formas.find((f) => f.tipo === 'dinheiro')
     const [forma, setForma] = useState(dinheiro?.id ?? opcoes.formas[0]?.id)
-    const [recebido, setRecebido] = useState('')
+    const [recebido, setRecebido] = useState(0)
     const [erros, setErros] = useState({})
     const [erro, setErro] = useState(null)
     const [enviando, setEnviando] = useState(false)
@@ -57,7 +57,7 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
         api('POST', '/estadias', {
             pin, placa: semPlaca ? null : placa, identificacao: semPlaca ? identificacao : null, modelo, tipo_veiculo_id: tipo,
             pacote_id: pacote, pagar_agora: !!pacote && pagarAgora, forma_pagamento_id: pacote && pagarAgora ? forma : null,
-            valor_recebido: pacote && pagarAgora && formaObj?.tipo === 'dinheiro' ? numero(recebido) : null, confirmar_mensalista: confirmar,
+            valor_recebido: pacote && pagarAgora && formaObj?.tipo === 'dinheiro' ? (recebido || null) : null, confirmar_mensalista: confirmar,
         }).then((j) => setFeito(j)).catch((e) => {
             if (e.campos?.mensalista) { setConfirmarMensalista({ pin, texto: e.campos.mensalista[0] }); return }
             setErros(e.campos || {})
