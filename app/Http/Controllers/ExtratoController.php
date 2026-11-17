@@ -161,6 +161,7 @@ class ExtratoController extends Controller
             // baixas feitas no sistema atual ainda sem entrada do extrato: a entrada pode ser uma delas
             'importados' => Extrato::importadosLivres($id)->map(fn ($p) => ['data' => $p->recebido_em->format('Y-m-d'), 'valor' => (float) $p->valor])->values(),
             'dias_ja_baixado' => Extrato::DIAS_JA_BAIXADO,
+            'pontualidade' => \App\Servicos\Pontualidade::doCliente($id),
         ];
     }
 

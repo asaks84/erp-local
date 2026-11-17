@@ -14,7 +14,7 @@ const hoje = () => {
 }
 const centavos = (v) => Math.round(Number(v || 0) * 100)
 
-export default function Receber({ cliente, ordens, formas, servicos, veiculos }) {
+export default function Receber({ cliente, ordens, formas, servicos, veiculos, pontualidade = [] }) {
     const pode = usePode()
     const contas = ordens.filter((o) => o.tipo !== 'credito')
     const creditos = ordens.filter((o) => o.tipo === 'credito')
@@ -41,6 +41,13 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
     const recebido = data.valor === '' ? null : data.valor
     const dif = recebido === null ? 0 : (centavos(recebido) - centavos(total)) / 100
     const forma = formas.find((f) => f.id === Number(data.forma_pagamento_id))
+    // desconto de pontualidade: cobranças cujas mensalidades com desconto estão todas marcadas, pagas até o vencimento
+    const pontual = pontualidade.filter((p) => data.recebido_em <= p.ate && p.ordens.every((id) => data.ordens.includes(id)))
+    const descontoPontual = pontual.reduce((s, p) => s + centavos(p.valor), 0) / 100
+    const ehPontual = descontoPontual > 0 && dif < 0 && centavos(-dif) <= centavos(descontoPontual)
+    const aplicarPontual = () => {
+        setData((d) => ({ ...d, valor: Math.max(0, (centavos(total) - centavos(descontoPontual)) / 100), falta: 'desconto', motivo: 'Desconto de pontualidade' }))
+    }
 
     function marcar(id) {
         setData('ordens', data.ordens.includes(id) ? data.ordens.filter((x) => x !== id) : [...data.ordens, id])
@@ -93,7 +100,10 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
                         <div className="row g-2">
                             <div className="col-sm-6">
                                 <CampoValor rotulo="Valor recebido" value={data.valor} onChange={(v) => setData('valor', v)} erro={errors.valor} autoFocus
-                                    ajuda={<button type="button" className="btn btn-link btn-sm p-0" onClick={() => setData('valor', Math.max(0, total))}>Usar o total ({moeda(Math.max(0, total))})</button>} />
+                                    ajuda={<>
+                                        <button type="button" className="btn btn-link btn-sm p-0" onClick={() => setData('valor', Math.max(0, total))}>Usar o total ({moeda(Math.max(0, total))})</button>
+                                        {descontoPontual > 0 && <> · <button type="button" className="btn btn-link btn-sm p-0" onClick={aplicarPontual}>Com desconto de pontualidade ({moeda(Math.max(0, total - descontoPontual))})</button></>}
+                                    </>} />
                             </div>
                             <div className="col-sm-6">
                                 <CampoData rotulo="Data do pagamento" value={data.recebido_em} onChange={(v) => setData('recebido_em', v)} erro={errors.recebido_em} />
@@ -130,7 +140,7 @@ export default function Receber({ cliente, ordens, formas, servicos, veiculos })
                             <fieldset className="border rounded p-3 mb-3">
                                 <legend className="fs-6 fw-semibold float-none w-auto px-1 mb-0">Faltaram {moeda(-dif)}</legend>
                                 <div className="form-check"><input className="form-check-input" type="radio" id="f-debito" checked={data.falta === 'debito'} onChange={() => setData('falta', 'debito')} /><label className="form-check-label" htmlFor="f-debito">Fica de débito para a próxima cobrança</label></div>
-                                {pode('desconto') && <div className="form-check"><input className="form-check-input" type="radio" id="f-desconto" checked={data.falta === 'desconto'} onChange={() => setData('falta', 'desconto')} /><label className="form-check-label" htmlFor="f-desconto">Dar desconto</label></div>}
+                                {(pode('desconto') || ehPontual) && <div className="form-check"><input className="form-check-input" type="radio" id="f-desconto" checked={data.falta === 'desconto'} onChange={() => setData((d) => ({ ...d, falta: 'desconto', motivo: d.motivo || (ehPontual ? 'Desconto de pontualidade' : '') }))} /><label className="form-check-label" htmlFor="f-desconto">{ehPontual ? 'Desconto de pontualidade (pago até o vencimento)' : 'Dar desconto'}</label></div>}
                                 {data.falta && <Campo rotulo={data.falta === 'desconto' ? 'Motivo do desconto' : 'Motivo (opcional)'} value={data.motivo} onChange={(e) => setData('motivo', e.target.value)} erro={errors.motivo} maxLength={200} className="mt-2 mb-0" />}
                                 {errors.falta && <div className="text-danger small">{errors.falta}</div>}
                                 <p className="small text-muted mb-0 mt-2">Para pagar só parte das contas, desmarque as que ficam em aberto.</p>

@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — Desconto de pontualidade na cobrança (opção, começa desligada)
+
+- Nova opção em **Configurações › Banco Inter › Regras do boleto**: "Desconto de pontualidade vale para qualquer forma de pagamento". **Desligada** de início: tudo continua como antes (desconto só no boleto).
+- Ligada, o desconto das regras do boleto (só mensalidade do mês, até o vencimento) aparece na **tela da cobrança** ("Pagando até X: R$ …"), na **cobrança impressa** (linha abaixo do Total), na **página pública** `/c/<código>` e entra no **balcão (Receber)** e na **conferência do extrato**: pago até o vencimento, a diferença pode ser lançada como "Desconto de pontualidade" sem precisar da permissão de desconto. Depois do vencimento, ou diferença maior que o desconto, continua exigindo a permissão.
+- Cobrança com desconto negociado não tem desconto de pontualidade (como no boleto). Com boleto emitido, vale o desconto que o Inter calculou.
+- Serviço `App\Servicos\Pontualidade`; `Baixa::receber` aceita a falta "desconto" quando é pontualidade. Sem migration (a opção fica nas configurações da empresa). 5 testes novos (207).
+
 ## 16/11/2026 — Abas das Configurações quebram linha
 
 - As abas de Configurações (Empresa e unidades, Tipos de veículo... WhatsApp) ficavam numa linha só, rolando para o lado, e parte sumia da tela. Agora quebram linha e ficam todas à vista, como botões arredondados; a aba atual fica destacada. No celular, um pouco menores.

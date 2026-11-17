@@ -4,6 +4,7 @@ import TituloPagina from '../../Components/TituloPagina'
 import { data as fData, dataHora } from '../../lib/formato'
 import { telefone } from '../../lib/mascaras'
 import { usePode } from '../../lib/permissoes'
+import { abrirWhatsApp } from '../../lib/whatsapp'
 
 const SITUACAO = { enviado: ['Enviado', ''], entregue: ['Entregue', 'selo-ok'], lido: ['Lido', 'selo-ok'], falha: ['Falhou', 'selo-erro'], pendente: ['Para enviar', 'selo-aviso'] }
 
@@ -14,7 +15,7 @@ export default function Avisos({ pendentes, enviados, api, automatico, hora, pas
     const podem = pendentes.filter((a) => !a.impedimento)
     const post = (url, id = 'todos') => { setOcupado(id); router.post(url, {}, { preserveScroll: true, onFinish: () => setOcupado(null) }) }
     const manual = (a) => {
-        window.open(`https://wa.me/55${a.celular}?text=${encodeURIComponent(a.texto)}`, '_blank', 'noopener')
+        abrirWhatsApp(a.celular, a.texto)
         post(`/avisos/${a.id}/manual`, a.id)
     }
     const regua = passos.map((d) => (d < 0 ? `${-d} dia(s) antes` : d === 0 ? 'no dia' : `${d} dia(s) depois`)).join(', ')

@@ -89,6 +89,7 @@ function Via({ c, empresa }) {
                 {c.desconto > 0 && <tr><td>Total</td><td className="via-num">{moeda(c.total)}</td></tr>}
                 {c.desconto > 0 && <tr><td>Desconto</td><td className="via-num">-{moeda(c.desconto)}</td></tr>}
                 <tr className="via-final"><td>{c.desconto > 0 ? 'Total a pagar' : 'Total'}</td><td className="via-num">{moeda(c.total - (c.desconto || 0))}</td></tr>
+                {c.pontualidade && <tr className="via-pontual"><td>Pagando até {fData(c.pontualidade.ate)} (desconto de {moeda(c.pontualidade.valor)})</td><td className="via-num">{moeda(c.pontualidade.a_pagar)}</td></tr>}
             </tbody></table>
 
             {temAnterior && <p className="via-nota">* Não pago na cobrança anterior.</p>}

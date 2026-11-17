@@ -107,15 +107,16 @@ class Boletos
      * (mensalidade atrasada trazida como saldo anterior não ganha); % sobre a soma delas ou
      * R$ fixo por mensalidade. Vale até o vencimento da cobrança (o dia combinado com o cliente).
      */
-    public static function descontoPontualidade(Cobranca $cob, array $regras): float
+    public static function descontoPontualidade(Cobranca $cob, array $regras, ?\Illuminate\Support\Carbon $dia = null): float
     {
+        $dia = ($dia ?? today())->copy()->startOfDay();
         $tipo = $regras['boleto_desconto_tipo'] ?? 'nenhum';
         $valor = (float) ($regras['boleto_desconto_valor'] ?? 0);
-        if ($tipo === 'nenhum' || $valor <= 0 || $cob->vencimento->isBefore(today())) {
+        if ($tipo === 'nenhum' || $valor <= 0 || $cob->vencimento->copy()->startOfDay()->lt($dia)) {
             return 0.0;
         }
         $mens = OrdemServico::abertas()->where('cobranca_id', $cob->id)->where('tipo', 'mensalidade')
-            ->where(fn ($q) => $q->whereNull('vencimento')->orWhere('vencimento', '>=', today()->toDateString()))->get(['valor']);
+            ->where(fn ($q) => $q->whereNull('vencimento')->orWhere('vencimento', '>=', $dia->toDateString()))->get(['valor']);
         if ($mens->isEmpty()) {
             return 0.0;
         }

@@ -1,4 +1,5 @@
 import Icone from './Icone'
+import { linkWhatsApp } from '../lib/whatsapp'
 
 /** só dígitos, sem o 55 na frente */
 const digitos = (v) => {
@@ -21,7 +22,7 @@ export default function Contato({ celular, telefone, compacto = false, className
     return (
         <span className={`d-inline-flex gap-1 ${className}`}>
             {whats && (
-                <a href={`https://wa.me/55${digitos(whats)}`} target="_blank" rel="noopener noreferrer" onClick={parar}
+                <a href={linkWhatsApp(whats)} target="_blank" rel="noopener noreferrer" onClick={parar}
                     className={`btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1`} title="Abrir conversa no WhatsApp" aria-label="WhatsApp">
                     <Icone nome="whatsapp" tamanho={16} />{!compacto && 'WhatsApp'}
                 </a>

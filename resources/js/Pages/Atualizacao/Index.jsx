@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import { data as fData, dataHora } from '../../lib/formato'
 import { telefone } from '../../lib/mascaras'
+import { abrirWhatsApp } from '../../lib/whatsapp'
 
 const SITUACAO = {
     aberta: ['Link aberto', 'selo-aviso'], respondida: ['Para revisar', 'selo-marca'], aprovada: ['Atualizado', 'selo-ok'],
@@ -73,7 +74,7 @@ export default function AtualizacaoIndex({ linhas, resumo, empresa_nome: empresa
     const mensagem = (l) => `Olá, ${l.nome.split(' ')[0].charAt(0) + l.nome.split(' ')[0].slice(1).toLowerCase()}! Aqui é do ${empresa}. Estamos atualizando o cadastro dos clientes. Confira e atualize seus dados (leva 1 minuto): ${l.atualizacao.link}\nPara abrir, confirme a placa do seu veículo.`
     const whatsapp = (l) => {
         const n = l.celular.replace(/\D/g, '')
-        window.open(`https://wa.me/55${n}?text=${encodeURIComponent(mensagem(l))}`, '_blank', 'noopener')
+        abrirWhatsApp(n, mensagem(l))
         enviado([l.atualizacao.id], 'whatsapp')
     }
     const copiar = (l) => navigator.clipboard?.writeText(mensagem(l)).then(() => { setCopiado(l.id); setTimeout(() => setCopiado(null), 1500); enviado([l.atualizacao.id], 'link') })

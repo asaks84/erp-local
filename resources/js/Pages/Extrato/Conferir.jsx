@@ -37,6 +37,10 @@ function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
     const total = (marcadas.reduce((s, o) => s + centavos(o.valor), 0) - creditos) / 100
     const dif = (centavos(e.valor) - centavos(total)) / 100
     const la = jaBaixadoLa(e, cliente)
+    // desconto de pontualidade: pago até o vencimento, todas as mensalidades com desconto entre as contas marcadas
+    const idsMarcadas = marcadas.map((o) => o.id)
+    const descontoPontual = (cliente?.pontualidade || []).filter((p) => e.data <= p.ate && p.ordens.every((id) => idsMarcadas.includes(id))).reduce((s, p) => s + centavos(p.valor), 0) / 100
+    const ehPontual = descontoPontual > 0 && dif < 0 && centavos(-dif) <= centavos(descontoPontual)
     const registrar = la && soRegistro(linha, e, cliente)
 
     return (
@@ -105,9 +109,9 @@ function Entrada({ e, linha, cliente, servicos, mudar, carregando }) {
                                 )}
                                 {dif < 0 && (
                                     <div className="small mt-1">
-                                        <span className="fw-semibold">Faltam {moeda(-dif)}:</span>
+                                        <span className="fw-semibold">Faltam {moeda(-dif)}{ehPontual ? ' (desconto de pontualidade)' : ''}:</span>
                                         <label className="ms-2"><input type="radio" className="form-check-input me-1" checked={linha.falta === 'debito'} onChange={() => mudar({ falta: 'debito' })} />débito</label>
-                                        {pode('desconto') && <label className="ms-2"><input type="radio" className="form-check-input me-1" checked={linha.falta === 'desconto'} onChange={() => mudar({ falta: 'desconto' })} />desconto</label>}
+                                        {(pode('desconto') || ehPontual) && <label className="ms-2"><input type="radio" className="form-check-input me-1" checked={linha.falta === 'desconto'} onChange={() => mudar({ falta: 'desconto' })} />desconto</label>}
                                     </div>
                                 )}
                             </>

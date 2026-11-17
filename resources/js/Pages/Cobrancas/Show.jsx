@@ -32,7 +32,7 @@ function Grupo({ titulo, itens }) {
     )
 }
 
-export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_vencimento: boletoVencimento }) {
+export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_vencimento: boletoVencimento, pontualidade = null }) {
     const pode = usePode()
     const [cancelar, setCancelar] = useState(false)
     const form = useForm({ motivo: '' })
@@ -47,6 +47,7 @@ export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], i
                 <SeloCobranca situacao={cobranca.situacao} />
                 <span>Vencimento <strong>{fData(cobranca.vencimento)}</strong></span>
                 <span>Total <strong>{moeda(cobranca.total)}</strong></span>
+                {pontualidade && <span className="text-success-emphasis">Pagando até <strong>{fData(pontualidade.ate)}</strong>: <strong>{moeda(pontualidade.a_pagar)}</strong> (desconto de pontualidade de {moeda(pontualidade.valor)})</span>}
                 {cobranca.desconto > 0 && <span title={cobranca.desconto_motivo || undefined}>Desconto negociado <strong>−{moeda(cobranca.desconto)}</strong> · A pagar <strong>{moeda(cobranca.total - cobranca.desconto)}</strong></span>}
                 <span className="text-muted small">Emitida em {dataHora(cobranca.emitida_em)}</span>
                 <Link href={`/clientes/${cliente.id}`} className="ms-auto">Abrir cliente</Link>

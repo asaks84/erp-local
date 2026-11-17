@@ -32,6 +32,7 @@ class CobrancaPublicaController extends Controller
                 'itens' => $c->itens->map(fn ($i) => ['descricao' => $i->descricao, 'placa' => $i->placa, 'valor' => (float) $i->valor])->values(),
                 'instrucoes' => (string) $empresa->config('cobranca_instrucoes'),
             ],
+            'pontualidade' => $aberta ? \App\Servicos\Pontualidade::resumo($c) : null,
             'boleto' => $b && $b->linha_digitavel ? ['linha_digitavel' => $b->linha_digitavel, 'pix_copia_cola' => $b->pix_copia_cola, 'valor' => (float) $b->valor] : null,
         ]);
     }

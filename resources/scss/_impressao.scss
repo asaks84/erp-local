@@ -38,6 +38,7 @@
 		width: 100%; border-collapse: collapse; font-weight: 700;
 		td { padding: 1mm 1.5mm; }
 		.via-final td { background: #ccc; font-size: 13px; }
+		.via-pontual td { font-weight: bold; font-size: 12px; border-top: 1px dashed #999; }
 	}
 	.via-nota { font-size: 10px; }
 	.via-instrucoes { font-size: 10.5px; white-space: pre-line; border-top: 1px solid #999; padding-top: 1.5mm; }

@@ -47,7 +47,7 @@ class InterController extends Controller
                 'testado_em' => $i->testado_em?->format('Y-m-d H:i'),
                 'ultimo_erro' => $i->ultimo_erro,
             ],
-            'regras' => Boletos::regras() + ['boleto_prazo_dias' => Boletos::prazo()],
+            'regras' => Boletos::regras() + ['boleto_prazo_dias' => Boletos::prazo(), 'desconto_pontualidade_geral' => \App\Servicos\Pontualidade::ativa()],
             'boletos' => ['ativos' => Boleto::whereIn('situacao', Boleto::ATIVAS)->count(), 'com_erro' => Boleto::whereNotNull('erro')->whereIn('situacao', ['recebido', 'falha'])->where('criado_em', '>=', now()->subDays(30))->count()],
         ]);
     }
@@ -164,11 +164,13 @@ class InterController extends Controller
         $d = array_map(fn ($v) => $v ?? 0, $d);
         // prazo do boleto é da empresa (não entra nas regras específicas do cliente)
         $d['boleto_prazo_dias'] = (int) ($request->validate(['boleto_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:30']])['boleto_prazo_dias'] ?? 0);
+        // desconto de pontualidade também fora do boleto (cobrança, balcão, extrato): da empresa
+        $d['desconto_pontualidade_geral'] = $request->boolean('desconto_pontualidade_geral');
         $e = Empresa::atual();
         $e->configuracoes = array_merge($e->configuracoes ?? [], $d);
         $e->save();
         Atividades::registrar('empresa_config_alterada', 'regras do boleto: multa '.$d['boleto_multa_tipo'].' '.$d['boleto_multa_valor'].', juros '.$d['boleto_juros_tipo'].' '.$d['boleto_juros_valor']
-            .', desconto '.$d['boleto_desconto_tipo'].' '.$d['boleto_desconto_valor'].', baixa em '.$d['boleto_baixa_dias'].' dia(s), boleto vence '.$d['boleto_prazo_dias'].' dia(s) depois do vencimento do cliente');
+            .', desconto '.$d['boleto_desconto_tipo'].' '.$d['boleto_desconto_valor'].($d['desconto_pontualidade_geral'] ? ' (qualquer forma de pagamento)' : ' (só no boleto)').', baixa em '.$d['boleto_baixa_dias'].' dia(s), boleto vence '.$d['boleto_prazo_dias'].' dia(s) depois do vencimento do cliente');
 
         return back()->with('sucesso', 'Regras do boleto salvas. Valem para os próximos boletos.');
     }

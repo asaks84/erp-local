@@ -56,6 +56,11 @@ function Regras({ regras }) {
                 <Regra nome="multa" rotulo="Multa por atraso" form={form} ajuda="Para pessoa física, o Código de Defesa do Consumidor limita a 2%." />
                 <Regra nome="juros" rotulo="Juros por atraso" form={form} />
                 <Regra nome="desconto" rotulo="Desconto de pontualidade" form={form} />
+                <div className="form-check form-switch mb-3">
+                    <input className="form-check-input" type="checkbox" role="switch" id="pont-geral" checked={!!form.data.desconto_pontualidade_geral} onChange={(e) => form.setData('desconto_pontualidade_geral', e.target.checked)} />
+                    <label className="form-check-label" htmlFor="pont-geral">Desconto de pontualidade vale para qualquer forma de pagamento</label>
+                    <div className="form-text">Ligado: aparece na cobrança impressa, na tela da cobrança e no link do WhatsApp, e entra no balcão (Receber) e no extrato quando o pagamento é até o vencimento, sem precisar da permissão de desconto. Desligado: só no boleto.</div>
+                </div>
                 <div className="row g-2">
                     <div className="col-sm-6"><Campo rotulo="Prazo do boleto (dias)" type="number" min="0" max="30" value={form.data.boleto_prazo_dias} onChange={(e) => form.setData('boleto_prazo_dias', e.target.value)} erro={form.errors.boleto_prazo_dias} ajuda="Quantos dias depois do vencimento do cliente o boleto vence. Ex.: cliente dia 5, boleto dia 10 = 5." /></div>
                     <div className="col-sm-6"><Campo rotulo="Baixa automática (dias)" type="number" min="0" max="60" value={form.data.boleto_baixa_dias} onChange={(e) => form.setData('boleto_baixa_dias', e.target.value)} erro={form.errors.boleto_baixa_dias} ajuda="Dias depois do vencimento do boleto; depois disso ele não pode mais ser pago (a dívida continua no sistema). Máximo 60." /></div>

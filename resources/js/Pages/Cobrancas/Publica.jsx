@@ -9,7 +9,7 @@ function Copiar({ texto, rotulo }) {
 }
 
 /** Página pública da cobrança (link dos avisos do WhatsApp): o que deve e como pagar. */
-export default function CobrancaPublica({ empresa_publica: empresa, cobranca: c, boleto }) {
+export default function CobrancaPublica({ empresa_publica: empresa, cobranca: c, boleto, pontualidade = null }) {
     const [qr, setQr] = useState(null)
     useEffect(() => { if (boleto?.pix_copia_cola) QRCode.toDataURL(boleto.pix_copia_cola, { width: 440, margin: 1 }).then(setQr) }, [boleto?.pix_copia_cola])
     const aberta = c.situacao === 'aberta' || c.situacao === 'parcial'
@@ -29,9 +29,20 @@ export default function CobrancaPublica({ empresa_publica: empresa, cobranca: c,
             {aberta && (
                 <div className="card mb-3">
                     <div className="card-body text-center">
-                        <div className="small text-muted">Valor a pagar</div>
-                        <div className="display-6 fw-bold">{moeda(c.a_pagar)}</div>
-                        <div>Vencimento <strong>{fData(c.vencimento)}</strong></div>
+                        {pontualidade ? (
+                            <>
+                                <div className="small text-muted">Pagando até {fData(pontualidade.ate)}</div>
+                                <div className="display-6 fw-bold">{moeda(pontualidade.a_pagar)}</div>
+                                <div className="small text-success-emphasis mb-1">Desconto de {moeda(pontualidade.valor)} por pagar em dia</div>
+                                <div className="small text-muted">Depois de {fData(pontualidade.ate)}: {moeda(c.a_pagar)} · vencimento {fData(c.vencimento)}</div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="small text-muted">Valor a pagar</div>
+                                <div className="display-6 fw-bold">{moeda(c.a_pagar)}</div>
+                                <div>Vencimento <strong>{fData(c.vencimento)}</strong></div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

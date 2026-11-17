@@ -179,6 +179,7 @@ class CobrancaController extends Controller
         return Inertia::render('Cobrancas/Show', [
             'inter' => self::interLigado(),
             'boleto_vencimento' => Boletos::vencimentoSugerido($cobranca)->format('Y-m-d'),
+            'pontualidade' => \App\Servicos\Pontualidade::resumo($cobranca),
             'regras_sugerido' => Boletos::aplicarRegrasSugerido($cobranca),
             'em_aberto' => Boletos::valorEmAberto($cobranca),
             'falta_cadastro' => Boletos::faltaNoCadastro($cobranca->cliente),
@@ -233,6 +234,7 @@ class CobrancaController extends Controller
             'cobrancas' => $cobrancas->map(fn (Cobranca $c) => self::resumo($c) + [
                 'cliente' => ['id' => $c->cliente->id, 'nome' => $c->cliente->nome, 'documento' => Documento::formatar($c->cliente->documento)],
                 'atualizacao_link' => isset($atualizacoes[$c->cliente_id]) ? $atualizacoes[$c->cliente_id]->link() : null,
+                'pontualidade' => \App\Servicos\Pontualidade::resumo($c),
                 'mes' => Carbon::parse($c->competencia.'-01')->format('m/Y'),
                 'itens' => $c->itens->map(fn ($i) => [
                     'grupo' => $i->grupo, 'numero' => $i->numero, 'descricao' => $i->descricao,

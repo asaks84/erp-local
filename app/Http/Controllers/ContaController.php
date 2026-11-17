@@ -118,6 +118,7 @@ class ContaController extends Controller
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'tipo', 'parcelas_max']),
             'servicos' => Servico::where('ativo', true)->where('papel', 'principal')->orderBy('nome')->get(['id', 'nome']),
             'veiculos' => $cliente->veiculos()->where('ativo', true)->get()->map(fn ($v) => ['id' => $v->id, 'rotulo' => $v->rotulo()]),
+            'pontualidade' => \App\Servicos\Pontualidade::doCliente($cliente->id),
         ]);
     }
 

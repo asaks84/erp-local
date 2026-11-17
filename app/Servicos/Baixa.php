@@ -93,8 +93,14 @@ class Baixa
             if ($dif < 0 && ! in_array($falta, ['debito', 'desconto'], true)) {
                 self::erro('falta', 'Escolha o que fazer com os '.Formato::moeda(-$dif).' que faltaram.');
             }
-            if ($dif < 0 && $falta === 'desconto' && empty($d['sistema']) && ! Auth::user()?->pode('desconto')) {
+            // desconto de pontualidade (opção ligada, pago até o vencimento): regra da empresa, não precisa da permissão
+            $pontual = $dif < 0 && $falta === 'desconto' ? Pontualidade::noRecebimento($ordens, $recebido) : 0.0;
+            $ehPontualidade = $pontual > 0 && -$dif <= $pontual + 0.005;
+            if ($dif < 0 && $falta === 'desconto' && empty($d['sistema']) && ! $ehPontualidade && ! Auth::user()?->pode('desconto')) {
                 self::erro('falta', 'Seu nível de acesso não permite dar desconto.');
+            }
+            if ($ehPontualidade && trim((string) ($d['motivo'] ?? '')) === '') {
+                $d['motivo'] = Pontualidade::MOTIVO;
             }
 
             $taxa = $forma->taxaSobre($valor, $parcelas);
