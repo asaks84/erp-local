@@ -28,6 +28,7 @@ class UsuarioController extends Controller
                     'unidade' => $u->unidade?->nome,
                     'ativo' => $u->ativo,
                     'ultimo_acesso_em' => $u->ultimo_acesso_em?->format('Y-m-d H:i:s'),
+                    'pin' => (bool) $u->pin_hash,
                 ]),
         ]);
     }
@@ -122,5 +123,13 @@ class UsuarioController extends Controller
             'niveis' => Nivel::orderByDesc('fixo')->orderBy('nome')->get(['id', 'nome']),
             'unidades' => Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
         ];
+    }
+
+    /** apaga o PIN do PDV (a pessoa cadastra outro no próprio PDV, com login e senha) */
+    public function apagarPin(Usuario $usuario): RedirectResponse
+    {
+        \App\Servicos\Pdv\Pins::apagar($usuario);
+
+        return back()->with('sucesso', 'PIN de '.$usuario->nome.' apagado. Ele cadastra outro no PDV.');
     }
 }

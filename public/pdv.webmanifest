@@ -1,0 +1,14 @@
+{
+    "name": "PDV Local",
+    "short_name": "PDV",
+    "start_url": "/pdv",
+    "scope": "/pdv",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f4f6f8",
+    "theme_color": "#c0281b",
+    "icons": [
+        { "src": "/imagens/favicon-96.png", "sizes": "96x96", "type": "image/png" },
+        { "src": "/imagens/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+    ]
+}

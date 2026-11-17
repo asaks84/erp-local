@@ -17,6 +17,11 @@ class Atividades
             return; // sem empresa não há onde registrar (ex.: login com usuário inexistente)
         }
 
+        // ação feita pelo PDV: o aparelho entra no registro
+        $aparelho = request()?->attributes->get('aparelho');
+        if ($aparelho) {
+            $detalhe = trim(($detalhe ?? '').' · PDV: '.$aparelho->nome, ' ·');
+        }
         $log = new LogAtividade([
             'usuario_id' => $usuario?->id,
             'usuario_nome' => $usuario?->nome,

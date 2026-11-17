@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permissao' => Permissao::class,
             'publica' => Publica::class,
+            'aparelho' => \App\Http\Middleware\AutenticaAparelho::class,
         ]);
 
         $middleware->redirectGuestsTo('/login');

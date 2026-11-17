@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — PDV, parte 8.1: aparelhos, pareamento, PIN e teste de impressão
+
+- **Configurações › Aparelhos (PDV):** cadastra o celular do balcão e gera um código de 6 dígitos (15 min, uso único); "Parear de novo" e "Desativar" cortam o celular antigo na hora; memória do PIN (a cada ação ou 1 a 10 min).
+- **App do PDV em `/pdv`** (React próprio, instalável pelo Chrome): pareamento pelo código, tela inicial, testar PIN, cadastrar/trocar PIN (com login e senha do sistema) e **teste de impressão** (ticket de exemplo por Bluetooth BLE, app RawBT ou impressão do Android; 80/58 mm, acentos, QR como imagem).
+- **API `/api/pdv`** (`routes/api.php`, sem sessão): token do aparelho (só o hash no banco), PIN conferido em cada ação (5 erros travam o aparelho 1 minuto). PIN guardado como HMAC, único na empresa; PIN repetido cancela o do outro. Usuários mostra quem tem PIN, com "apagar". Registro de atividades com "· PDV: aparelho".
+- Ideia registrada no fim de `docs/15-plano-pdv.md`: gestão de pátio com câmera de placa (para depois). Consulta de placa em serviço externo descartada.
+- Migration `2026_11_26_000001_create_aparelhos` (tabela `aparelhos`, `pin_hash` nos usuários). 8 testes novos (225).
+
 ## 17/11/2026 — Convênio por serviço e "na conta de" outro cliente
 
 - **Na conta de outro cliente:** na venda de lavagem e na saída da estadia, "Na conta de um cliente" abre o campo **Na conta de** (vem com o dono do veículo; "trocar" busca qualquer cliente). A ordem fica com a placa que entrou e o cliente que paga. Ex.: mensalista traz o carro do pai e a lavagem vai para a mensalidade dele.

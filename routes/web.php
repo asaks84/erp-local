@@ -63,7 +63,9 @@ Route::middleware('publica')->group(function () {
     Route::post('/atualizar/{token}', [AtualizarPublicoController::class, 'enviar'])->middleware('throttle:10,60');
     // página pública da cobrança (link dos avisos do WhatsApp) e política de privacidade
     Route::get('/c/{token}', \App\Http\Controllers\CobrancaPublicaController::class)->middleware('throttle:60,1');
-    Route::get('/privacidade', function () {
+    // PDV: app separado (React próprio), fala com o servidor só pela API (routes/api.php)
+Route::get('/pdv/{tela?}', fn () => view('pdv'))->where('tela', '.*')->middleware('publica');
+Route::get('/privacidade', function () {
         $e = \App\Models\Empresa::withoutGlobalScopes()->where('ativa', true)->orderBy('id')->first();
 
         return \Inertia\Inertia::render('Privacidade', ['empresa_publica' => ['nome' => $e?->nome ?? config('app.name'), 'telefone' => $e?->telefone, 'email' => $e?->email]]);
@@ -270,6 +272,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/whatsapp/credenciais', [\App\Http\Controllers\WhatsAppController::class, 'credenciais']);
         Route::post('/configuracoes/whatsapp/testar', [\App\Http\Controllers\WhatsAppController::class, 'testar']);
         Route::post('/configuracoes/whatsapp/desligar', [\App\Http\Controllers\WhatsAppController::class, 'desligar']);
+        Route::get('/configuracoes/aparelhos', [\App\Http\Controllers\AparelhoController::class, 'index']);
+        Route::post('/configuracoes/aparelhos', [\App\Http\Controllers\AparelhoController::class, 'store']);
+        Route::put('/configuracoes/aparelhos/config', [\App\Http\Controllers\AparelhoController::class, 'config']);
+        Route::put('/configuracoes/aparelhos/{aparelho}', [\App\Http\Controllers\AparelhoController::class, 'update']);
+        Route::post('/configuracoes/aparelhos/{aparelho}/codigo', [\App\Http\Controllers\AparelhoController::class, 'codigo']);
+        Route::post('/configuracoes/aparelhos/{aparelho}/desativar', [\App\Http\Controllers\AparelhoController::class, 'desativar']);
         Route::get('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'index']);
         Route::post('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'store']);
         Route::put('/configuracoes/whatsapp/mensagens/{mensagem}', [\App\Http\Controllers\MensagemController::class, 'update']);
@@ -331,6 +339,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/usuarios', [UsuarioController::class, 'store']);
         Route::get('/usuarios/{usuario}', [UsuarioController::class, 'edit']);
         Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update']);
+        Route::post('/usuarios/{usuario}/apagar-pin', [UsuarioController::class, 'apagarPin']);
 
         Route::get('/atividades', AtividadeController::class);
     });

@@ -1,0 +1,75 @@
+<?php
+
+namespace App\Http\Controllers\Pdv;
+
+use App\Http\Controllers\Controller;
+use App\Models\Aparelho;
+use App\Models\Empresa;
+use App\Models\Usuario;
+use App\Servicos\Pdv\Aparelhos;
+use App\Servicos\Pdv\Pins;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+/** API do PDV, base (etapa 8.1): pareamento, dados do aparelho e PIN. */
+class PdvController extends Controller
+{
+    /** aparelho da requisição (definido pelo middleware "aparelho") */
+    public static function aparelho(Request $r): Aparelho
+    {
+        return $r->attributes->get('aparelho');
+    }
+
+    /** confere o PIN da requisição e põe a pessoa como autora da ação (registro de atividades, criado_por...) */
+    public static function pessoa(Request $r): Usuario
+    {
+        $u = Pins::conferir(self::aparelho($r), $r->input('pin', $r->header('X-Pin')));
+        Auth::setUser($u);
+
+        return $u;
+    }
+
+    public function parear(Request $r): JsonResponse
+    {
+        $d = $r->validate(['codigo' => ['required', 'string', 'max:12'], 'versao' => ['nullable', 'string', 'max:20']]);
+        [$a, $token] = Aparelhos::parear($d['codigo'], $d['versao'] ?? null);
+
+        return response()->json(['token' => $token, 'aparelho' => ['id' => $a->id, 'nome' => $a->nome]]);
+    }
+
+    public function eu(Request $r): JsonResponse
+    {
+        $a = self::aparelho($r)->load('unidade');
+        $e = Empresa::atual();
+        $u = $a->unidade ?? \App\Models\Unidade::orderBy('id')->first();
+
+        return response()->json([
+            'aparelho' => ['id' => $a->id, 'nome' => $a->nome, 'unidade' => $a->unidade?->nome],
+            // dados do cabeçalho do ticket
+            'empresa' => ['nome' => $e->nome, 'documento' => $e->documento, 'telefone' => $u?->telefone ?: $e->telefone, 'endereco' => $u?->endereco],
+            'pin_memoria_min' => (int) ($e->config('pdv_pin_memoria_min') ?? 0),
+            'servidor_hora' => now()->toIso8601String(),
+        ]);
+    }
+
+    public function conferirPin(Request $r): JsonResponse
+    {
+        $r->validate(['pin' => ['required', 'string', 'max:8']]);
+        $u = self::pessoa($r);
+
+        return response()->json(['usuario' => ['id' => $u->id, 'nome' => $u->nome, 'nivel' => $u->nivel?->nome]]);
+    }
+
+    public function cadastrarPin(Request $r): JsonResponse
+    {
+        $d = $r->validate([
+            'login' => ['required', 'string', 'max:40'],
+            'senha' => ['required', 'string', 'max:200'],
+            'pin' => ['required', 'string', 'max:8'],
+        ], ['login.required' => 'Informe o login.', 'senha.required' => 'Informe a senha.', 'pin.required' => 'Escolha o PIN.']);
+        $u = Pins::cadastrar(self::aparelho($r)->empresa_id, $d['login'], $d['senha'], $d['pin']);
+
+        return response()->json(['ok' => true, 'mensagem' => 'PIN de '.$u->nome.' cadastrado.']);
+    }
+}

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react'
+import { Link, router } from '@inertiajs/react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import { dataHora } from '../../lib/formato'
@@ -22,6 +22,7 @@ export default function UsuariosIndex({ usuarios }) {
                                 <th>Nível</th>
                                 <th className="d-none d-md-table-cell">Unidade</th>
                                 <th className="d-none d-lg-table-cell">Último acesso</th>
+                                <th className="d-none d-md-table-cell">PIN do PDV</th>
                                 <th>Situação</th>
                                 <th />
                             </tr>
@@ -37,6 +38,14 @@ export default function UsuariosIndex({ usuarios }) {
                                     <td>{u.nivel}</td>
                                     <td className="d-none d-md-table-cell">{u.unidade || 'Todas'}</td>
                                     <td className="d-none d-lg-table-cell text-muted">{u.ultimo_acesso_em ? dataHora(u.ultimo_acesso_em) : 'Nunca'}</td>
+                                    <td className="d-none d-md-table-cell small">
+                                        {u.pin ? (
+                                            <span className="d-inline-flex align-items-center gap-2">
+                                                <span className="selo selo-ok">Cadastrado</span>
+                                                <button type="button" className="btn btn-link btn-sm p-0 text-danger" onClick={() => router.post(`/usuarios/${u.id}/apagar-pin`, {}, { preserveScroll: true })}>apagar</button>
+                                            </span>
+                                        ) : <span className="text-muted">Não cadastrado</span>}
+                                    </td>
                                     <td>{u.ativo ? <span className="selo selo-ok">Ativo</span> : <span className="selo">Inativo</span>}</td>
                                     <td className="text-end">
                                         <Link href={`/usuarios/${u.id}`} className="btn btn-sm btn-outline-secondary" aria-label={`Editar ${u.nome}`}>

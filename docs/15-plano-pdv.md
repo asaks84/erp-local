@@ -48,13 +48,13 @@ O balcão do Local passa a registrar no celular a entrada e a saída dos avulsos
 - Mais de um aparelho trabalhando junto e mais de uma unidade usando o PDV.
 - App Android na Play Store (Capacitor) e impressão por Bluetooth clássico/rede pelo app (a não ser que a impressora escolhida obrigue a antecipar; ver seção 6).
 - Ticket por WhatsApp ou SMS e aviso de "lavagem pronta" (a régua e o editor de mensagens já existem; entra depois que o básico rodar).
-- Validação de convênio por QR, credencial do mensalista (tag/cartão), câmera de placa e cancela.
+- Validação de convênio por QR, credencial do mensalista (tag/cartão), câmera de placa e cancela (ver "Ideia: gestão de pátio com câmera de placa", no fim deste documento).
 - Maquininha de cartão integrada (na primeira versão o operador só escolhe a forma "cartão").
 
 ## 4. Como fica montado
 
 - **App do PDV separado da gestão:** projeto React próprio (sem Inertia), servido pelo próprio ERP em `/pdv`, instalável como app pelo navegador (PWA). Fala com o servidor só pela API.
-- **API:** rotas em `/api/pdv/...`, autenticadas pelo token do aparelho (Laravel Sanctum). O token identifica empresa, unidade e aparelho; o PIN identifica a pessoa em cada ação.
+- **API:** rotas em `/api/pdv/...` (`routes/api.php`, sem sessão), autenticadas pelo token do aparelho: token próprio de 64 caracteres, guardado só como hash (sem pacote extra). O token identifica empresa, unidade e aparelho; o PIN identifica a pessoa em cada ação.
 - **Servidor é a autoridade do dinheiro:** com internet, quem calcula é sempre o servidor. O celular só calcula no modo de emergência.
 - **Hostinger:** sem WebSocket nem processo rodando o tempo todo. A tela do PDV atualiza consultando o servidor (pátio, Pix); nada depende de conexão aberta.
 - **Hora:** o servidor grava a hora dele. O aparelho manda a hora dele junto; se a diferença passar de 2 minutos, o PDV avisa (relógio errado muda o valor da estadia). No modo de emergência vale a hora do aparelho.
@@ -63,7 +63,7 @@ O balcão do Local passa a registrar no celular a entrada e a saída dos avulsos
 
 | Tabela | Para quê |
 |---|---|
-| `aparelhos` | Nome, unidade, situação, último acesso, versão do app; token pelo Sanctum |
+| `aparelhos` | Nome, unidade, situação, último acesso, versão do app; hash do token e do código de pareamento; trava de PIN |
 | `usuarios.pin_hash` (+ tentativas, travado até) | PIN de cada pessoa |
 | `caixa_turnos` | Período entre dois fechamentos: aparelho, aberto em, troco inicial, fechado por/em, contado, troco deixado, esperado, diferença, observação |
 | `caixa_movimentos` | Turno, tipo (sangria, suprimento), valor, motivo, quem |
@@ -98,7 +98,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 
 | Parte | O que entrega | Pronto quando |
 |---|---|---|
-| 8.1 Base da API | Aparelhos na gestão, pareamento, token, PIN das pessoas, registro de atividades com aparelho e pessoa | Celular pareado chama a API; PIN certo identifica a pessoa, errado trava como previsto |
+| 8.1 Base da API | Aparelhos na gestão, pareamento, token, PIN das pessoas, registro de atividades com aparelho e pessoa | Celular pareado chama a API; PIN certo identifica a pessoa, errado trava como previsto. **Pronta (17/11/2026)**, com o teste de impressão adiantado |
 | 8.2 App e pátio | App instalável, tela do pátio, entrada e saída pagas em dinheiro e cartão | Uma estadia entra e sai pelo celular e aparece igual na gestão e no Resultado |
 | 8.3 Caixa e contas | Fechamento diário pelo gerente, sangria, suprimento; receber conta de cliente no balcão; relatório de fechamentos na gestão | Um fechamento bate com os recebimentos em dinheiro do período, separados por pessoa |
 | 8.4 Lavagens | Venda, etapas e entrega pelo celular | Lavagem vendida no celular aparece no quadro da gestão e vice-versa |
@@ -180,6 +180,15 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - "Conta de:" na venda e na saída da estadia (lançar na conta de qualquer cliente).
 - Convênio por serviço (integral, parcial com teto em R$, limite de tempo na estadia) e fechamento programado.
 
+## 8c. Como ficou a parte 8.1 (17/11/2026)
+
+- **Gestão › Configurações › Aparelhos (PDV):** cadastrar o aparelho gera um código de 6 dígitos (15 minutos, uso único). "Parear de novo" gera outro código e desliga o celular anterior; "Desativar" corta o acesso na hora. Na mesma tela, a memória do PIN (a cada ação, ou lembrar 1 a 10 minutos).
+- **PDV em `/pdv`:** app separado, instalável pelo Chrome (PWA). Primeiro acesso: digitar o código. Depois: tela inicial (Estadia e Lavagem ainda "em breve"), testar o PIN, cadastrar ou trocar o PIN e teste de impressão.
+- **PIN:** a pessoa cadastra no próprio PDV com o login e a senha dela do sistema. Guardado como HMAC (empresa + PIN, com a chave do sistema), único na empresa. Regras de [07-pdv.md](07-pdv.md) valendo (óbvio recusado, repetido cancela o do outro, 5 erros travam o aparelho 1 minuto). Em Usuários aparece se a pessoa tem PIN, com "apagar".
+- **Registro de atividades:** o que vem do PDV leva "· PDV: nome do aparelho".
+- **Teste de impressão:** ticket de exemplo no formato da decisão 7, por três caminhos: Bluetooth direto (impressora BLE), app RawBT (Bluetooth comum, USB, rede) e impressão do Android. Opções: bobina de 80 ou 58 mm, acentos (tabela PC860) e QR como imagem (para impressora sem o comando de QR).
+- **Para o modo sem internet (8.7):** o aparelho vai precisar conferir o PIN sem o servidor; como o HMAC usa a chave do sistema, a cópia que vai para o aparelho será outra (derivada por aparelho). Fica para a 8.7.
+
 ## 9. Riscos e cuidados
 
 - **Impressora:** é o ponto que mais pode atrasar. Testar a impressora escolhida logo no começo (um ticket de teste) antes de construir o resto em cima.
@@ -187,3 +196,28 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - **PIN fraco ou emprestado:** as regras de [07-pdv.md](07-pdv.md) (PIN óbvio recusado, PIN descoberto cancelado, trava após 5 erros) e o registro de atividades por pessoa.
 - **Celular perdido ou trocado:** o aparelho é desativado na gestão e o token deixa de valer na hora; um novo é pareado com outro código.
 - **Virada junto com o PDV:** a equipe passa do papel para o celular no mesmo período em que o ERP vira oficial. Treinar com dados de teste antes e ter o papel como reserva nos primeiros dias.
+
+## Ideia: gestão de pátio com câmera de placa (para depois)
+
+Registrado em 17/11/2026. Não entra na primeira versão do PDV; fica como próximo passo quando o movimento justificar o investimento.
+
+**O que a câmera faz.** Câmeras LPR com IA (ex.: Intelbras VIP 5460 LPR IA) leem a placa e reconhecem também a **categoria** (carro, van, ônibus, caminhão), a **cor**, a **marca** e o **sentido** (entrando ou saindo). Moto: lê a placa, mas não classifica.
+
+**O que ela não faz.** Não separa hatch, sedã e SUV nem informa o modelo: não substitui a escolha do **tamanho** (pequeno, médio, grande), que define o preço. O tamanho continua vindo do cadastro, da última visita do avulso ou da escolha do operador.
+
+**Como se ligaria ao ERP.** A câmera manda cada leitura para um endereço do ERP na internet (aviso por HTTP; a Hostinger recebe esse tipo de aviso normalmente). O ERP grava a passagem (placa, hora, sentido, categoria, foto se houver) e:
+
+- **Entrada:** a placa lida já aparece na tela de entrada do PDV; o operador confere e confirma (com PIN, como toda ação).
+- **Saída:** a placa lida abre a estadia certa na tela de saída.
+- **Mensalistas:** passam a ter entrada e saída registradas sem ninguém digitar (a decisão 5 previa isso "talvez no futuro"); dá para saber quem está no pátio e a ocupação.
+- **Conferência do pátio:** carro que entrou pela câmera sem estadia aberta, ou estadia aberta de carro que a câmera viu sair, vira aviso para conferir (esquecimento ou erro de registro).
+- **Cancela (opcional):** mensalista ativo ou ticket pago libera a cancela sozinho.
+
+**Cuidados.**
+
+- Câmera bem posicionada (ângulo e luz da placa) e internet estável no pátio; a leitura pode falhar com placa suja ou de noite, então o operador sempre pode digitar.
+- Placa ligada a uma pessoa é dado pessoal (LGPD): guardar as passagens só pelo tempo necessário (ex.: 90 dias) e as fotos por menos tempo ainda; avisar na entrada que há câmera.
+- Cada câmera tem o próprio formato de aviso: começar por uma marca (Intelbras é a mais comum no Brasil) e deixar o recebimento preparado para outras.
+
+**Descartado:** consulta da placa em serviço externo para descobrir o modelo (pago por consulta, dados de terceiros sem garantia de origem). Ver decisões de 17/11/2026.
+
