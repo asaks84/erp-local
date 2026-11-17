@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — Máscara de valores em todo o sistema
+
+- Todo campo de valor (R$ e %) da gestão e do PDV usa a máscara de maquininha: sempre mostra 0,00 e os números entram pelos centavos (1 → 0,01 → 0,15 → 1,50 → 15,00), com o cursor sempre no fim e o teclado numérico no celular. Vale para contas a pagar, recebimentos, mensalidades, reajuste, pausa, tarifas, serviços, formas de pagamento, convênios, funcionários, fluxo de caixa, juros e multa do boleto (que antes era um campo de número comum) e o troco das estadias.
+- Campos opcionais (preço por tamanho do serviço, taxa por parcela, desconto negociado, saldo inicial do fluxo, limite do convênio): zerado conta como vazio, como antes.
+
 ## 17/11/2026 — PDV: entrada e saída da estadia em etapas
 
 - A saída no PDV mostra uma decisão por vez, com o resumo e o **A pagar** fixos no alto: (1) convênio, ticket perdido e **Pagar agora / Na conta de um cliente / Mensalista**; (2) forma de pagamento (ou o cliente da conta); (3) em dinheiro, **Quanto o cliente deu?** (valor exato e notas prontas). Confirmado o valor, vai o PIN e aparece o **troco** em destaque junto com "Imprimir o recibo?". "Voltar" volta uma etapa. Mesmas regras de antes.

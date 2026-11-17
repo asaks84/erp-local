@@ -4,6 +4,7 @@ import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Campo from '../../Components/Campo'
+import CampoValor from '../../Components/CampoValor'
 import ContaDe from '../../Components/ContaDe'
 import { dataHora, moeda } from '../../lib/formato'
 import { placa as mPlaca, telefone } from '../../lib/mascaras'
@@ -31,10 +32,10 @@ function CampoDataHora({ rotulo, value, onChange, erro }) {
 
 /** dinheiro: quanto o cliente deu e o troco */
 function Troco({ total, value, onChange, erro }) {
-    const recebido = Number(String(value).replace(',', '.')) || 0
+    const recebido = Number(value) || 0
     return (
         <div className="row g-2 align-items-end">
-            <div className="col-6"><Campo rotulo="Valor recebido" value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d,.]/g, ''))} inputMode="decimal" erro={erro} /></div>
+            <div className="col-6"><CampoValor opcional rotulo="Valor recebido" value={value} onChange={onChange} erro={erro} /></div>
             <div className="col-6 pb-3">{recebido > 0 && (recebido >= total ? <span>Troco: <strong>{moeda(recebido - total)}</strong></span> : <span className="text-danger small">Menor que {moeda(total)}</span>)}</div>
         </div>
     )

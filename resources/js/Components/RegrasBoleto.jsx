@@ -24,7 +24,7 @@ export function Regra({ nome, rotulo, form, ajuda }) {
             </div>
             <div className="col-sm-6">
                 {!sem && (pct
-                    ? <Campo rotulo={tipo === 'percentual_mes' ? '% ao mês' : '%'} type="number" step="0.01" min="0" value={form.data[`boleto_${nome}_valor`]} onChange={(e) => form.setData(`boleto_${nome}_valor`, e.target.value)} erro={form.errors[`boleto_${nome}_valor`]} ajuda={ajuda} />
+                    ? <CampoValor rotulo={tipo === 'percentual_mes' ? 'Taxa ao mês' : 'Taxa'} prefixo="%" value={form.data[`boleto_${nome}_valor`]} onChange={(v) => form.setData(`boleto_${nome}_valor`, v)} erro={form.errors[`boleto_${nome}_valor`]} ajuda={ajuda} />
                     : <CampoValor rotulo={tipo === 'valor_dia' ? 'R$ por dia de atraso' : 'Valor (R$)'} value={form.data[`boleto_${nome}_valor`]} onChange={(v) => form.setData(`boleto_${nome}_valor`, v)} erro={form.errors[`boleto_${nome}_valor`]} />)}
             </div>
         </div>

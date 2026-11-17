@@ -1,37 +1,40 @@
-import { useEffect, useId, useState } from 'react'
+import { useId } from 'react'
 
-// Valor em reais digitado como no caixa: "1.234,56". Valor guardado: número (ou "" vazio).
+/**
+ * Valor em reais (ou %) com máscara de maquininha: sempre mostra 0,00 e cada número digitado entra pelos
+ * centavos (1 → 0,01 → 0,15 → 1,50 → 15,00). Valor guardado: número.
+ * opcional: zerado vira "" (campo vazio no servidor, ex.: desconto, preço por tamanho, taxa por parcela).
+ */
 
-function paraTela(v) {
-    if (v === '' || v === null || v === undefined) return ''
-    const [i, c] = Number(v).toFixed(2).split('.')
+export function paraTela(v) {
+    const [i, c] = (Number(v) || 0).toFixed(2).split('.')
     return `${i.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${c}`
 }
 
-export default function CampoValor({ rotulo, value, onChange, erro, ajuda, className = '', prefixo = 'R$', semMargem = false, ...props }) {
+/** número a partir do que foi digitado, entrando pelos centavos */
+export function deDigitos(texto, maxDigitos = 9) {
+    const d = String(texto).replace(/\D/g, '').replace(/^0+/, '').slice(0, maxDigitos)
+    return Number(d || 0) / 100
+}
+
+/** mantém o cursor no fim (os números entram pela direita) */
+export function cursorNoFim(el) {
+    requestAnimationFrame(() => { try { const n = el.value.length; el.setSelectionRange(n, n) } catch { /* campo sem seleção */ } })
+}
+
+export default function CampoValor({ rotulo, value, onChange, erro, ajuda, className = '', prefixo = 'R$', semMargem = false, opcional = false, ...props }) {
     const id = useId()
-    const [texto, setTexto] = useState(paraTela(value))
-    useEffect(() => {
-        // só reescreve quando o valor muda de fora (não enquanto a pessoa digita)
-        const atual = texto === '' ? '' : Number(texto.replace(/\./g, '').replace(',', '.'))
-        if (atual !== value && !(value === '' && texto === '')) setTexto(paraTela(value))
-    }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
 
     function mudar(e) {
-        let t = e.target.value.replace(/[^\d,]/g, '')
-        const partes = t.split(',')
-        if (partes.length > 2) t = partes[0] + ',' + partes.slice(1).join('')
-        const [inteiro, cent = undefined] = t.split(',')
-        const intFmt = (inteiro || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-        t = cent === undefined ? intFmt : `${intFmt || '0'},${cent.slice(0, 2)}`
-        setTexto(t)
-        onChange(t === '' ? '' : Number(t.replace(/\./g, '').replace(',', '.')))
+        const v = deDigitos(e.target.value)
+        onChange(v === 0 && opcional ? '' : v)
+        cursorNoFim(e.target)
     }
 
     return (
         <div className={`form-floating ${semMargem ? '' : 'mb-3'} ${className}`}>
-            <input id={id} className={`form-control${erro ? ' is-invalid' : ''}`} placeholder=" " inputMode="decimal"
-                value={texto} onChange={mudar} onBlur={() => setTexto(paraTela(value))} autoComplete="off" {...props} />
+            <input id={id} className={`form-control campo-valor${erro ? ' is-invalid' : ''}`} placeholder=" " inputMode="numeric" type="text"
+                value={paraTela(value)} onChange={mudar} onFocus={(e) => cursorNoFim(e.target)} onClick={(e) => cursorNoFim(e.target)} autoComplete="off" {...props} />
             <label htmlFor={id}>{rotulo}{prefixo ? ` (${prefixo})` : ''}</label>
             {erro && <div className="invalid-feedback">{erro}</div>}
             {ajuda && !erro && <div className="form-text">{ajuda}</div>}

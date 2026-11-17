@@ -94,7 +94,7 @@ export default function Pagamentos({ contas, formas, tipos_forma, tipos_conta })
                         <div className="row g-2">
                             {Array.from({ length: Number(d.parcelas_max) - 1 }, (_, i) => i + 2).map((n) => (
                                 <div key={n} className="col-4">
-                                    <CampoValor rotulo={`${n}x`} prefixo="%" semMargem value={d.taxas_parcelas?.[n] ?? ''} onChange={(v) => form.setData('taxas_parcelas', { ...d.taxas_parcelas, [n]: v })} />
+                                    <CampoValor opcional rotulo={`${n}x`} prefixo="%" semMargem value={d.taxas_parcelas?.[n] ?? ''} onChange={(v) => form.setData('taxas_parcelas', { ...d.taxas_parcelas, [n]: v })} />
                                 </div>
                             ))}
                         </div>

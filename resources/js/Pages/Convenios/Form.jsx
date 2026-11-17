@@ -95,7 +95,7 @@ export default function ConvenioForm({ convenio, opcoes, modos, fechamentos, dia
                                                     </div>
                                                     <div className="col-md-4">
                                                         {r.modo === 'parcial' && (
-                                                            <CampoValor semMargem rotulo="Convênio paga até" value={r.limite_valor} onChange={(v) => mudar(o, 'limite_valor', v)} />
+                                                            <CampoValor opcional semMargem rotulo="Convênio paga até" value={r.limite_valor} onChange={(v) => mudar(o, 'limite_valor', v)} />
                                                         )}
                                                         {r.modo === 'tempo' && (
                                                             <div className="d-flex gap-1">

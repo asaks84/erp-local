@@ -30,7 +30,7 @@ export default function Fluxo({ filtros, hoje, dias, realizado, previsto, atrasa
             <div className="row g-2 align-items-start">
                 <div className="col-6 col-md-3"><CampoData rotulo="De" value={filtros.de} onChange={(v) => filtrar('de', v)} /></div>
                 <div className="col-6 col-md-3"><CampoData rotulo="Até" value={filtros.ate} onChange={(v) => filtrar('ate', v)} /></div>
-                <div className="col-md-3"><CampoValor rotulo="Saldo no início (opcional)" value={saldo} onChange={mudarSaldo} ajuda="Quanto havia no caixa e no banco no 1º dia. Fica só neste navegador." /></div>
+                <div className="col-md-3"><CampoValor opcional rotulo="Saldo no início (opcional)" value={saldo} onChange={mudarSaldo} ajuda="Quanto havia no caixa e no banco no 1º dia. Fica só neste navegador." /></div>
             </div>
             <div className="row g-3 mb-3">
                 <Card titulo="Realizado (até hoje)" entra={realizado.entradas} sai={realizado.saidas} nota="Cartão conta no dia em que cai na conta, já sem a taxa." />

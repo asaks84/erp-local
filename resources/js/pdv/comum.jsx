@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { moeda } from './impressao/ticket'
+import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
 
 export { moeda }
@@ -25,17 +26,10 @@ export function Formas({ formas, value, onChange }) {
  * (1 → 0,01 → 0,15 → 1,50 → 15,00). value e onChange em reais (número).
  */
 export function CampoDinheiro({ value, onChange, className = '', ...resto }) {
-    const centavos = Math.round((Number(value) || 0) * 100)
-    const texto = (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    const fim = (el) => { const n = el.value.length; requestAnimationFrame(() => { try { el.setSelectionRange(n, n) } catch { /* sem seleção */ } }) }
     return (
-        <input {...resto} type="text" inputMode="numeric" autoComplete="off" className={`form-control form-control-lg pdv-valor ${className}`} value={texto}
-            onFocus={(e) => fim(e.target)} onClick={(e) => fim(e.target)}
-            onChange={(e) => {
-                const digitos = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7)
-                onChange(Number(digitos || 0) / 100)
-                fim(e.target)
-            }} />
+        <input {...resto} type="text" inputMode="numeric" autoComplete="off" className={`form-control form-control-lg pdv-valor ${className}`} value={paraTela(value)}
+            onFocus={(e) => cursorNoFim(e.target)} onClick={(e) => cursorNoFim(e.target)}
+            onChange={(e) => { onChange(deDigitos(e.target.value, 7)); cursorNoFim(e.target) }} />
     )
 }
 

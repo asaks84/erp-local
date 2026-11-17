@@ -124,7 +124,7 @@ export default function BoletoCobranca({ cobranca, boletos, inter, emAberto, fal
                         {podeDesconto && (
                             <div className="row g-2 mt-1">
                                 <div className="col-sm-4 col-lg-3">
-                                    <CampoValor rotulo="Desconto negociado" value={desconto} onChange={setDesconto} erro={errors.desconto} ajuda="Opcional" />
+                                    <CampoValor opcional rotulo="Desconto negociado" value={desconto} onChange={setDesconto} erro={errors.desconto} ajuda="Opcional" />
                                 </div>
                                 {Number(desconto) > 0 && (
                                     <div className="col-sm-8 col-lg-6">

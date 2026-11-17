@@ -194,7 +194,7 @@ export default function ContasCliente({ cliente, abertas, total, cobrancas, paga
                 {pode('desconto') && (
                     <div className="row g-2">
                         <div className="col-sm-5">
-                            <CampoValor rotulo="Desconto negociado" value={form.data.desconto ?? ''} onChange={(v) => form.setData('desconto', v)} erro={form.errors.desconto}
+                            <CampoValor opcional rotulo="Desconto negociado" value={form.data.desconto ?? ''} onChange={(v) => form.setData('desconto', v)} erro={form.errors.desconto}
                                 ajuda={form.data.desconto > 0 ? `A pagar: ${moeda(Math.max(0, total - form.data.desconto))}` : 'Opcional'} />
                         </div>
                         {form.data.desconto > 0 && (

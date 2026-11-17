@@ -90,7 +90,7 @@ export default function ServicoForm({ servico, tipos, unidades, adicionais_dispo
                     <div className="row g-2">
                         {tipos.map((t) => (
                             <div className="col-6 col-sm-4" key={t.id}>
-                                <CampoValor rotulo={t.nome} value={data.precos[t.id]} erro={errors[`precos.${t.id}`]} onChange={(v) => setData('precos', { ...data.precos, [t.id]: v })} />
+                                <CampoValor opcional rotulo={t.nome} value={data.precos[t.id]} erro={errors[`precos.${t.id}`]} onChange={(v) => setData('precos', { ...data.precos, [t.id]: v })} />
                             </div>
                         ))}
                     </div>
