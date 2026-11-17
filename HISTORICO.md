@@ -4,9 +4,10 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
-## 17/11/2026 — PDV: saída da estadia em etapas
+## 17/11/2026 — PDV: entrada e saída da estadia em etapas
 
 - A saída no PDV mostra uma decisão por vez, com o resumo e o **A pagar** fixos no alto: (1) convênio, ticket perdido e **Pagar agora / Na conta de um cliente / Mensalista**; (2) forma de pagamento (ou o cliente da conta); (3) em dinheiro, **Quanto o cliente deu?** (valor exato e notas prontas). Confirmado o valor, vai o PIN e aparece o **troco** em destaque junto com "Imprimir o recibo?". "Voltar" volta uma etapa. Mesmas regras de antes.
+- A **entrada** também vai em etapas, com placa, modelo e tamanho fixos no alto: (1) placa (avisos de já no pátio e de mensalista); (2) modelo e tamanho; (3) **Por hora** ou uma das diárias; (4) diária **paga agora** ou **na saída**; (5) forma de pagamento; (6) em dinheiro, quanto o cliente deu. Confirmado, vai o PIN e o troco aparece com "Imprimir o ticket?". Tamanho sem diária na tabela registra direto no passo 2.
 - Campo do valor recebido (saída e diária paga na entrada) com máscara de dinheiro: sempre mostra 0,00 e os números entram pelos centavos (1 → 0,01 → 0,15 → 1,50 → 15,00). Na área verde, só o troco.
 
 ## 17/11/2026 — PDV, parte 8.2: estadia no PDV
