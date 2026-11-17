@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\PertenceAEmpresa;
+use App\Support\Placa;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -23,7 +24,17 @@ class Estadia extends Modelo
         'convenio' => 'Pago pelo convênio',
         'mensalista' => 'Mensalista',
         'gratis' => 'Sem cobrança (tolerância)',
+        'pago_entrada' => 'Diária paga na entrada',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Estadia $e) {
+            if ($a = request()?->attributes->get('aparelho')) {
+                $e->aparelho_id = $a->id;
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -34,6 +45,8 @@ class Estadia extends Modelo
             'valor_convenio' => 'decimal:2',
             'desconto' => 'decimal:2',
             'valor_cliente' => 'decimal:2',
+            'valor_pacote' => 'decimal:2',
+            'pago_entrada' => 'decimal:2',
             'mensalista' => 'boolean',
             'detalhes' => 'array',
             'cancelada_em' => 'datetime',
@@ -55,6 +68,16 @@ class Estadia extends Modelo
         return $this->belongsTo(TipoVeiculo::class, 'tipo_veiculo_id');
     }
 
+    public function pacote(): BelongsTo
+    {
+        return $this->belongsTo(TarifaPacote::class, 'pacote_id');
+    }
+
+    public function aparelho(): BelongsTo
+    {
+        return $this->belongsTo(Aparelho::class);
+    }
+
     public function convenio(): BelongsTo
     {
         return $this->belongsTo(Convenio::class);
@@ -62,6 +85,6 @@ class Estadia extends Modelo
 
     public function rotulo(): string
     {
-        return $this->placa ? \App\Support\Placa::formatar($this->placa) : ($this->identificacao ?: 'Sem placa');
+        return $this->placa ? Placa::formatar($this->placa) : ($this->identificacao ?: 'Sem placa');
     }
 }

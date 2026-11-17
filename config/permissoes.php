@@ -11,6 +11,7 @@ return [
         'mensalidade_valor' => ['Mudar valor de mensalidade', 'Inclui a primeira cobrança e cortesias'],
         'excluir_cadastro' => ['Remover clientes e veículos', null],
         'aprovar' => ['Aprovar cadastros da fila de espera', null],
+        'pdv_gerente' => ['Gerente no PDV', 'Cancelar no PDV; depois, fechar caixa, sangria e suprimento'],
     ],
     'Gestão' => [
         'contas_aberto' => ['Contas em aberto e inadimplência', 'Também os valores no Início'],

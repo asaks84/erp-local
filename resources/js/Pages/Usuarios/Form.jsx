@@ -11,6 +11,8 @@ export default function UsuarioForm({ usuario, niveis, unidades }) {
         login: usuario?.login || '',
         senha: '',
         senha_confirmation: '',
+        pin: '',
+        pin_confirmation: '',
         nivel_id: usuario?.nivel_id || '',
         unidade_id: usuario?.unidade_id || '',
         operador_caixa: usuario?.operador_caixa || false,
@@ -64,6 +66,23 @@ export default function UsuarioForm({ usuario, niveis, unidades }) {
                     </Campo>
                         </div>
                     </div>
+                    <fieldset className="mb-3">
+                        <legend className="fs-6 fw-semibold mb-1">PIN do PDV</legend>
+                        <div className="form-text mt-0 mb-2">
+                            {usuario?.pin ? 'Esta pessoa já tem PIN. Digite outro só para trocar.' : 'Opcional. A própria pessoa digita os 4 números (também dá para cadastrar depois, no PDV).'}
+                            {' '}Sequências (1234) e números repetidos (1111) não valem.
+                        </div>
+                        <div className="row g-2">
+                            <div className="col-6 col-md-3">
+                                <Campo rotulo={usuario?.pin ? 'Novo PIN' : 'PIN'} className="campo-pin" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off"
+                                    value={data.pin} erro={errors.pin} onChange={(e) => setData('pin', e.target.value.replace(/\D/g, '').slice(0, 4))} />
+                            </div>
+                            <div className="col-6 col-md-3">
+                                <Campo rotulo="Repita o PIN" className="campo-pin" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off"
+                                    value={data.pin_confirmation} onChange={(e) => setData('pin_confirmation', e.target.value.replace(/\D/g, '').slice(0, 4))} />
+                            </div>
+                        </div>
+                    </fieldset>
                     <div className="form-check form-switch mb-2">
                         <input className="form-check-input" type="checkbox" role="switch" id="operador_caixa"
                             checked={data.operador_caixa} onChange={(e) => setData('operador_caixa', e.target.checked)} />

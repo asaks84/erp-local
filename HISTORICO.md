@@ -4,6 +4,21 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — PDV, parte 8.2: estadia no PDV
+
+- **PDV › Estadia:** entrada (placa, modelo e tamanho vindos do cadastro ou da última visita; aviso de mensalista e de veículo já no pátio; marcar diária, paga agora ou na saída; troco), saída (QR pela câmera, número ou placa; convênio escolhido na saída; paga agora, na conta de um cliente ou mensalista; ticket perdido com nome e documento), lista do pátio e cancelar entrada com PIN de gerente. Cada ação pede PIN e pergunta se imprime o ticket ou o recibo.
+- **Impressão:** o PDV usa o último caminho que deu certo no Teste de impressão.
+- **Gestão › Estadias:** modelo e diária na entrada; convênio, troco e ticket perdido na saída; pátio e saídas do dia mostram modelo, diária e "PDV".
+- **Permissão nova:** "Gerente no PDV" (Níveis de acesso › Operação), para cancelar no PDV (depois: fechar caixa, sangria e suprimento).
+- **API:** `/api/pdv/estadias/...` (opções, pátio, placa, buscar, cálculo, entrada, saída, cancelar) e `/api/pdv/clientes`. Pagamento feito pelo PDV fica com origem "pdv" e o aparelho.
+- Migration `2026_11_27_000001_estadias_pdv` (estadias: código do QR, modelo, diária, pago na entrada, quem retirou com ticket perdido, aparelho; pagamentos: aparelho). 5 testes novos (231).
+
+## 17/11/2026 — PIN do PDV pela gestão e campos de PIN
+
+- **Usuários › novo/editar:** campo opcional "PIN do PDV" (com repetição), mesmas regras do PDV (4 números, nada óbvio, único; repetido cancela o do outro). PIN recusado no cadastro novo: o usuário é criado e a tela volta para a edição pedindo outro PIN.
+- **Campos de PIN** (gestão e PDV): abrem o teclado numérico e escondem os números sem ser campo de senha, então o navegador não preenche mais a senha salva no lugar do PIN.
+- 1 teste novo (226).
+
 ## 17/11/2026 — PDV, parte 8.1: aparelhos, pareamento, PIN e teste de impressão
 
 - **Configurações › Aparelhos (PDV):** cadastra o celular do balcão e gera um código de 6 dígitos (15 min, uso único); "Parear de novo" e "Desativar" cortam o celular antigo na hora; memória do PIN (a cada ação ou 1 a 10 min).

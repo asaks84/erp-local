@@ -178,4 +178,31 @@ class PdvBaseTest extends TestCase
         $this->get('/pdv/qualquer/coisa')->assertOk();
         $this->assertFileExists(public_path('pdv.webmanifest'));
     }
+
+    public function test_pin_no_cadastro_do_usuario_pela_gestao(): void
+    {
+        app(EmpresaAtual::class)->definir($this->a->empresa->id);
+        $nivel = Usuario::where('login', 'a-operador')->value('nivel_id');
+        $base = ['nome' => 'Vigia', 'login' => 'vigia', 'senha' => 'segredo1', 'senha_confirmation' => 'segredo1', 'nivel_id' => $nivel];
+        $this->actingAs($this->a->admin)->post('/usuarios', $base + ['pin' => '4831', 'pin_confirmation' => '4830'])->assertSessionHasErrors('pin');
+        $this->assertFalse(Usuario::where('login', 'vigia')->exists());
+        $this->actingAs($this->a->admin)->post('/usuarios', $base + ['pin' => '4831', 'pin_confirmation' => '4831'])->assertRedirect('/usuarios');
+        $vigia = Usuario::where('login', 'vigia')->first();
+        $this->assertSame(Pins::hash($this->a->empresa->id, '4831'), $vigia->pin_hash);
+
+        // PIN fácil: usuário criado, PIN recusado e volta para a edição
+        $r = $this->actingAs($this->a->admin)->post('/usuarios', ['login' => 'outro', 'nome' => 'Outro'] + $base + ['pin' => '1111', 'pin_confirmation' => '1111']);
+        $outro = Usuario::where('login', 'outro')->first();
+        $r->assertRedirect("/usuarios/{$outro->id}")->assertSessionHasErrors('pin');
+        $this->assertNull($outro->pin_hash);
+        // trocar na edição; mesmo PIN do vigia: indisponível e o do vigia é cancelado
+        $edita = ['nome' => 'Outro', 'login' => 'outro', 'nivel_id' => $nivel, 'ativo' => true];
+        $this->actingAs($this->a->admin)->put("/usuarios/{$outro->id}", $edita + ['pin' => '4831', 'pin_confirmation' => '4831'])->assertSessionHasErrors('pin');
+        $this->assertNull($vigia->fresh()->pin_hash);
+        $this->actingAs($this->a->admin)->put("/usuarios/{$outro->id}", $edita + ['pin' => '5072', 'pin_confirmation' => '5072'])->assertRedirect('/usuarios');
+        // sem PIN: não mexe no que já existe
+        $this->actingAs($this->a->admin)->put("/usuarios/{$outro->id}", $edita)->assertRedirect('/usuarios');
+        $this->assertNotNull($outro->fresh()->pin_hash);
+        $this->actingAs($this->a->admin)->get("/usuarios/{$outro->id}")->assertInertia(fn ($p) => $p->where('usuario.pin', true));
+    }
 }

@@ -15,6 +15,18 @@ class Pagamento extends Modelo
 
     protected $attributes = ['situacao' => 'confirmado', 'origem' => 'gestao', 'parcelas' => 1, 'taxa' => 0];
 
+    protected static function booted(): void
+    {
+        // recebido pelo PDV: origem "pdv" e o aparelho (o fechamento do caixa soma por aqui)
+        static::creating(function (Pagamento $p) {
+            $a = request()?->attributes->get('aparelho');
+            if ($a && in_array($p->origem ?? 'gestao', ['gestao', null], true)) {
+                $p->origem = 'pdv';
+                $p->aparelho_id = $a->id;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

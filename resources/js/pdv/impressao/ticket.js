@@ -37,3 +37,45 @@ export function ticketExemplo(eu) {
         rodape: 'Teste de impressão · acentuação: ÇÃÕÉ çãõé',
     }
 }
+
+const linkTicket = (codigo) => `${window.location.origin}/t/${codigo}`
+
+/** ticket de entrada a partir do que a API devolve (recibo da entrada) */
+export function ticketDaEstadia(r, eu) {
+    return {
+        empresa: eu.empresa, numero: String(r.numero).padStart(6, '0'), servico: r.servico, placa: r.placa, modelo: r.modelo,
+        tamanho: r.tipo, entrada: r.entrada, link: linkTicket(r.codigo),
+        rodape: r.pago_entrada > 0 ? `${r.servico} paga: ${moeda(r.pago_entrada)}` : 'Apresente este ticket na saída.',
+        pago: r.pago,
+    }
+}
+
+export const moeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** recibo da saída (ou do pagamento da diária na entrada) */
+export function montarRecibo(r, eu, opcoes = {}) {
+    const tk = new Ticket(opcoes)
+    const e = eu.empresa || {}
+    tk.alinhar('centro').negrito().linha(e.nome || 'Estacionamento').negrito(false)
+    if (e.documento) tk.linha(`CNPJ ${e.documento}`)
+    tk.alinhar('esquerda').traco()
+    tk.alinhar('centro').negrito().linha(`RECIBO · Nº ${String(r.numero).padStart(6, '0')}`).negrito(false).alinhar('esquerda')
+    tk.par('Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : ''))
+    if (r.tipo) tk.par('Tamanho', r.tipo)
+    tk.par('Entrada', r.entrada)
+    if (r.saida) tk.par('Saída', r.saida)
+    if (r.tempo) tk.par('Tempo', r.tempo)
+    tk.traco()
+    if (r.valor !== null && r.valor !== undefined) tk.par(r.servico, moeda(r.valor))
+    if (r.convenio) tk.par(`Convênio ${r.convenio.nome || ''}`.trim().slice(0, 30), `-${moeda(r.convenio.valor)}`)
+    if (r.pago_entrada > 0 && r.saida) tk.par('Pago na entrada', `-${moeda(r.pago_entrada)}`)
+    if (r.pago) {
+        tk.negrito().par(`Pago (${r.pago.forma})`, moeda(r.pago.valor)).negrito(false)
+        if (r.pago.observacao) tk.linha(r.pago.observacao)
+    } else if (r.destino) {
+        tk.par('Situação', r.destino)
+    }
+    tk.traco().alinhar('centro').linha('Obrigado pela preferência!').alinhar('esquerda')
+
+    return tk.avancar(4).cortar().pronto()
+}

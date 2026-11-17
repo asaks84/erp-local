@@ -29,8 +29,8 @@ export default function CadastrarPin({ onVoltar }) {
             <input className="form-control form-control-lg mb-2" placeholder="Login" autoCapitalize="none" autoComplete="username" value={d.login} onChange={mudar('login')} aria-label="Login" />
             <input className="form-control form-control-lg mb-2" placeholder="Senha" type="password" autoComplete="current-password" value={d.senha} onChange={mudar('senha')} aria-label="Senha" />
             <div className="row g-2 mb-2">
-                <div className="col-6"><input className="form-control form-control-lg text-center" placeholder="Novo PIN" type="password" inputMode="numeric" value={d.pin} onChange={mudar('pin')} aria-label="Novo PIN" /></div>
-                <div className="col-6"><input className="form-control form-control-lg text-center" placeholder="Repita" type="password" inputMode="numeric" value={d.pin2} onChange={mudar('pin2')} aria-label="Repita o PIN" /></div>
+                <div className="col-6"><input className="form-control form-control-lg text-center texto-oculto" placeholder="Novo PIN" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off" name="pin-novo" value={d.pin} onChange={mudar('pin')} aria-label="Novo PIN" /></div>
+                <div className="col-6"><input className="form-control form-control-lg text-center texto-oculto" placeholder="Repita" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4} autoComplete="off" name="pin-repita" value={d.pin2} onChange={mudar('pin2')} aria-label="Repita o PIN" /></div>
             </div>
             {erro && <div className="alert alert-danger py-2 small">{erro}</div>}
             <button type="submit" className="btn btn-primary btn-lg w-100" disabled={enviando || !d.login || !d.senha || d.pin.length !== 4}>{enviando ? 'Salvando…' : 'Salvar PIN'}</button>

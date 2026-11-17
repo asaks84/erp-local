@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { montarTicket, ticketExemplo } from '../impressao/ticket'
 import { imprimirBluetooth, imprimirRawbt, temBluetooth } from '../impressao/transporte'
+import { NOMES_VIA, preferencia } from '../impressao/preferencia'
 
 /**
  * Teste de impressão (antes de comprar a impressora): imprime um ticket de exemplo por três caminhos.
  * Leve o celular à loja e teste o modelo; o que funcionar aqui funciona no PDV.
  */
 export default function TesteImpressao({ eu, onVoltar }) {
-    const [op, setOp] = useState({ colunas: 48, acentos: true, qrImagem: false })
+    const salvo = preferencia.get()
+    const [op, setOp] = useState({ colunas: salvo.colunas, acentos: salvo.acentos, qrImagem: salvo.qrImagem })
+    const [via, setVia] = useState(salvo.via)
+    // o caminho que deu certo vira o do PDV (entrada e saída imprimem por ele)
+    const usar = (v) => { preferencia.set({ via: v, ...op }); setVia(v) }
     const [msg, setMsg] = useState(null)
     const [ocupado, setOcupado] = useState(false)
     const [qr, setQr] = useState(null)
@@ -20,7 +25,7 @@ export default function TesteImpressao({ eu, onVoltar }) {
         setOcupado(true)
         setMsg(null)
         imprimirBluetooth(bytes(), { escolherOutra })
-            .then((nome) => setMsg({ tipo: 'success', texto: `Enviado para ${nome}. Saiu certo? Confira acentos, QR e o corte.` }))
+            .then((nome) => { usar('bluetooth'); setMsg({ tipo: 'success', texto: `Enviado para ${nome}. Saiu certo? Confira acentos, QR e o corte.` }) })
             .catch((e) => setMsg({ tipo: 'danger', texto: e.name === 'NotFoundError' ? 'Nenhuma impressora escolhida.' : e.message }))
             .finally(() => setOcupado(false))
     }
@@ -44,6 +49,7 @@ export default function TesteImpressao({ eu, onVoltar }) {
             <p className="small text-muted">Acentos saindo errados: desmarque "Acentos". QR não saiu: marque "QR como imagem".</p>
 
             {msg && <div className={`alert alert-${msg.tipo} py-2 small`}>{msg.texto}</div>}
+            <div className="alert aviso-neutro py-2 small">{via ? <>O PDV imprime pelo <strong>{NOMES_VIA[via]}</strong> (o último caminho testado aqui), com as opções acima.</> : 'O PDV vai imprimir pelo último caminho que você testar aqui.'}</div>
 
             <div className="d-grid gap-2 mb-4">
                 <button type="button" className="btn btn-primary btn-lg" disabled={ocupado || !temBluetooth()} onClick={() => viaBluetooth(false)}>
@@ -51,9 +57,9 @@ export default function TesteImpressao({ eu, onVoltar }) {
                 </button>
                 {temBluetooth() ? <button type="button" className="btn btn-sm btn-link" disabled={ocupado} onClick={() => viaBluetooth(true)}>escolher outra impressora</button>
                     : <div className="small text-danger">Este navegador não acessa Bluetooth: use o Chrome no Android.</div>}
-                <button type="button" className="btn btn-outline-primary btn-lg" onClick={() => imprimirRawbt(bytes())}>2. Pelo app RawBT (Bluetooth comum, USB, rede)</button>
+                <button type="button" className="btn btn-outline-primary btn-lg" onClick={() => { usar('rawbt'); imprimirRawbt(bytes()) }}>2. Pelo app RawBT (Bluetooth comum, USB, rede)</button>
                 <div className="small text-muted">Precisa do app "RawBT" instalado (Play Store) e a impressora escolhida nele. Se não abrir nada, o app não está instalado.</div>
-                <button type="button" className="btn btn-outline-secondary btn-lg" onClick={() => window.print()}>3. Imprimir pelo Android</button>
+                <button type="button" className="btn btn-outline-secondary btn-lg" onClick={() => { usar('android'); window.print() }}>3. Imprimir pelo Android</button>
                 <div className="small text-muted">Usa o serviço de impressão do Android (precisa do plugin da marca da impressora). É o caminho mais lento; serve de reserva.</div>
             </div>
 

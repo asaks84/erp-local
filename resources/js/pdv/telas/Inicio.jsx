@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { usePin } from '../Pin'
 
-/** tela inicial do PDV. Estadia e Lavagem entram na próxima parte (8.2); por enquanto, PIN e impressão. */
+/** tela inicial do PDV: estadias (8.2); lavagem na 8.4. PIN e impressão embaixo. */
 export default function Inicio({ eu, irPara, onDesparear }) {
     const { pedirPin } = usePin()
     const [aviso, setAviso] = useState(null)
@@ -15,7 +15,7 @@ export default function Inicio({ eu, irPara, onDesparear }) {
         <>
             {aviso && <div className={`alert alert-${aviso.tipo} py-2`} onClick={() => setAviso(null)}>{aviso.texto}</div>}
             <div className="pdv-botoes-grandes">
-                <button type="button" className="pdv-grande" disabled><span className="pdv-grande-titulo">Estadia</span><span className="small">em breve</span></button>
+                <button type="button" className="pdv-grande" onClick={() => irPara('estadias')}><span className="pdv-grande-titulo">Estadia</span><span className="small">entrada, saída e pátio</span></button>
                 <button type="button" className="pdv-grande" disabled><span className="pdv-grande-titulo">Lavagem</span><span className="small">em breve</span></button>
             </div>
             <div className="list-group mt-4">

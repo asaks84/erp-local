@@ -41,17 +41,20 @@ class UsuarioController extends Controller
     public function edit(Usuario $usuario): Response
     {
         return Inertia::render('Usuarios/Form', [
-            'usuario' => $usuario->only(['id', 'nome', 'login', 'nivel_id', 'unidade_id', 'operador_caixa', 'ativo']),
+            'usuario' => $usuario->only(['id', 'nome', 'login', 'nivel_id', 'unidade_id', 'operador_caixa', 'ativo']) + ['pin' => (bool) $usuario->pin_hash],
         ] + $this->opcoes());
     }
 
     public function store(Request $request): RedirectResponse
     {
         $dados = $this->validar($request);
-        $usuario = new Usuario(collect($dados)->except(['senha'])->all());
+        $usuario = new Usuario(collect($dados)->except(['senha', 'pin'])->all());
         $usuario->definirSenha($dados['senha']);
         $usuario->save();
         Atividades::registrar('usuario_criado', $usuario->login.' ('.$usuario->nivel->nome.')');
+        if ($erro = $this->gravarPin($usuario, $dados['pin'] ?? null)) {
+            return redirect("/usuarios/{$usuario->id}")->withErrors(['pin' => $erro])->with('erro', 'Usuário criado, mas o PIN não foi aceito: escolha outro.');
+        }
 
         return redirect('/usuarios')->with('sucesso', 'Usuário criado.');
     }
@@ -78,7 +81,7 @@ class UsuarioController extends Controller
         }
 
         $antes = $usuario->nivel->nome;
-        $usuario->fill(collect($dados)->except(['senha'])->all());
+        $usuario->fill(collect($dados)->except(['senha', 'pin'])->all());
         if (! empty($dados['senha'])) {
             $usuario->definirSenha($dados['senha']);
         }
@@ -92,6 +95,9 @@ class UsuarioController extends Controller
             $detalhe .= ' (senha trocada)';
         }
         Atividades::registrar('usuario_alterado', $detalhe);
+        if ($erro = $this->gravarPin($usuario, $dados['pin'] ?? null)) {
+            return back()->withErrors(['pin' => $erro]);
+        }
 
         return redirect('/usuarios')->with('sucesso', 'Usuário salvo.');
     }
@@ -107,7 +113,9 @@ class UsuarioController extends Controller
             'unidade_id' => ['nullable', 'integer', Rule::exists('unidades', 'id')->where('empresa_id', $empresa)->where('ativa', true)],
             'operador_caixa' => ['boolean'],
             'ativo' => ['boolean'],
+            'pin' => ['nullable', 'string', 'confirmed'],
         ], [
+            'pin.confirmed' => 'Os dois PINs não são iguais.',
             'login.regex' => 'Use só letras, números, ponto, traço, @ ou sublinhado (sem espaços).',
         ]);
         $dados['login'] = trim($dados['login']);
@@ -115,6 +123,21 @@ class UsuarioController extends Controller
         $dados['ativo'] = (bool) ($dados['ativo'] ?? true);
 
         return $dados;
+    }
+
+    /** PIN do PDV digitado no cadastro (a pessoa escolhe na hora, junto). Devolve a mensagem de erro, se houver. */
+    private function gravarPin(Usuario $usuario, ?string $pin): ?string
+    {
+        if ($pin === null || trim($pin) === '') {
+            return null;
+        }
+        try {
+            \App\Servicos\Pdv\Pins::definir($usuario, trim($pin));
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return collect($e->errors())->flatten()->first();
+        }
+
+        return null;
     }
 
     private function opcoes(): array

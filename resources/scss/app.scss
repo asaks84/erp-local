@@ -171,6 +171,11 @@ body { -webkit-font-smoothing: antialiased; }
 // aviso neutro (informação), igual no claro e no escuro
 .aviso-neutro { background: var(--l-surface-2); border: 1px solid var(--bs-border-color); color: var(--l-texto-2); }
 
+// campo de PIN: teclado numérico (type text + inputmode) com os números escondidos, sem o navegador
+// confundir com senha e preencher sozinho
+.texto-oculto, .campo-pin input { -webkit-text-security: disc; }
+.texto-oculto::placeholder { -webkit-text-security: none; }
+
 // ---------- PDV (app do balcão, /pdv) ----------
 body.pdv { background: var(--bs-body-bg); }
 .pdv-centro { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center; }
@@ -200,6 +205,16 @@ body.pdv { background: var(--bs-body-bg); }
     hr { border-top: 1px dashed #000; opacity: 1; margin: 8px 0; }
 }
 .pdv-carimbo { height: 80px; border: 1px solid #000; margin-top: 4px; }
+.pdv-opcoes { display: flex; flex-wrap: wrap; gap: 8px;
+    > .btn { flex: 1 1 auto; min-width: 30%; min-height: 48px; }
+}
+.pdv-placa { font-size: 1.75rem; font-weight: 700; letter-spacing: .12em; text-align: center; text-transform: uppercase; }
+.pdv-troco { font-size: 1.25rem; margin-top: 8px; }
+.pdv-camera { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; object-fit: cover; }
+.pdv-previa-rolagem { max-height: 45vh; overflow: auto; margin-bottom: 8px; background: var(--bs-tertiary-bg); border-radius: 8px; padding: 8px 0;
+    .pdv-ticket { margin-bottom: 0; }
+}
+.pdv-rodape-acao { position: sticky; bottom: 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--bs-body-bg); margin-top: 8px; }
 @media print {
     body.pdv * { visibility: hidden; }
     body.pdv .pdv-ticket, body.pdv .pdv-ticket * { visibility: visible; }

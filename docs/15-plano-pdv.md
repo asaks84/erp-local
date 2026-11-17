@@ -184,10 +184,21 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 
 - **Gestão › Configurações › Aparelhos (PDV):** cadastrar o aparelho gera um código de 6 dígitos (15 minutos, uso único). "Parear de novo" gera outro código e desliga o celular anterior; "Desativar" corta o acesso na hora. Na mesma tela, a memória do PIN (a cada ação, ou lembrar 1 a 10 minutos).
 - **PDV em `/pdv`:** app separado, instalável pelo Chrome (PWA). Primeiro acesso: digitar o código. Depois: tela inicial (Estadia e Lavagem ainda "em breve"), testar o PIN, cadastrar ou trocar o PIN e teste de impressão.
-- **PIN:** a pessoa cadastra no próprio PDV com o login e a senha dela do sistema. Guardado como HMAC (empresa + PIN, com a chave do sistema), único na empresa. Regras de [07-pdv.md](07-pdv.md) valendo (óbvio recusado, repetido cancela o do outro, 5 erros travam o aparelho 1 minuto). Em Usuários aparece se a pessoa tem PIN, com "apagar".
+- **PIN:** a pessoa cadastra no próprio PDV com o login e a senha dela do sistema, ou na gestão, no cadastro do usuário (Usuários › novo ou editar; a própria pessoa digita os números). Guardado como HMAC (empresa + PIN, com a chave do sistema), único na empresa. Regras de [07-pdv.md](07-pdv.md) valendo (óbvio recusado, repetido cancela o do outro, 5 erros travam o aparelho 1 minuto). Em Usuários aparece se a pessoa tem PIN, com "apagar".
 - **Registro de atividades:** o que vem do PDV leva "· PDV: nome do aparelho".
 - **Teste de impressão:** ticket de exemplo no formato da decisão 7, por três caminhos: Bluetooth direto (impressora BLE), app RawBT (Bluetooth comum, USB, rede) e impressão do Android. Opções: bobina de 80 ou 58 mm, acentos (tabela PC860) e QR como imagem (para impressora sem o comando de QR).
 - **Para o modo sem internet (8.7):** o aparelho vai precisar conferir o PIN sem o servidor; como o HMAC usa a chave do sistema, a cópia que vai para o aparelho será outra (derivada por aparelho). Fica para a 8.7.
+
+## 8d. Como ficou a parte 8.2, estadia (17/11/2026)
+
+- **PDV › Estadia:** botões Entrada e Saída (lê o QR pela câmera), busca por número do ticket ou placa e a lista do pátio (toque abre a saída). Atualiza a cada minuto.
+- **Entrada:** placa grande; com a placa completa, o sistema mostra se já está no pátio, se é mensalista e preenche modelo e tamanho do cadastro ou da última visita avulsa. Tamanho em botões. **Marcar diária** (as diárias da tabela daquele tamanho): paga na saída ou **paga agora** (forma de pagamento; dinheiro com valor recebido e troco). Placa de mensalista pede confirmação. PIN, depois "Imprimir o ticket?" com a prévia.
+- **Diária marcada:** preço fechado, mesmo saindo antes; passando, vale o que a tabela der (que já cobra a diária e o tempo a mais) e paga só a diferença. Diária paga na entrada não leva convênio, e a estadia não é cancelada sem antes estornar o pagamento.
+- **Saída:** o servidor calcula; convênio escolhido na hora (o cálculo muda na tela, sem gravar); paga agora (dinheiro com troco, Pix, débito, crédito, transferência), na conta de um cliente (busca) ou mensalista; **ticket perdido** pede nome e documento de quem retira (fica na estadia). PIN, depois "Imprimir o recibo?".
+- **Cancelar entrada:** pede motivo e o PIN de alguém com a permissão nova **Gerente no PDV** (Níveis de acesso › Operação). Administrador tem sempre.
+- **Impressão:** o PDV imprime pelo último caminho que deu certo no Teste de impressão (com as opções de bobina, acentos e QR). Sem caminho testado, usa a impressão do Android.
+- **Gestão › Estadias:** entrada com modelo e marcar diária (paga agora ou na saída, com troco); saída com convênio, troco e ticket perdido; o pátio mostra modelo, diária e "PDV". Pagamentos do PDV saem com origem "pdv" e o aparelho, e entram no Resultado como qualquer recebimento.
+- **QR do ticket:** leva o endereço `/t/código`. A página do cliente nesse endereço é a parte 8.6; até lá o QR serve para a leitura no balcão.
 
 ## 9. Riscos e cuidados
 

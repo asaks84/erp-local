@@ -4,17 +4,23 @@ import Parear from './telas/Parear'
 import Inicio from './telas/Inicio'
 import CadastrarPin from './telas/CadastrarPin'
 import TesteImpressao from './telas/TesteImpressao'
+import Estadias from './telas/Estadias'
+import EstadiaEntrada from './telas/EstadiaEntrada'
+import EstadiaSaida from './telas/EstadiaSaida'
 import { PinProvider } from './Pin'
 
 /**
- * PDV (etapa 8.1): pareamento do aparelho, PIN de cada pessoa e teste de impressão.
- * Estadias, lavagens e caixa entram nas próximas partes (docs/15-plano-pdv.md).
+ * PDV: pareamento do aparelho, PIN de cada pessoa, teste de impressão (8.1) e estadias (8.2).
+ * Lavagens e caixa entram nas próximas partes (docs/15-plano-pdv.md).
  */
 export default function App() {
     const [eu, setEu] = useState(null)       // dados do aparelho e da empresa
     const [erro, setErro] = useState(null)
     const [tela, setTela] = useState('inicio')
     const [carregando, setCarregando] = useState(!!token.get())
+    const [estadiaId, setEstadiaId] = useState(null)
+    const [opcoes, setOpcoes] = useState(null)   // tamanhos, formas e convênios das estadias
+    const [aviso, setAviso] = useState(null)
 
     const carregar = useCallback(() => {
         if (!token.get()) { setEu(null); setCarregando(false); return }
@@ -33,6 +39,11 @@ export default function App() {
     }
 
     const voltar = () => setTela('inicio')
+    const abrirEstadias = () => {
+        setTela('estadias')
+        api('GET', '/estadias/opcoes').then(setOpcoes).catch((e) => setAviso(e.message))
+    }
+    const feitoEstadia = (msg) => { setAviso(msg); setTela('estadias'); window.scrollTo(0, 0) }
     return (
         <PinProvider memoriaMin={eu.pin_memoria_min}>
             <div className="pdv-app">
@@ -44,7 +55,13 @@ export default function App() {
                     </div>
                 </header>
                 <main className="pdv-corpo">
-                    {tela === 'inicio' && <Inicio eu={eu} irPara={setTela} onDesparear={() => { token.set(null); setEu(null) }} />}
+                    {tela === 'inicio' && <Inicio eu={eu} irPara={(t) => (t === 'estadias' ? abrirEstadias() : setTela(t))} onDesparear={() => { token.set(null); setEu(null) }} />}
+                    {tela === 'estadias' && (
+                        <Estadias onVoltar={voltar} aviso={aviso} limparAviso={() => setAviso(null)}
+                            onEntrada={() => { setAviso(null); setTela('estadia-entrada') }} onSaida={(id) => { setAviso(null); setEstadiaId(id); setTela('estadia-saida') }} />
+                    )}
+                    {tela === 'estadia-entrada' && (opcoes ? <EstadiaEntrada eu={eu} opcoes={opcoes} onVoltar={() => setTela('estadias')} onFeito={feitoEstadia} /> : <div className="text-muted">Carregando…</div>)}
+                    {tela === 'estadia-saida' && (opcoes ? <EstadiaSaida eu={eu} opcoes={opcoes} id={estadiaId} onVoltar={() => setTela('estadias')} onFeito={feitoEstadia} /> : <div className="text-muted">Carregando…</div>)}
                     {tela === 'cadastrar-pin' && <CadastrarPin onVoltar={voltar} />}
                     {tela === 'impressao' && <TesteImpressao eu={eu} onVoltar={voltar} />}
                 </main>

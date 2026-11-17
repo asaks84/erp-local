@@ -50,6 +50,16 @@ class Pins
             }
             throw ValidationException::withMessages(['login' => 'Login ou senha incorretos.']);
         }
+        return self::definir($u, $pin);
+    }
+
+    /**
+     * Grava o PIN de alguém com as regras (4 números, nada óbvio, único na empresa). Usado no PDV (com login
+     * e senha) e na gestão, no cadastro do usuário.
+     */
+    public static function definir(Usuario $u, string $pin): Usuario
+    {
+        $empresaId = (int) $u->empresa_id;
         if (! preg_match('/^\d{4}$/', $pin)) {
             throw ValidationException::withMessages(['pin' => 'O PIN tem 4 números.']);
         }
