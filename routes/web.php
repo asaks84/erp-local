@@ -269,7 +269,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/whatsapp/credenciais', [\App\Http\Controllers\WhatsAppController::class, 'credenciais']);
         Route::post('/configuracoes/whatsapp/testar', [\App\Http\Controllers\WhatsAppController::class, 'testar']);
         Route::post('/configuracoes/whatsapp/desligar', [\App\Http\Controllers\WhatsAppController::class, 'desligar']);
-        Route::post('/configuracoes/whatsapp/modelos', [\App\Http\Controllers\WhatsAppController::class, 'modelos']);
+        Route::get('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'index']);
+        Route::post('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'store']);
+        Route::put('/configuracoes/whatsapp/mensagens/{mensagem}', [\App\Http\Controllers\MensagemController::class, 'update']);
+        Route::delete('/configuracoes/whatsapp/mensagens/{mensagem}', [\App\Http\Controllers\MensagemController::class, 'destroy']);
+        Route::post('/configuracoes/whatsapp/mensagens/grupo/{grupo}/versao', [\App\Http\Controllers\MensagemController::class, 'novaVersao'])->whereNumber('grupo');
         Route::put('/configuracoes/whatsapp/regua', [\App\Http\Controllers\WhatsAppController::class, 'regua']);
         Route::put('/clientes/{cliente}/regras-boleto', [InterController::class, 'cliente']);
         Route::get('/conferencia', ConferenciaController::class);

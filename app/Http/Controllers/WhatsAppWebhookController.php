@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Integracao;
+use App\Servicos\WhatsApp\Modelos;
 use App\Servicos\WhatsApp\Regua;
 use App\Support\EmpresaAtual;
 use Illuminate\Http\Request;
@@ -10,8 +11,9 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Webhook da Meta (WhatsApp): confirmação do endereço (GET) e status de entrega dos avisos (POST).
- * A integração é achada pelo ID do número; com a chave secreta do app guardada, a assinatura é conferida.
+ * Webhook da Meta (WhatsApp): confirmação do endereço (GET), status de entrega dos avisos e aprovação dos
+ * modelos de mensagem (POST). A integração é achada pelo ID do número (ou da conta, nos avisos de modelo);
+ * com a chave secreta do app guardada, a assinatura é conferida.
  */
 class WhatsAppWebhookController extends Controller
 {
@@ -35,7 +37,10 @@ class WhatsAppWebhookController extends Controller
         foreach ((array) $request->input('entry', []) as $entrada) {
             foreach ((array) ($entrada['changes'] ?? []) as $mudanca) {
                 $v = $mudanca['value'] ?? [];
-                $i = $integracoes->first(fn ($x) => $x->credencial('phone_number_id') === (string) ($v['metadata']['phone_number_id'] ?? ''));
+                $campo = (string) ($mudanca['field'] ?? 'messages');
+                $i = $campo === 'message_template_status_update'
+                    ? $integracoes->first(fn ($x) => $x->credencial('waba_id') === (string) ($entrada['id'] ?? ''))
+                    : $integracoes->first(fn ($x) => $x->credencial('phone_number_id') === (string) ($v['metadata']['phone_number_id'] ?? ''));
                 if (! $i) {
                     continue;
                 }
@@ -45,7 +50,14 @@ class WhatsAppWebhookController extends Controller
 
                     return response('', 403);
                 }
-                $empresaAtual->como($i->empresa_id, function () use ($v) {
+                $empresaAtual->como($i->empresa_id, function () use ($v, $campo) {
+                    if ($campo === 'message_template_status_update') {
+                        if (! empty($v['message_template_name']) && ! empty($v['event'])) {
+                            Modelos::atualizarSituacao((string) $v['message_template_name'], (string) $v['event'], $v['reason'] ?? null);
+                        }
+
+                        return;
+                    }
                     foreach ((array) ($v['statuses'] ?? []) as $s) {
                         if (! empty($s['id']) && ! empty($s['status'])) {
                             Regua::atualizarStatus((string) $s['id'], (string) $s['status'], $s['errors'][0]['title'] ?? null);

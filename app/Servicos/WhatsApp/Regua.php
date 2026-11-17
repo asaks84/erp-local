@@ -10,7 +10,6 @@ use App\Models\Integracao;
 use App\Servicos\Atualizacoes;
 use App\Servicos\Inter\Boletos;
 use App\Support\Atividades;
-use App\Support\Formato;
 use App\Support\Telefone;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +31,7 @@ class Regua
     {
         $p = ($e ?? Empresa::atual())->config('whatsapp_regua') ?: self::PADRAO;
 
-        return collect($p)->map(fn ($x) => ['dias' => (int) $x['dias'], 'ativo' => (bool) ($x['ativo'] ?? true)])->sortBy('dias')->values()->all();
+        return collect($p)->map(fn ($x) => ['dias' => (int) $x['dias'], 'ativo' => (bool) ($x['ativo'] ?? true), 'grupo' => isset($x['grupo']) ? (int) $x['grupo'] : null])->sortBy('dias')->values()->all();
     }
 
     public static function hora(?Empresa $e = null): string
@@ -82,7 +81,7 @@ class Regua
             return 0;
         }
         $hoje = today();
-        $empresa = Empresa::atual();
+        $todos = self::passos();
         $cobrancas = Cobranca::with('cliente')->whereIn('situacao', ['aberta', 'parcial'])->get();
         $boletos = Boleto::whereIn('cobranca_id', $cobrancas->pluck('id'))->whereIn('situacao', Boleto::ATIVAS)->orderBy('id')->get()->keyBy('cobranca_id');
         $feitos = Aviso::whereIn('cobranca_id', $cobrancas->pluck('id'))->get()->groupBy('cobranca_id');
@@ -108,11 +107,10 @@ class Regua
             if ($valor <= 0) {
                 continue;
             }
-            $modelo = Modelos::doPasso($dias);
-            $valores = self::valores($cli->nome, $empresa->nome, $valor, $venc);
+            $modelo = Modelos::ultima((int) Modelos::doPasso($dias, $todos));
             Aviso::create([
                 'cobranca_id' => $c->id, 'cliente_id' => $cli->id, 'dias' => $dias, 'previsto_para' => $dia->toDateString(), 'vencimento' => $venc->toDateString(),
-                'celular' => Telefone::celular($cli->celular), 'texto' => Modelos::texto($modelo, $valores, self::link($c)),
+                'celular' => Telefone::celular($cli->celular), 'texto' => $modelo ? Modelos::texto($modelo, Modelos::valores($c, $venc), self::link($c)) : null,
             ]);
             $n++;
         }
@@ -120,12 +118,22 @@ class Regua
         return $n;
     }
 
-    /** valores de {{1}}..{{4}} dos modelos */
-    public static function valores(string $nome, string $empresa, float $valor, Carbon $venc): array
+    /** texto do aviso com a versão atual da mensagem (rascunho incluído) e os valores de agora */
+    public static function textoAtual(Aviso $a): ?string
     {
-        $primeiro = mb_convert_case(strtok(trim($nome), ' ') ?: 'cliente', MB_CASE_TITLE);
+        $c = $a->cobranca;
+        $m = Modelos::ultima((int) Modelos::doPasso($a->dias));
+        if (! $c || ! $m) {
+            return $a->texto;
+        }
 
-        return [$primeiro, $empresa, Formato::moeda($valor), $venc->format('d/m/Y')];
+        return Modelos::texto($m, Modelos::valores($c, $a->vencimento), self::link($c));
+    }
+
+    /** nome da mensagem usada no passo do aviso */
+    public static function rotulo(Aviso $a): string
+    {
+        return Modelos::ultima((int) Modelos::doPasso($a->dias))?->rotulo ?? 'Aviso';
     }
 
     /** por que este aviso não pode sair (null = pode) */
@@ -184,13 +192,15 @@ class Regua
         }
         $c = $a->cobranca;
         $celular = Telefone::celular($a->cliente->celular);
-        $valor = round(Boletos::valorEmAberto($c) - (float) $c->desconto, 2);
-        $modelo = Modelos::doPasso($a->dias);
-        $valores = self::valores($a->cliente->nome, Empresa::atual()->nome, $valor, $a->vencimento);
+        $valores = Modelos::valores($c, $a->vencimento);
         self::link($c);
         try {
+            [$modelo, $semModelo] = Modelos::paraApi((int) Modelos::doPasso($a->dias));
+            if (! $modelo) {
+                throw new WhatsAppErro($semModelo);
+            }
             $api ??= new WhatsAppCliente(Integracao::whatsapp() ?? throw new WhatsAppErro('WhatsApp não configurado.'));
-            $id = $api->enviarModelo($celular, $modelo, $valores, $c->token);
+            $id = $api->enviarModelo($celular, $modelo->nome, Modelos::parametros($modelo, $valores), $modelo->botao && $modelo->finalidade === 'cobranca' ? $c->token : null);
         } catch (WhatsAppErro $e) {
             if (in_array($a->situacao, self::SAIU, true)) {
                 $a->setAttribute('erro', mb_substr($e->getMessage(), 0, 255)); // reenvio falhou: o aviso já tinha saído, fica como estava
@@ -219,7 +229,13 @@ class Regua
         $agora = now();
         if (self::ligado() && self::automatico() && $agora->format('H:i') >= self::hora() && $agora->format('H:i') < '20:00') {
             $api = new WhatsAppCliente(Integracao::whatsapp());
+            $prontos = [];
             foreach (Aviso::with(['cobranca', 'cliente'])->where('situacao', 'pendente')->where('previsto_para', '<=', today())->orderBy('id')->limit(200)->get() as $a) {
+                // mensagem ainda sem aprovação da Meta: o aviso espera (não vira falha)
+                $prontos[$a->dias] ??= (bool) Modelos::paraApi((int) Modelos::doPasso($a->dias))[0];
+                if (! $prontos[$a->dias]) {
+                    continue;
+                }
                 self::enviar($a, $api) ? $enviados++ : $falhas++;
             }
             if ($enviados || $falhas) {

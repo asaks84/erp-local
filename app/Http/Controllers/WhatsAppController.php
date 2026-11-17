@@ -17,8 +17,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Configurações › WhatsApp: credenciais da API oficial (criptografadas), teste de conexão, modelos de
- * mensagem na Meta e a régua de cobrança (dias, horário e envio automático).
+ * Configurações › WhatsApp: credenciais da API oficial (criptografadas), teste de conexão, resumo das
+ * mensagens (editadas em WhatsApp › Mensagens) e a régua de cobrança (dias, mensagem, horário e envio automático).
  */
 class WhatsAppController extends Controller
 {
@@ -30,17 +30,20 @@ class WhatsAppController extends Controller
     public function index(): Response
     {
         $i = $this->integracao();
-        $modelos = null;
         $erroModelos = null;
         if ($i->exists && $i->ativo) {
             try {
-                $na = (new WhatsAppCliente($i))->modelos();
-                $modelos = collect(Modelos::TEXTOS)->map(fn ($texto, $nome) => ['nome' => $nome, 'rotulo' => Modelos::ROTULOS[$nome], 'texto' => $texto, 'situacao' => $na[$nome] ?? null])->values();
+                Modelos::sincronizar(new WhatsAppCliente($i));
             } catch (WhatsAppErro $e) {
                 $erroModelos = $e->getMessage();
             }
         }
-        $modelos ??= collect(Modelos::TEXTOS)->map(fn ($texto, $nome) => ['nome' => $nome, 'rotulo' => Modelos::ROTULOS[$nome], 'texto' => $texto, 'situacao' => null])->values();
+        $modelos = Modelos::grupos()->map(function ($v) {
+            [$api] = Modelos::paraApi($v->first()->grupo);
+
+            return ['grupo' => $v->first()->grupo, 'rotulo' => $v->first()->rotulo, 'finalidade' => $v->first()->finalidade, 'situacao' => $v->first()->situacao,
+                'versao' => $v->first()->versao, 'texto' => $v->first()->texto, 'api' => $api?->situacao === 'APPROVED' ? $api->versao : null];
+        })->values();
 
         return Inertia::render('Configuracoes/WhatsApp', [
             'integracao' => [
@@ -57,7 +60,8 @@ class WhatsAppController extends Controller
                 'webhook_url' => url('/webhooks/whatsapp'),
                 'webhook_token' => $i->credencial('verify_token'),
             ],
-            'regua' => ['passos' => Regua::passos(), 'hora' => Regua::hora(), 'automatico' => Regua::automatico()],
+            'regua' => ['passos' => collect(Regua::passos())->map(fn ($p) => $p + ['grupo_efetivo' => Modelos::doPasso($p['dias'])])->all(), 'hora' => Regua::hora(), 'automatico' => Regua::automatico()],
+            'exemplos' => Modelos::exemplos(),
             'modelos' => $modelos,
             'erro_modelos' => $erroModelos,
             'privacidade_url' => url('/privacidade'),
@@ -121,43 +125,25 @@ class WhatsAppController extends Controller
         return back()->with('sucesso', 'WhatsApp desligado: os avisos voltam a ser só manuais.');
     }
 
-    /** cria na Meta os modelos que ainda não existem (a aprovação leva de minutos a horas) */
-    public function modelos(): RedirectResponse
-    {
-        $i = Integracao::whatsapp();
-        if (! $i || ! $i->ativo) {
-            return back()->with('erro', 'Ligue o WhatsApp primeiro (Testar conexão).');
-        }
-        try {
-            $api = new WhatsAppCliente($i);
-            $na = $api->modelos();
-            $criados = 0;
-            foreach (array_keys(Modelos::TEXTOS) as $nome) {
-                if (! isset($na[$nome])) {
-                    $api->criarModelo(Modelos::definicao($nome, url('/')));
-                    $criados++;
-                }
-            }
-        } catch (WhatsAppErro $e) {
-            return back()->with('erro', 'A Meta recusou: '.$e->getMessage());
-        }
-        Atividades::registrar('whatsapp_modelos', $criados.' modelo(s) de mensagem enviado(s) para aprovação da Meta');
-
-        return back()->with('sucesso', $criados ? $criados.' modelo(s) enviado(s) para aprovação da Meta. Costuma levar de minutos a algumas horas.' : 'Os modelos já existem na Meta.');
-    }
-
     public function regua(Request $request): RedirectResponse
     {
         $d = $request->validate([
             'passos' => ['required', 'array', 'min:1', 'max:8'],
             'passos.*.dias' => ['required', 'integer', 'min:-30', 'max:90', 'distinct'],
             'passos.*.ativo' => ['boolean'],
+            'passos.*.grupo' => ['nullable', 'integer'],
             'hora' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:19:00'],
             'automatico' => ['boolean'],
         ], ['passos.*.dias.distinct' => 'Dois avisos no mesmo dia.', 'hora.after_or_equal' => 'Entre 8h e 19h.', 'hora.before_or_equal' => 'Entre 8h e 19h.']);
+        $grupos = Modelos::grupos('cobranca')->keys()->map(fn ($g) => (int) $g)->all();
+        foreach ($d['passos'] as $k => $p) {
+            if (! empty($p['grupo']) && ! in_array((int) $p['grupo'], $grupos, true)) {
+                throw ValidationException::withMessages(["passos.{$k}.grupo" => 'Escolha uma mensagem de aviso de cobrança.']);
+            }
+        }
         $e = Empresa::atual();
         $e->configuracoes = array_merge($e->configuracoes ?? [], [
-            'whatsapp_regua' => collect($d['passos'])->map(fn ($p) => ['dias' => (int) $p['dias'], 'ativo' => (bool) ($p['ativo'] ?? false)])->sortBy('dias')->values()->all(),
+            'whatsapp_regua' => collect($d['passos'])->map(fn ($p) => ['dias' => (int) $p['dias'], 'ativo' => (bool) ($p['ativo'] ?? false), 'grupo' => ! empty($p['grupo']) ? (int) $p['grupo'] : null])->sortBy('dias')->values()->all(),
             'whatsapp_hora' => $d['hora'], 'whatsapp_automatico' => (bool) ($d['automatico'] ?? false),
         ]);
         $e->save();

@@ -4,6 +4,18 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — WhatsApp: área para editar as mensagens
+
+- **Configurações › WhatsApp › Mensagens** (`/configuracoes/whatsapp/mensagens`): criar e editar as mensagens do WhatsApp antes de valerem. Nome (só no sistema), tipo (aviso de cobrança ou propaganda), texto com botões para inserir as informações ({nome}, {empresa}, {valor}, {vencimento}, {valor_com_desconto}, {desconto_ate}, {placa}), botão "Ver cobrança" opcional e prévia em balão de WhatsApp com um cliente de exemplo.
+- **Rascunho** fica só no ERP e já vale no envio manual (wa.me). **Enviar para aprovação** manda para a Meta (as informações viram {{1}}, {{2}}... com os exemplos obrigatórios) e trava a versão. A situação (em análise, aprovado, recusado com o motivo em português) vem da Meta ao abrir a tela e pelo webhook (campo `message_template_status_update`).
+- **Versões:** editar uma mensagem que já foi para a Meta cria a versão seguinte (nome_v2...). Pela API continua saindo a última versão aprovada até a nova ser aprovada; aí troca sozinho.
+- O sistema confere antes de enviar o que a Meta costuma recusar: informação no começo ou no fim do texto, duas seguidas, informação desconhecida, pouco texto para muitas informações, mais de 1024 caracteres.
+- **Régua:** cada passo escolhe a mensagem (só avisos de cobrança). Aviso de passo sem mensagem aprovada fica esperando na rotina automática (não vira falha); no envio pela API na mão, mostra o motivo.
+- Os avisos ainda não enviados mostram o texto com a versão atual da mensagem.
+- **Propaganda:** dá para escrever e aprovar (categoria marketing, sem as informações da cobrança, fora da régua). O envio de campanhas, com o consentimento do cliente, fica para uma próxima etapa.
+- As três mensagens atuais viram a versão 1 de "Lembrete", "Vence hoje" e "Em atraso", com os mesmos nomes na Meta. O botão "Criar na Meta" saiu (agora é por mensagem).
+- Migration `2026_11_24_000001_create_modelos_mensagem`. `App\Servicos\WhatsApp\Modelos` reescrito; `MensagemController`; tela `Configuracoes/WhatsAppMensagens`. 4 testes novos (211).
+
 ## 16/11/2026 — Desconto de pontualidade na cobrança (opção, começa desligada)
 
 - Nova opção em **Configurações › Banco Inter › Regras do boleto**: "Desconto de pontualidade vale para qualquer forma de pagamento". **Desligada** de início: tudo continua como antes (desconto só no boleto).

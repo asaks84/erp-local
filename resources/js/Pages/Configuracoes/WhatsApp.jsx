@@ -1,11 +1,11 @@
-import { router, useForm } from '@inertiajs/react'
+import { Link, router, useForm } from '@inertiajs/react'
 import { useState } from 'react'
 import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import { dataHora } from '../../lib/formato'
+import { Selo } from './WhatsAppMensagens'
 
-const SITUACAO = { APPROVED: ['Aprovado', 'selo-ok'], PENDING: ['Em análise', 'selo-aviso'], REJECTED: ['Recusado', 'selo-erro'], PAUSED: ['Pausado', 'selo-aviso'], DISABLED: ['Desativado', 'selo-erro'] }
 const quando = (d) => (d < 0 ? `${-d} dia(s) antes do vencimento` : d === 0 ? 'No dia do vencimento' : `${d} dia(s) depois do vencimento`)
 
 function Copiar({ texto }) {
@@ -37,8 +37,9 @@ function Credenciais({ i }) {
     )
 }
 
-function Regua({ regua }) {
-    const form = useForm({ passos: regua.passos, hora: regua.hora, automatico: regua.automatico })
+function Regua({ regua, modelos }) {
+    const form = useForm({ passos: regua.passos.map((p) => ({ dias: p.dias, ativo: p.ativo, grupo: p.grupo || p.grupo_efetivo || '' })), hora: regua.hora, automatico: regua.automatico })
+    const opcoes = modelos.filter((m) => m.finalidade === 'cobranca')
     const mudar = (i, campos) => form.setData('passos', form.data.passos.map((p, j) => (j === i ? { ...p, ...campos } : p)))
     return (
         <form className="card h-100" onSubmit={(e) => { e.preventDefault(); form.put('/configuracoes/whatsapp/regua', { preserveScroll: true }) }}>
@@ -53,11 +54,14 @@ function Regua({ regua }) {
                         <input type="number" className="form-control" style={{ maxWidth: 90 }} min="-30" max="90" value={p.dias} aria-label="Dias em relação ao vencimento" onChange={(e) => mudar(i, { dias: e.target.value })} />
                         <label className="small flex-grow-1" htmlFor={`passo-${i}`}>{quando(Number(p.dias))}</label>
                         <button type="button" className="btn btn-sm btn-link text-danger p-0" onClick={() => form.setData('passos', form.data.passos.filter((_, j) => j !== i))} disabled={form.data.passos.length <= 1}>Tirar</button>
+                        <select className="form-select form-select-sm w-100" aria-label="Mensagem deste passo" value={p.grupo || ''} onChange={(e) => mudar(i, { grupo: e.target.value ? Number(e.target.value) : '' })}>
+                            {opcoes.map((m) => <option key={m.grupo} value={m.grupo}>Mensagem: {m.rotulo}{m.api ? '' : ' (sem versão aprovada)'}</option>)}
+                        </select>
                     </div>
                 ))}
                 {Object.keys(form.errors).filter((k) => k.startsWith('passos')).slice(0, 1).map((k) => <div className="text-danger small mb-2" key={k}>{form.errors[k]}</div>)}
                 <button type="button" className="btn btn-sm btn-outline-secondary mb-3" disabled={form.data.passos.length >= 8}
-                    onClick={() => form.setData('passos', [...form.data.passos, { dias: Math.max(...form.data.passos.map((p) => Number(p.dias))) + 7, ativo: true }])}>Adicionar passo</button>
+                    onClick={() => form.setData('passos', [...form.data.passos, { dias: Math.max(...form.data.passos.map((p) => Number(p.dias))) + 7, ativo: true, grupo: form.data.passos[form.data.passos.length - 1]?.grupo || '' }])}>Adicionar passo</button>
                 <p className="form-text mt-0">Número negativo = dias antes do vencimento; 0 = no dia; positivo = dias depois.</p>
                 <div className="row g-2 align-items-center">
                     <div className="col-sm-5"><Campo rotulo="Enviar a partir de" type="time" min="08:00" max="19:00" value={form.data.hora} onChange={(e) => form.setData('hora', e.target.value)} erro={form.errors.hora} /></div>
@@ -77,11 +81,10 @@ function Regua({ regua }) {
     )
 }
 
-export default function WhatsApp({ integracao: i, regua, modelos, erro_modelos: erroModelos, privacidade_url: privacidade }) {
+export default function WhatsApp({ integracao: i, regua, modelos, exemplos, erro_modelos: erroModelos, privacidade_url: privacidade }) {
     const [ocupado, setOcupado] = useState('')
     const completo = i.phone_number_id && i.waba_id && i.tem_token
     const acao = (nome, url) => { setOcupado(nome); router.post(url, {}, { preserveScroll: true, onFinish: () => setOcupado('') }) }
-    const faltam = modelos.filter((m) => !m.situacao).length
     return (
         <div className="pagina">
             <AbasConfiguracoes />
@@ -101,23 +104,25 @@ export default function WhatsApp({ integracao: i, regua, modelos, erro_modelos: 
             </div>
             <div className="row g-4">
                 <div className="col-xl-6"><Credenciais i={i} /></div>
-                <div className="col-xl-6"><Regua regua={regua} /></div>
+                <div className="col-xl-6"><Regua regua={regua} modelos={modelos} /></div>
                 <div className="col-xl-6">
                     <div className="card h-100">
                         <div className="card-header d-flex align-items-center">
-                            <span className="flex-grow-1">Modelos de mensagem</span>
-                            {i.ativo && faltam > 0 && <button type="button" className="btn btn-sm btn-primary" disabled={ocupado === 'modelos'} onClick={() => acao('modelos', '/configuracoes/whatsapp/modelos')}>{ocupado === 'modelos' ? 'Enviando…' : 'Criar na Meta'}</button>}
+                            <span className="flex-grow-1">Mensagens</span>
+                            <Link href="/configuracoes/whatsapp/mensagens" className="btn btn-sm btn-primary">Editar mensagens</Link>
                         </div>
                         <div className="card-body">
-                            <p className="small text-muted">Pela API, a mensagem precisa ser um modelo aprovado pela Meta (leva de minutos a horas). O texto é o mesmo do envio manual. Cada aviso leva o botão "Ver cobrança", com o boleto e o Pix.</p>
+                            <p className="small text-muted">Pela API, a mensagem precisa estar aprovada pela Meta (leva de minutos a horas). O rascunho já vale no envio manual. Cada aviso de cobrança pode levar o botão "Ver cobrança", com o boleto e o Pix.</p>
                             {erroModelos && <div className="alert alert-danger small">{erroModelos}</div>}
                             {modelos.map((m) => (
-                                <div className="mb-3" key={m.nome}>
-                                    <div className="d-flex align-items-center gap-2">
-                                        <strong className="small">{m.rotulo}</strong>
-                                        {m.situacao ? <span className={`selo ${(SITUACAO[m.situacao] || [])[1] || ''}`}>{(SITUACAO[m.situacao] || [m.situacao])[0]}</span> : <span className="selo">{i.ativo ? 'Ainda não criado' : 'Ligue a API para ver'}</span>}
+                                <div className="mb-3" key={m.grupo}>
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
+                                        <Link href={`/configuracoes/whatsapp/mensagens?grupo=${m.grupo}`} className="small fw-semibold">{m.rotulo}</Link>
+                                        <Selo s={m.situacao} />
+                                        {m.finalidade === 'propaganda' && <span className="selo">Propaganda</span>}
+                                        {m.api && m.api !== m.versao && <span className="small text-muted">na API: versão {m.api}</span>}
                                     </div>
-                                    <div className="small text-muted">{m.texto.replace('{{1}}', 'Maria').replace('{{2}}', 'Local Estacionamento').replace('{{3}}', 'R$ 250,00').replace('{{4}}', '10/12/2026')}</div>
+                                    <div className="small text-muted text-pre-wrap">{m.texto.replace(/\{([a-z_]+)\}/g, (x, v) => (exemplos[v] !== undefined ? exemplos[v] : x))}</div>
                                 </div>
                             ))}
                         </div>

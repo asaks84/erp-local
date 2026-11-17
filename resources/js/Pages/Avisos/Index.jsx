@@ -23,6 +23,7 @@ export default function Avisos({ pendentes, enviados, api, automatico, hora, pas
     return (
         <div className="pagina">
             <TituloPagina titulo="Avisos de cobrança" descricao={`WhatsApp · régua: ${regua || 'nenhum passo ligado'}`}>
+                {pode('configuracoes') && <Link href="/configuracoes/whatsapp/mensagens" className="btn btn-outline-secondary">Mensagens</Link>}
                 {pode('configuracoes') && <Link href="/configuracoes/whatsapp" className="btn btn-outline-secondary">Configurar</Link>}
                 {api && podem.length > 0 && <button type="button" className="btn btn-primary" disabled={ocupado === 'todos'} onClick={() => post('/avisos/enviar-todos')}>{ocupado === 'todos' ? 'Enviando…' : `Enviar todos (${podem.length})`}</button>}
             </TituloPagina>

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Aviso;
-use App\Servicos\WhatsApp\Modelos;
 use App\Servicos\WhatsApp\Regua;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -17,8 +16,10 @@ class AvisoController extends Controller
         Regua::cancelarResolvidos();
         Regua::gerar();
         $linha = fn (Aviso $a) => [
-            'id' => $a->id, 'dias' => $a->dias, 'rotulo' => Modelos::ROTULOS[Modelos::doPasso($a->dias)], 'previsto_para' => $a->previsto_para->format('Y-m-d'),
-            'vencimento' => $a->vencimento->format('Y-m-d'), 'situacao' => $a->situacao, 'canal' => $a->canal, 'celular' => $a->celular, 'texto' => $a->texto,
+            'id' => $a->id, 'dias' => $a->dias, 'rotulo' => Regua::rotulo($a), 'previsto_para' => $a->previsto_para->format('Y-m-d'),
+            'vencimento' => $a->vencimento->format('Y-m-d'), 'situacao' => $a->situacao, 'canal' => $a->canal, 'celular' => $a->celular,
+            // o que ainda vai sair usa a versão atual da mensagem (rascunho incluído); o que já saiu mostra o que foi
+            'texto' => in_array($a->situacao, ['pendente', 'falha'], true) ? Regua::textoAtual($a) : $a->texto,
             'erro' => $a->erro, 'enviado_em' => $a->enviado_em?->format('Y-m-d H:i'),
             'cliente' => $a->cliente?->only(['id', 'nome']), 'cobranca' => $a->cobranca ? ['id' => $a->cobranca->id, 'numero' => $a->cobranca->numero] : null,
             'impedimento' => Regua::impedimento($a),

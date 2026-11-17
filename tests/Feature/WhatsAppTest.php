@@ -206,7 +206,7 @@ class WhatsAppTest extends TestCase
             '*/message_templates*' => Http::response(['data' => [['name' => 'cobranca_lembrete', 'status' => 'APPROVED', 'language' => 'pt_BR']]])]);
         $this->actingAs($this->a->admin)->post('/configuracoes/whatsapp/testar')->assertSessionHas('sucesso');
         $this->assertTrue(Integracao::whatsapp()->ativo);
-        $this->actingAs($this->a->admin)->get('/configuracoes/whatsapp')->assertInertia(fn ($p) => $p->where('modelos.0.situacao', 'APPROVED')->where('modelos.1.situacao', null));
+        $this->actingAs($this->a->admin)->get('/configuracoes/whatsapp')->assertInertia(fn ($p) => $p->where('modelos.0.situacao', 'APPROVED')->where('modelos.1.situacao', 'rascunho')); // não existe na Meta: volta a rascunho
 
         // a Meta confirma o endereço do webhook com o código
         $this->get('/webhooks/whatsapp?hub_mode=subscribe&hub_verify_token='.$i->credencial('verify_token').'&hub_challenge=12345')->assertOk()->assertSee('12345');
@@ -214,7 +214,7 @@ class WhatsAppTest extends TestCase
 
         // régua
         $this->actingAs($this->a->admin)->put('/configuracoes/whatsapp/regua', ['passos' => [['dias' => -2, 'ativo' => true], ['dias' => 5, 'ativo' => false]], 'hora' => '09:30', 'automatico' => true])->assertSessionHasNoErrors();
-        $this->assertSame([['dias' => -2, 'ativo' => true], ['dias' => 5, 'ativo' => false]], Regua::passos($this->a->empresa->refresh()));
+        $this->assertSame([['dias' => -2, 'ativo' => true, 'grupo' => null], ['dias' => 5, 'ativo' => false, 'grupo' => null]], Regua::passos($this->a->empresa->refresh()));
         $this->actingAs($this->a->admin)->put('/configuracoes/whatsapp/regua', ['passos' => [['dias' => 1, 'ativo' => true]], 'hora' => '23:00'])->assertSessionHasErrors('hora');
     }
 

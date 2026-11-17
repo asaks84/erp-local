@@ -66,17 +66,24 @@ class WhatsAppCliente
         return $this->chamar('GET', '/'.$this->integracao->credencial('phone_number_id'), ['fields' => 'display_phone_number,verified_name,quality_rating'])->json();
     }
 
+    /** modelos da conta no idioma pt_BR: [['name', 'status', 'category', 'rejected_reason', 'id'], ...] */
+    public function modelosDetalhes(): array
+    {
+        $r = $this->chamar('GET', '/'.$this->integracao->credencial('waba_id').'/message_templates', ['fields' => 'name,status,language,category,rejected_reason,id', 'limit' => 250])->json('data') ?? [];
+
+        return collect($r)->where('language', Modelos::IDIOMA)->values()->all();
+    }
+
     /** modelos da conta: [nome => situação (APPROVED, PENDING, REJECTED...)] no idioma pt_BR */
     public function modelos(): array
     {
-        $r = $this->chamar('GET', '/'.$this->integracao->credencial('waba_id').'/message_templates', ['fields' => 'name,status,language', 'limit' => 200])->json('data') ?? [];
-
-        return collect($r)->where('language', Modelos::IDIOMA)->mapWithKeys(fn ($m) => [$m['name'] => $m['status']])->all();
+        return collect($this->modelosDetalhes())->mapWithKeys(fn ($m) => [$m['name'] => $m['status']])->all();
     }
 
-    public function criarModelo(array $modelo): void
+    /** cria o modelo na Meta (vai para análise). Devolve ['id', 'status', 'category']. */
+    public function criarModelo(array $modelo): array
     {
-        $this->chamar('POST', '/'.$this->integracao->credencial('waba_id').'/message_templates', $modelo);
+        return $this->chamar('POST', '/'.$this->integracao->credencial('waba_id').'/message_templates', $modelo)->json() ?? [];
     }
 
     /**
