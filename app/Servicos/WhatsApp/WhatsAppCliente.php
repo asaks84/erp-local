@@ -88,11 +88,17 @@ class WhatsAppCliente
 
     /**
      * Envia um modelo aprovado. $corpo: valores de {{1}}, {{2}}...; $botaoUrl: o trecho variável do endereço
-     * do botão. Devolve o id da mensagem na Meta.
+     * do botão; $cabecalho: valor da informação do cabeçalho, se houver. Devolve o id da mensagem na Meta.
      */
-    public function enviarModelo(string $celular, string $modelo, array $corpo, ?string $botaoUrl = null): string
+    public function enviarModelo(string $celular, string $modelo, array $corpo, ?string $botaoUrl = null, ?string $cabecalho = null): string
     {
-        $componentes = [['type' => 'body', 'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($corpo))]];
+        $componentes = [];
+        if ($cabecalho !== null) {
+            $componentes[] = ['type' => 'header', 'parameters' => [['type' => 'text', 'text' => $cabecalho]]];
+        }
+        if ($corpo) {
+            $componentes[] = ['type' => 'body', 'parameters' => array_map(fn ($v) => ['type' => 'text', 'text' => (string) $v], array_values($corpo))];
+        }
         if ($botaoUrl !== null) {
             $componentes[] = ['type' => 'button', 'sub_type' => 'url', 'index' => '0', 'parameters' => [['type' => 'text', 'text' => $botaoUrl]]];
         }

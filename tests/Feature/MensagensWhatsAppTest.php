@@ -215,4 +215,45 @@ class MensagensWhatsAppTest extends TestCase
         $this->actingAs($this->a->admin)->put('/configuracoes/whatsapp/regua', ['passos' => [['dias' => -3, 'ativo' => true, 'grupo' => $p->grupo]], 'hora' => '09:00'])
             ->assertSessionHasErrors('passos.0.grupo');
     }
+
+    public function test_cabecalho_e_rodape_na_meta_no_envio_e_no_manual(): void
+    {
+        $this->ligar([]);
+        $this->actingAs($this->a->admin)->get('/configuracoes/whatsapp/mensagens');
+        $m = ModeloMensagem::where('nome', 'cobranca_lembrete')->first();
+        $base = ['rotulo' => 'Lembrete', 'finalidade' => 'cobranca', 'botao' => true, 'texto' => $m->texto];
+
+        // o que a Meta recusa no cabeçalho e no rodapé
+        $this->assertNotEmpty(Modelos::problemasCabecalho('Oi {nome}, {valor}'));
+        $this->assertNotEmpty(Modelos::problemasCabecalho('*Lembrete*'));
+        $this->assertNotEmpty(Modelos::problemasCabecalho('Lembrete 🚗'));
+        $this->assertNotEmpty(Modelos::problemasRodape('Até {vencimento}'));
+        $this->actingAs($this->a->admin)->put("/configuracoes/whatsapp/mensagens/{$m->id}", $base + ['cabecalho' => 'Oi {nome}, {valor}', 'enviar' => true])
+            ->assertSessionHasErrors('cabecalho');
+
+        $this->actingAs($this->a->admin)->put("/configuracoes/whatsapp/mensagens/{$m->id}", $base + ['cabecalho' => 'Lembrete para {nome}', 'rodape' => 'Local Estacionamento · Santos', 'enviar' => true])
+            ->assertSessionHas('sucesso');
+        $r = collect($this->pedidos)->last(fn ($r) => $r->method() === 'POST');
+        $c = $r['components'];
+        $this->assertSame(['HEADER', 'BODY', 'FOOTER', 'BUTTONS'], array_column($c, 'type'));
+        $this->assertSame(['TEXT', 'Lembrete para {{1}}', ['Maria']], [$c[0]['format'], $c[0]['text'], $c[0]['example']['header_text']]);
+        $this->assertStringStartsWith('Olá, {{1}}! Aqui é do {{2}}.', $c[1]['text']); // o corpo numera de novo a partir do 1
+        $this->assertSame('Local Estacionamento · Santos', $c[2]['text']);
+
+        // envio: o cabeçalho leva o valor dele; no manual vira negrito no começo e o rodapé vai no fim
+        Modelos::atualizarSituacao('cobranca_lembrete', 'APPROVED');
+        $this->cobranca();
+        Regua::gerar();
+        $a = Aviso::first();
+        $this->assertStringStartsWith("*Lembrete para Maria*\n\nOlá, Maria!", $a->texto);
+        $this->assertStringEndsWith("\n\nLocal Estacionamento · Santos", $a->texto);
+        $this->actingAs($this->a->admin)->post("/avisos/{$a->id}/enviar")->assertSessionHas('sucesso');
+        $env = $this->ultimoEnvio()['template']['components'];
+        $this->assertSame(['header', 'body', 'button'], array_column($env, 'type'));
+        $this->assertSame('Maria', $env[0]['parameters'][0]['text']);
+
+        // a versão seguinte leva cabeçalho e rodapé junto
+        $this->actingAs($this->a->admin)->post("/configuracoes/whatsapp/mensagens/grupo/{$m->grupo}/versao");
+        $this->assertSame(['Lembrete para {nome}', 'Local Estacionamento · Santos'], [Modelos::ultima($m->grupo)->cabecalho, Modelos::ultima($m->grupo)->rodape]);
+    }
 }

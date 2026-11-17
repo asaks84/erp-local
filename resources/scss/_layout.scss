@@ -299,13 +299,15 @@
         font-size: .875rem;
         overflow: hidden;
     }
+    .wa-cabecalho { padding: .5rem .6rem 0; font-weight: 700; overflow-wrap: anywhere; }
     .wa-texto { padding: .5rem .6rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .wa-rodape { padding: .35rem .6rem 0; font-size: .75rem; color: #667781; overflow-wrap: anywhere; }
     .wa-hora { text-align: right; font-size: .6875rem; color: #667781; padding: 0 .6rem .35rem; }
     .wa-botao { border-top: 1px solid #e9edef; text-align: center; color: #027eb5; padding: .45rem; font-weight: 500; }
 }
 [data-bs-theme="dark"] .wa-previa {
     background: #0b141a;
     .wa-balao { background: #202c33; color: #e9edef; }
-    .wa-hora { color: #8696a0; }
+    .wa-hora, .wa-rodape { color: #8696a0; }
     .wa-botao { border-color: #2a3942; color: #53bdeb; }
 }

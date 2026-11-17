@@ -44,6 +44,9 @@ class Modelos
 
     public const MAX_TEXTO = 1024;
 
+    /** cabeçalho e rodapé: uma linha cada */
+    public const MAX_LINHA = 60;
+
     /** as três mensagens que vêm prontas (os nomes são os já usados na Meta) */
     public const PADRAO = [
         'cobranca_lembrete' => ['Lembrete (antes do vencimento)', 'Olá, {nome}! Aqui é do {empresa}. Sua cobrança de {valor} vence em {vencimento}. Para ver os detalhes e as formas de pagamento, toque no botão abaixo.'],
@@ -228,6 +231,63 @@ class Modelos
         return $p;
     }
 
+    /** problemas do cabeçalho (até 60 caracteres, uma informação no máximo, sem emoji nem formatação) */
+    public static function problemasCabecalho(?string $cab, string $finalidade = 'cobranca'): array
+    {
+        $c = trim((string) $cab);
+        if ($c === '') {
+            return [];
+        }
+        $p = [];
+        if (mb_strlen($c) > self::MAX_LINHA) {
+            $p[] = 'Cabeçalho longo demais: até '.self::MAX_LINHA.' caracteres.';
+        }
+        $vars = self::variaveis($c);
+        if (count($vars) > 1) {
+            $p[] = 'O cabeçalho aceita no máximo uma informação variável.';
+        }
+        $permitidas = $finalidade === 'propaganda' ? self::VARIAVEIS_PROPAGANDA : array_keys(self::VARIAVEIS);
+        foreach (array_unique($vars) as $v) {
+            if (! isset(self::VARIAVEIS[$v])) {
+                $p[] = "Cabeçalho: informação desconhecida {{$v}}.";
+            } elseif (! in_array($v, $permitidas, true)) {
+                $p[] = "Cabeçalho: {{$v}} só vale em aviso de cobrança.";
+            }
+        }
+        if (preg_match('/[{}]/', preg_replace('/\{[a-z_]+\}/', '', $c))) {
+            $p[] = 'Cabeçalho: chave { ou } sobrando.';
+        }
+        if (preg_match('/[\n\r*_~`]/', $c)) {
+            $p[] = 'O cabeçalho não aceita quebra de linha nem negrito/itálico (ele já sai em negrito).';
+        }
+        if (preg_match('/\p{Extended_Pictographic}/u', $c)) {
+            $p[] = 'O cabeçalho não aceita emoji.';
+        }
+
+        return $p;
+    }
+
+    /** problemas do rodapé (até 60 caracteres, sem informação variável) */
+    public static function problemasRodape(?string $rod): array
+    {
+        $r = trim((string) $rod);
+        if ($r === '') {
+            return [];
+        }
+        $p = [];
+        if (mb_strlen($r) > self::MAX_LINHA) {
+            $p[] = 'Rodapé longo demais: até '.self::MAX_LINHA.' caracteres.';
+        }
+        if (preg_match('/[{}]/', $r)) {
+            $p[] = 'O rodapé não aceita informação variável: escreva um texto fixo.';
+        }
+        if (preg_match('/[\n\r]/', $r)) {
+            $p[] = 'O rodapé é uma linha só.';
+        }
+
+        return $p;
+    }
+
     /** exemplos de cada informação (prévia e exemplo obrigatório da Meta) */
     public static function exemplos(?Empresa $e = null): array
     {
@@ -264,6 +324,14 @@ class Modelos
             $trocado = preg_replace_callback('/(t)oque no botão abaixo/iu', fn ($x) => ($x[1] === 'T' ? 'Acesse: ' : 'acesse: ').$link, $t, 1, $n);
             $t = $n ? $trocado : rtrim($t)."\n\n".self::BOTAO.': '.$link;
         }
+        // no envio manual não há cabeçalho nem rodapé: o cabeçalho vai em negrito no começo, o rodapé no fim
+        $troca = fn (string $x) => preg_replace_callback('/\{([a-z_]+)\}/', fn ($y) => (string) ($valores[$y[1]] ?? $y[0]), $x);
+        if (filled($m->cabecalho)) {
+            $t = '*'.trim($troca($m->cabecalho)).'*'."\n\n".$t;
+        }
+        if (filled($m->rodape)) {
+            $t = rtrim($t)."\n\n".trim($m->rodape);
+        }
 
         return $t;
     }
@@ -274,6 +342,14 @@ class Modelos
         return array_map(fn ($v) => (string) ($valores[$v] ?? '-'), self::variaveis($m->texto));
     }
 
+    /** valor da informação do cabeçalho (null = cabeçalho sem informação) */
+    public static function parametroCabecalho(ModeloMensagem $m, array $valores): ?string
+    {
+        $v = self::variaveis((string) $m->cabecalho)[0] ?? null;
+
+        return $v === null ? null : (string) ($valores[$v] ?? '-');
+    }
+
     /** definição do modelo para criar na Meta */
     public static function definicao(ModeloMensagem $m, string $baseLink): array
     {
@@ -282,7 +358,18 @@ class Modelos
         if ($vars = self::variaveis($m->texto)) {
             $corpo['example'] = ['body_text' => [array_map(fn ($v) => (string) ($ex[$v] ?? $v), $vars)]];
         }
-        $comp = [$corpo];
+        $comp = [];
+        if (filled($m->cabecalho)) {
+            $cab = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => self::paraMeta(trim($m->cabecalho))];
+            if ($v = self::variaveis($m->cabecalho)[0] ?? null) {
+                $cab['example'] = ['header_text' => [(string) ($ex[$v] ?? $v)]];
+            }
+            $comp[] = $cab;
+        }
+        $comp[] = $corpo;
+        if (filled($m->rodape)) {
+            $comp[] = ['type' => 'FOOTER', 'text' => trim($m->rodape)];
+        }
         if ($m->botao && $m->finalidade === 'cobranca') {
             $base = rtrim($baseLink, '/');
             $comp[] = ['type' => 'BUTTONS', 'buttons' => [['type' => 'URL', 'text' => self::BOTAO, 'url' => $base.'/c/{{1}}', 'example' => [$base.'/c/exemplo']]]];

@@ -200,7 +200,7 @@ class Regua
                 throw new WhatsAppErro($semModelo);
             }
             $api ??= new WhatsAppCliente(Integracao::whatsapp() ?? throw new WhatsAppErro('WhatsApp não configurado.'));
-            $id = $api->enviarModelo($celular, $modelo->nome, Modelos::parametros($modelo, $valores), $modelo->botao && $modelo->finalidade === 'cobranca' ? $c->token : null);
+            $id = $api->enviarModelo($celular, $modelo->nome, Modelos::parametros($modelo, $valores), $modelo->botao && $modelo->finalidade === 'cobranca' ? $c->token : null, Modelos::parametroCabecalho($modelo, $valores));
         } catch (WhatsAppErro $e) {
             if (in_array($a->situacao, self::SAIU, true)) {
                 $a->setAttribute('erro', mb_substr($e->getMessage(), 0, 255)); // reenvio falhou: o aviso já tinha saído, fica como estava

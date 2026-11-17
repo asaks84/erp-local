@@ -12,6 +12,7 @@ export const SITUACAO = {
 export const Selo = ({ s }) => <span className={`selo ${(SITUACAO[s] || [])[1] || ''}`}>{(SITUACAO[s] || [s])[0]}</span>
 const quando = (d) => (d < 0 ? `${-d} dia(s) antes` : d === 0 ? 'no dia' : `${d} dia(s) depois`)
 const MAX_TEXTO = 1024
+const MAX_LINHA = 60
 
 const TAGS = /\{([a-z_]+)\}/g
 const variaveis = (t) => [...t.matchAll(TAGS)].map((m) => m[1])
@@ -39,13 +40,55 @@ function problemas(texto, finalidade, permitidasPropaganda, conhecidas) {
     return p
 }
 
+/** o mesmo que Modelos::problemasCabecalho() e problemasRodape() */
+function problemasCabecalho(cab, finalidade, permitidasPropaganda, conhecidas) {
+    const c = (cab || '').trim()
+    if (!c) return []
+    const p = []
+    if (c.length > MAX_LINHA) p.push(`Cabeçalho longo demais: até ${MAX_LINHA} caracteres.`)
+    const vs = variaveis(c)
+    if (vs.length > 1) p.push('O cabeçalho aceita no máximo uma informação variável.')
+    const permitidas = finalidade === 'propaganda' ? permitidasPropaganda : conhecidas
+    ;[...new Set(vs)].forEach((v) => {
+        if (!conhecidas.includes(v)) p.push(`Cabeçalho: informação desconhecida {${v}}.`)
+        else if (!permitidas.includes(v)) p.push(`Cabeçalho: {${v}} só vale em aviso de cobrança.`)
+    })
+    if (/[{}]/.test(c.replace(/\{[a-z_]+\}/g, ''))) p.push('Cabeçalho: chave { ou } sobrando.')
+    if (/[\n\r*_~`]/.test(c)) p.push('O cabeçalho não aceita quebra de linha nem negrito/itálico (ele já sai em negrito).')
+    if (/\p{Extended_Pictographic}/u.test(c)) p.push('O cabeçalho não aceita emoji.')
+    return p
+}
+function problemasRodape(rod) {
+    const r = (rod || '').trim()
+    if (!r) return []
+    const p = []
+    if (r.length > MAX_LINHA) p.push(`Rodapé longo demais: até ${MAX_LINHA} caracteres.`)
+    if (/[{}]/.test(r)) p.push('O rodapé não aceita informação variável: escreva um texto fixo.')
+    if (/[\n\r]/.test(r)) p.push('O rodapé é uma linha só.')
+    return p
+}
+
+/** *negrito*, _itálico_, ~tachado~ e ```mono``` como no WhatsApp */
+function formatado(texto) {
+    return texto.split(/(```[^`]+```|\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g).map((pedaco, i) => {
+        if (/^```[^`]+```$/.test(pedaco)) return <code key={i}>{pedaco.slice(3, -3)}</code>
+        if (/^\*[^*\n]+\*$/.test(pedaco)) return <strong key={i}>{pedaco.slice(1, -1)}</strong>
+        if (/^_[^_\n]+_$/.test(pedaco)) return <em key={i}>{pedaco.slice(1, -1)}</em>
+        if (/^~[^~\n]+~$/.test(pedaco)) return <s key={i}>{pedaco.slice(1, -1)}</s>
+        return pedaco
+    })
+}
+
 /** como a mensagem aparece no WhatsApp do cliente (com valores de exemplo) */
-export function Previa({ texto, botao, rotuloBotao = 'Ver cobrança', exemplos }) {
-    const pronto = texto.replace(TAGS, (m, v) => (exemplos[v] !== undefined ? exemplos[v] : m))
+export function Previa({ texto, cabecalho, rodape, botao, rotuloBotao = 'Ver cobrança', exemplos }) {
+    const trocar = (t) => (t || '').replace(TAGS, (m, v) => (exemplos[v] !== undefined ? exemplos[v] : m))
+    const pronto = trocar(texto)
     return (
         <div className="wa-previa">
             <div className="wa-balao">
-                <div className="wa-texto">{pronto || <span className="text-muted">A mensagem aparece aqui.</span>}</div>
+                {cabecalho?.trim() && <div className="wa-cabecalho">{trocar(cabecalho)}</div>}
+                <div className="wa-texto">{pronto ? formatado(pronto) : <span className="text-muted">A mensagem aparece aqui.</span>}</div>
+                {rodape?.trim() && <div className="wa-rodape">{rodape}</div>}
                 <div className="wa-hora">09:00</div>
                 {botao && <div className="wa-botao">↗ {rotuloBotao}</div>}
             </div>
@@ -57,22 +100,29 @@ function Editor({ modelo, novo, props, aoCancelar }) {
     const { variaveis: lista, variaveis_propaganda: vProp, exemplos, finalidades, botao: rotuloBotao, api } = props
     const form = useForm({
         rotulo: modelo?.rotulo || '', finalidade: modelo?.finalidade || 'cobranca', texto: modelo?.texto || 'Olá, {nome}! Aqui é do {empresa}. ',
-        botao: modelo ? modelo.botao : true, enviar: false,
+        botao: modelo ? modelo.botao : true, cabecalho: modelo?.cabecalho || '', rodape: modelo?.rodape || '', enviar: false,
     })
+    const cab = useRef(null)
+    const alvo = useRef('texto') // onde entra a informação clicada: no texto ou no cabeçalho (o último com o cursor)
     const [descartar, setDescartar] = useState(false)
     const [enviando, setEnviando] = useState(false)
     const area = useRef(null)
     const conhecidas = lista.map((v) => v.chave)
-    const erros = useMemo(() => problemas(form.data.texto, form.data.finalidade, vProp, conhecidas), [form.data.texto, form.data.finalidade])
+    const erros = useMemo(() => [
+        ...problemasCabecalho(form.data.cabecalho, form.data.finalidade, vProp, conhecidas),
+        ...problemas(form.data.texto, form.data.finalidade, vProp, conhecidas),
+        ...problemasRodape(form.data.rodape),
+    ], [form.data.texto, form.data.cabecalho, form.data.rodape, form.data.finalidade])
     const chips = form.data.finalidade === 'propaganda' ? lista.filter((v) => vProp.includes(v.chave)) : lista
 
     const inserir = (chave) => {
-        const el = area.current
+        const campo = alvo.current
+        const el = campo === 'cabecalho' ? cab.current : area.current
         const tag = `{${chave}}`
-        const t = form.data.texto
+        const t = form.data[campo]
         const ini = el ? el.selectionStart : t.length
         const fim = el ? el.selectionEnd : t.length
-        form.setData('texto', t.slice(0, ini) + tag + t.slice(fim))
+        form.setData(campo, t.slice(0, ini) + tag + t.slice(fim))
         requestAnimationFrame(() => { if (el) { el.focus(); el.setSelectionRange(ini + tag.length, ini + tag.length) } })
     }
     const salvar = (enviar) => {
@@ -95,19 +145,25 @@ function Editor({ modelo, novo, props, aoCancelar }) {
             </div>
             <div className="row g-3">
                 <div className="col-md-7">
-                    <div className="small fw-semibold mb-1">Inserir informação</div>
+                    <Campo rotulo="Cabeçalho (opcional)" value={form.data.cabecalho} maxLength={80} ref={cab} onFocus={() => { alvo.current = 'cabecalho' }}
+                        onChange={(e) => form.setData('cabecalho', e.target.value)} erro={form.errors.cabecalho}
+                        ajuda={`Linha em negrito no topo. Até ${MAX_LINHA} caracteres, uma informação no máximo, sem emoji. (${form.data.cabecalho.trim().length}/${MAX_LINHA})`} />
+                    <div className="small fw-semibold mb-1">Inserir informação <span className="fw-normal text-muted">(entra onde está o cursor: no cabeçalho ou no texto)</span></div>
                     <div className="d-flex flex-wrap gap-1 mb-2">
                         {chips.map((v) => (
                             <button type="button" key={v.chave} className="btn btn-sm btn-outline-secondary" title={v.rotulo} onClick={() => inserir(v.chave)}>{v.rotulo}</button>
                         ))}
                     </div>
                     <textarea ref={area} className={`form-control${form.errors.texto ? ' is-invalid' : ''}`} rows={7} value={form.data.texto} aria-label="Texto da mensagem"
-                        onChange={(e) => form.setData('texto', e.target.value)} />
+                        onFocus={() => { alvo.current = 'texto' }} onChange={(e) => form.setData('texto', e.target.value)} />
                     <div className="d-flex justify-content-between form-text">
                         <span>As informações entre chaves são trocadas pelos dados de cada cliente.</span>
                         <span className={form.data.texto.trim().length > MAX_TEXTO ? 'text-danger' : ''}>{form.data.texto.trim().length}/{MAX_TEXTO}</span>
                     </div>
+                    <div className="form-text mt-0">Formatação como no WhatsApp: *negrito*, _itálico_, ~tachado~.</div>
                     {form.errors.texto && <div className="text-danger small">{form.errors.texto}</div>}
+                    <Campo className="mt-3" rotulo="Rodapé (opcional)" value={form.data.rodape} maxLength={80} onChange={(e) => form.setData('rodape', e.target.value)} erro={form.errors.rodape}
+                        ajuda={`Linha cinza no fim. Até ${MAX_LINHA} caracteres, texto fixo (sem informação variável). (${form.data.rodape.trim().length}/${MAX_LINHA})`} />
                     {erros.length > 0 && (
                         <ul className="small text-danger-emphasis mt-2 mb-0 ps-3">{erros.map((p) => <li key={p}>{p}</li>)}</ul>
                     )}
@@ -125,7 +181,8 @@ function Editor({ modelo, novo, props, aoCancelar }) {
                 </div>
                 <div className="col-md-5">
                     <div className="small fw-semibold mb-1">Como o cliente vê (exemplo)</div>
-                    <Previa texto={form.data.texto} botao={form.data.finalidade === 'cobranca' && form.data.botao} rotuloBotao={rotuloBotao} exemplos={exemplos} />
+                    <Previa texto={form.data.texto} cabecalho={form.data.cabecalho} rodape={form.data.rodape} botao={form.data.finalidade === 'cobranca' && form.data.botao} rotuloBotao={rotuloBotao} exemplos={exemplos} />
+                    <div className="form-text">No envio manual (wa.me) não existe cabeçalho nem rodapé: o cabeçalho vai em negrito no começo do texto e o rodapé no fim.</div>
                     {form.data.texto.includes('{valor_com_desconto}') || form.data.texto.includes('{desconto_ate}')
                         ? <div className="form-text">Sem desconto de pontualidade (opção desligada, cobrança atrasada ou com desconto negociado), "valor pagando em dia" mostra o valor cheio e a data limite é o vencimento.</div>
                         : null}
@@ -182,8 +239,12 @@ function Mensagem({ g, props }) {
                         )}
                         {ult.situacao === 'PENDING' && <p className="small text-muted">A Meta costuma analisar em minutos ou poucas horas. A situação atualiza sozinha ao abrir esta tela.</p>}
                         <div className="row g-3">
-                            <div className="col-md-7"><div className="small text-pre-wrap border rounded p-2">{ult.texto}</div></div>
-                            <div className="col-md-5"><Previa texto={ult.texto} botao={ult.finalidade === 'cobranca' && ult.botao} rotuloBotao={props.botao} exemplos={props.exemplos} /></div>
+                            <div className="col-md-7">
+                                {ult.cabecalho && <div className="small mb-2"><span className="text-muted">Cabeçalho:</span> {ult.cabecalho}</div>}
+                                <div className="small text-pre-wrap border rounded p-2">{ult.texto}</div>
+                                {ult.rodape && <div className="small mt-2"><span className="text-muted">Rodapé:</span> {ult.rodape}</div>}
+                            </div>
+                            <div className="col-md-5"><Previa texto={ult.texto} cabecalho={ult.cabecalho} rodape={ult.rodape} botao={ult.finalidade === 'cobranca' && ult.botao} rotuloBotao={props.botao} exemplos={props.exemplos} /></div>
                         </div>
                         <div className="d-flex justify-content-end mt-3 pt-3 border-top">
                             <button type="button" className="btn btn-primary" onClick={() => router.post(`/configuracoes/whatsapp/mensagens/grupo/${g.grupo}/versao`, {}, { preserveScroll: true })}>

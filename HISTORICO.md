@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 16/11/2026 — Mensagens do WhatsApp: cabeçalho e rodapé
+
+- No editor de mensagens: **cabeçalho** (linha em negrito no topo, até 60 caracteres, até uma informação variável, sem emoji nem formatação) e **rodapé** (linha cinza no fim, até 60 caracteres, texto fixo). Vão para a Meta como HEADER (texto) e FOOTER; no envio pela API, o valor da informação do cabeçalho vai junto.
+- No envio manual (wa.me) não há cabeçalho nem rodapé: o cabeçalho entra em negrito no começo do texto e o rodapé no fim.
+- Os botões de informação entram onde está o cursor (cabeçalho ou texto). A prévia mostra *negrito*, _itálico_ e ~tachado~ como no WhatsApp.
+- Mídia no cabeçalho (imagem, documento) fica para a etapa de marketing.
+- Migration `2026_11_24_000002_add_cabecalho_rodape_to_modelos_mensagem`. 1 teste novo (212).
+
 ## 16/11/2026 — WhatsApp: área para editar as mensagens
 
 - **Configurações › WhatsApp › Mensagens** (`/configuracoes/whatsapp/mensagens`): criar e editar as mensagens do WhatsApp antes de valerem. Nome (só no sistema), tipo (aviso de cobrança ou propaganda), texto com botões para inserir as informações ({nome}, {empresa}, {valor}, {vencimento}, {valor_com_desconto}, {desconto_ate}, {placa}), botão "Ver cobrança" opcional e prévia em balão de WhatsApp com um cliente de exemplo.

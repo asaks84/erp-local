@@ -57,7 +57,7 @@ class MensagemController extends Controller
                     ->filter(fn ($d) => collect($passos)->firstWhere('dias', $d)['ativo'] ?? false)->values(),
                 'versoes' => $v->map(fn (ModeloMensagem $m) => [
                     'id' => $m->id, 'versao' => $m->versao, 'nome' => $m->nome, 'rotulo' => $m->rotulo, 'finalidade' => $m->finalidade, 'categoria' => $m->categoria,
-                    'texto' => $m->texto, 'botao' => $m->botao, 'situacao' => $m->situacao, 'motivo' => $m->motivo,
+                    'cabecalho' => $m->cabecalho, 'texto' => $m->texto, 'rodape' => $m->rodape, 'botao' => $m->botao, 'situacao' => $m->situacao, 'motivo' => $m->motivo,
                     'enviado_em' => $m->enviado_em?->format('Y-m-d H:i'), 'atualizado_em' => $m->atualizado_em?->format('Y-m-d H:i'),
                 ])->values(),
             ];
@@ -70,6 +70,7 @@ class MensagemController extends Controller
             'exemplos' => Modelos::exemplos(),
             'finalidades' => Modelos::FINALIDADES,
             'max' => Modelos::MAX_TEXTO,
+            'max_linha' => Modelos::MAX_LINHA,
             'botao' => Modelos::BOTAO,
             'api' => (bool) $this->api(),
             'erro_meta' => $erro,
@@ -84,8 +85,13 @@ class MensagemController extends Controller
             'finalidade' => ['required', Rule::in(array_keys(Modelos::FINALIDADES))],
             'texto' => ['required', 'string', 'max:'.(Modelos::MAX_TEXTO + 50)],
             'botao' => ['boolean'],
+            'cabecalho' => ['nullable', 'string', 'max:80'],
+            'rodape' => ['nullable', 'string', 'max:80'],
         ], ['rotulo.required' => 'Dê um nome para a mensagem.', 'texto.required' => 'Escreva o texto da mensagem.']);
         $d['texto'] = trim(str_replace(["\r\n", "\t"], ["\n", ' '], $d['texto']));
+        foreach (['cabecalho', 'rodape'] as $k) {
+            $d[$k] = filled($d[$k] ?? null) ? trim($d[$k]) : null;
+        }
         $d['botao'] = $d['finalidade'] === 'cobranca' && (bool) ($d['botao'] ?? false);
         $d['categoria'] = $d['finalidade'] === 'propaganda' ? 'MARKETING' : 'UTILITY';
 
@@ -94,8 +100,10 @@ class MensagemController extends Controller
 
     private function conferir(array $d): void
     {
-        if ($p = Modelos::problemas($d['texto'], $d['finalidade'])) {
-            throw ValidationException::withMessages(['texto' => $p[0]]);
+        $erros = array_filter(['cabecalho' => Modelos::problemasCabecalho($d['cabecalho'], $d['finalidade'])[0] ?? null,
+            'texto' => Modelos::problemas($d['texto'], $d['finalidade'])[0] ?? null, 'rodape' => Modelos::problemasRodape($d['rodape'])[0] ?? null]);
+        if ($erros) {
+            throw ValidationException::withMessages($erros);
         }
     }
 
@@ -103,6 +111,11 @@ class MensagemController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $d = $this->dados($request);
+        foreach (['cabecalho', 'rodape'] as $k) {
+            if ($d[$k] !== null && mb_strlen($d[$k]) > Modelos::MAX_LINHA) {
+                throw ValidationException::withMessages([$k => 'Até '.Modelos::MAX_LINHA.' caracteres.']);
+            }
+        }
         $m = DB::transaction(function () use ($d) {
             $m = ModeloMensagem::create($d + ['nome' => Modelos::nomeNovo($d['rotulo'], $d['finalidade']), 'situacao' => 'rascunho', 'versao' => 1]);
             $m->update(['grupo' => $m->id]);
@@ -130,6 +143,14 @@ class MensagemController extends Controller
         }
         if ($request->boolean('enviar')) {
             $this->conferir($d);
+        }
+        // cabeçalho e rodapé maiores que a coluna: só no envio para a Meta é que barra (o rascunho guarda até 60)
+        if (! $request->boolean('enviar')) {
+            foreach (['cabecalho', 'rodape'] as $k) {
+                if ($d[$k] !== null && mb_strlen($d[$k]) > Modelos::MAX_LINHA) {
+                    throw ValidationException::withMessages([$k => 'Até '.Modelos::MAX_LINHA.' caracteres.']);
+                }
+            }
         }
         $mensagem->update($d);
         // o nome é de todas as versões
@@ -167,7 +188,7 @@ class MensagemController extends Controller
             $ult = $v->first();
             $n = $ult->versao + 1;
             ModeloMensagem::create(['grupo' => $grupo, 'versao' => $n, 'nome' => Modelos::nomeVersao($v->last(), $n), 'situacao' => 'rascunho']
-                + $ult->only(['rotulo', 'finalidade', 'categoria', 'texto', 'botao']));
+                + $ult->only(['rotulo', 'finalidade', 'categoria', 'cabecalho', 'texto', 'rodape', 'botao']));
         }
 
         return redirect('/configuracoes/whatsapp/mensagens?grupo='.$grupo);
