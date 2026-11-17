@@ -210,6 +210,11 @@ body.pdv { background: var(--bs-body-bg); }
 }
 .pdv-placa { font-size: 1.75rem; font-weight: 700; letter-spacing: .12em; text-align: center; text-transform: uppercase; }
 .pdv-troco { font-size: 1.25rem; margin-top: 8px; }
+.pdv-troco-final { text-align: center; font-size: 2rem; line-height: 1.2; padding: 12px; margin-bottom: 8px; border-radius: 8px; background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis);
+    .small { font-size: 1rem; }
+}
+.pdv-valor { font-size: 2rem; font-weight: 700; text-align: center; }
+.pdv-resumo-fixo { position: sticky; top: 61px; z-index: 5; background: var(--bs-body-bg); padding-bottom: 8px; }
 .pdv-camera { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; object-fit: cover; }
 .pdv-previa-rolagem { max-height: 45vh; overflow: auto; margin-bottom: 8px; background: var(--bs-tertiary-bg); border-radius: 8px; padding: 8px 0;
     .pdv-ticket { margin-bottom: 0; }

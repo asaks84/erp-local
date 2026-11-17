@@ -70,7 +70,7 @@ export function Previa({ linhas, qr, colunas = 48 }) {
  * "Deseja imprimir?" (decisão 8 do plano: sempre pergunta). montar(opcoes) devolve os bytes ESC/POS;
  * previa é o mesmo papel na tela.
  */
-export function PerguntaImprimir({ titulo, montar, previa, onFim }) {
+export function PerguntaImprimir({ titulo, montar, previa, onFim, destaque = null }) {
     const [msg, setMsg] = useState(null)
     const [ocupado, setOcupado] = useState(false)
     const via = preferencia.get().via
@@ -81,6 +81,7 @@ export function PerguntaImprimir({ titulo, montar, previa, onFim }) {
     }
     return (
         <Folha titulo={titulo}>
+            {destaque}
             <div className="pdv-previa-rolagem">{previa}</div>
             {!via && <div className="small text-muted mb-2">Este celular ainda não tem impressora testada: vai pela impressão do Android. Configure em Início › Teste de impressão.</div>}
             {via && <div className="small text-muted mb-2">Pelo {NOMES_VIA[via]}.</div>}

@@ -4,6 +4,10 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — PDV: saída da estadia em etapas
+
+- A saída no PDV mostra uma decisão por vez, com o resumo e o **A pagar** fixos no alto: (1) convênio, ticket perdido e **Pagar agora / Na conta de um cliente / Mensalista**; (2) forma de pagamento (ou o cliente da conta); (3) em dinheiro, **Quanto o cliente deu?** (valor exato e notas prontas). Confirmado o valor, vai o PIN e aparece o **troco** em destaque junto com "Imprimir o recibo?". "Voltar" volta uma etapa. Mesmas regras de antes.
+
 ## 17/11/2026 — PDV, parte 8.2: estadia no PDV
 
 - **PDV › Estadia:** entrada (placa, modelo e tamanho vindos do cadastro ou da última visita; aviso de mensalista e de veículo já no pátio; marcar diária, paga agora ou na saída; troco), saída (QR pela câmera, número ou placa; convênio escolhido na saída; paga agora, na conta de um cliente ou mensalista; ticket perdido com nome e documento), lista do pátio e cancelar entrada com PIN de gerente. Cada ação pede PIN e pergunta se imprime o ticket ou o recibo.
