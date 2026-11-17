@@ -109,7 +109,7 @@ function Entrada({ tipos, convenios, formas }) {
                         <div className="col-md-3">
                             <Campo as="select" rotulo="Convênio" value={data.convenio_id} onChange={(e) => setData('convenio_id', e.target.value)} erro={errors.convenio_id}>
                                 <option value="">Sem convênio</option>
-                                {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.resumo}</option>)}
+                                {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                             </Campo>
                         </div>
                     )}
@@ -208,7 +208,7 @@ function Saida({ estadia, formas, convenios, onFechar }) {
             {convenios.length > 0 && !(estadia.pago_entrada > 0) && (
                 <Campo as="select" rotulo="Convênio" value={form.data.convenio_id} onChange={(e) => form.setData('convenio_id', e.target.value)} erro={form.errors.convenio_id}>
                     <option value="">Sem convênio</option>
-                    {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.resumo}</option>)}
+                    {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </Campo>
             )}
             {erroCalc && <div className="alert alert-danger py-2">{erroCalc}</div>}

@@ -88,7 +88,7 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
                     {convenios.length > 0 && (
                         <Campo as="select" rotulo="Convênio" value={data.convenio_id} onChange={(e) => setData('convenio_id', e.target.value)} erro={errors.convenio_id}>
                             <option value="">Sem convênio</option>
-                            {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome} · {c.resumo}</option>)}
+                            {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                         </Campo>
                     )}
                     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
+import { cursorNoFim } from '../../Components/CampoValor'
 import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasTicket, moeda } from '../comum'
 import { montarTicket, ticketDaEstadia } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
@@ -103,12 +104,12 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                     {semPlaca ? (
                         <>
                             <label className="form-label fw-semibold mb-1" htmlFor="ident">Identificação (sem placa)</label>
-                            <input id="ident" className="form-control form-control-lg" value={identificacao} maxLength={40} autoFocus onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: bicicleta azul" />
+                            <input id="ident" enterKeyHint="next" onKeyDown={(e) => { if (e.key === 'Enter' && placaOk && !info?.no_patio) ir('veiculo') }} className="form-control form-control-lg" value={identificacao} maxLength={40} autoFocus onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: bicicleta azul" />
                         </>
                     ) : (
                         <>
                             <label className="form-label fw-semibold mb-1" htmlFor="placa">Placa</label>
-                            <input id="placa" className="form-control form-control-lg pdv-placa" value={placa} autoComplete="off" autoCapitalize="characters" autoFocus
+                            <input id="placa" enterKeyHint="next" onKeyDown={(e) => { if (e.key === 'Enter' && placaOk && !info?.no_patio) ir('veiculo') }} className="form-control form-control-lg pdv-placa" value={placa} autoComplete="off" autoCapitalize="characters" autoFocus
                                 onChange={(e) => { setPlaca(soPlaca(e.target.value)); setModelo('') }} />
                         </>
                     )}
@@ -129,7 +130,7 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
             {etapa === 'veiculo' && (
                 <div className="mt-2">
                     <label className="form-label fw-semibold mb-1" htmlFor="modelo">Modelo</label>
-                    <input id="modelo" className="form-control form-control-lg mb-3" value={modelo} maxLength={40} onChange={(e) => setModelo(e.target.value)} placeholder="Ex.: Gol branco" />
+                    <input id="modelo" className="form-control form-control-lg mb-3" value={modelo} maxLength={40} autoFocus enterKeyHint="done" onFocus={(e) => cursorNoFim(e.target)} onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }} onChange={(e) => setModelo(e.target.value)} placeholder="Ex.: Gol branco" />
                     <div className="fw-semibold mb-1">Tamanho</div>
                     <div className="pdv-opcoes">
                         {opcoes.tipos.map((t) => <button key={t.id} type="button" className={`btn btn-lg ${tipo === t.id ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { setTipo(t.id); setPacote(null) }}>{t.nome}</button>)}

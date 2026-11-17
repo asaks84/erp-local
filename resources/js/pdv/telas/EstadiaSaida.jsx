@@ -134,7 +134,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                             <label className="form-label small mb-1" htmlFor="convenio">Convênio</label>
                             <select id="convenio" className="form-select form-select-lg" value={convenio ?? ''} onChange={(ev) => setConvenio(ev.target.value ? Number(ev.target.value) : '')}>
                                 <option value="">Sem convênio</option>
-                                {opcoes.convenios.map((v) => <option key={v.id} value={v.id}>{v.nome} · {v.resumo}</option>)}
+                                {opcoes.convenios.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
                             </select>
                         </div>
                     )}
@@ -145,7 +145,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                     </div>
                     {perdido && (
                         <div className="mb-3">
-                            <input className="form-control mb-2" placeholder="Nome de quem está retirando" aria-label="Nome de quem está retirando" value={retirada.nome} maxLength={80} onChange={(ev) => setRetirada({ ...retirada, nome: ev.target.value })} />
+                            <input className="form-control mb-2" autoFocus placeholder="Nome de quem está retirando" aria-label="Nome de quem está retirando" value={retirada.nome} maxLength={80} onChange={(ev) => setRetirada({ ...retirada, nome: ev.target.value })} />
                             <input className="form-control" placeholder="Documento (RG, CPF ou CNH)" aria-label="Documento" value={retirada.documento} maxLength={30} onChange={(ev) => setRetirada({ ...retirada, documento: ev.target.value })} />
                         </div>
                     )}
@@ -222,7 +222,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
             {cancelando && (
                 <Folha titulo={`Cancelar a entrada de ${e.rotulo}`} onFechar={() => setCancelando(false)}>
                     <p className="small text-muted">Só para entrada lançada por engano. Pede o PIN de um gerente; fica registrado com o motivo.</p>
-                    <input className="form-control form-control-lg mb-2" placeholder="Motivo" aria-label="Motivo" value={motivo} maxLength={200} onChange={(ev) => setMotivo(ev.target.value)} />
+                    <input className="form-control form-control-lg mb-2" autoFocus placeholder="Motivo" aria-label="Motivo" value={motivo} maxLength={200} onChange={(ev) => setMotivo(ev.target.value)} />
                     <div className="d-grid gap-2">
                         <button type="button" className="btn btn-danger btn-lg" disabled={!motivo.trim() || enviando} onClick={cancelar}>Cancelar entrada</button>
                         <button type="button" className="btn btn-outline-secondary btn-lg" onClick={() => setCancelando(false)}>Voltar</button>
