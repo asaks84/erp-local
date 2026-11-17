@@ -66,7 +66,6 @@ class Cobrancas
         return $linhas->sortBy('cliente')->values();
     }
 
-    /** Emite a cobrança do mês para um cliente com todas as ordens em aberto. */
     /**
      * Desconto negociado na cobrança (só a unitária): fica gravado com motivo e quem deu; o total das
      * ordens não muda. Vale para o boleto (total em aberto menos o desconto). 0 tira o desconto.
@@ -97,18 +96,24 @@ class Cobrancas
         Atividades::registrar('cobranca_desconto', 'cobrança '.$cob->numero.': '.($desconto > 0 ? 'desconto de '.Formato::moeda($desconto).' ('.$cob->desconto_motivo.')' : 'desconto retirado'));
     }
 
-    public static function emitir(Cliente $cliente, string $competencia, ?string $vencimento = null): Cobranca
+    /**
+     * Emite a cobrança do mês para um cliente com todas as ordens em aberto.
+     * $extra: cobrança a mais no mês (fechamento de convênio a cada X dias ou semanal); $somenteOrdens: só essas ordens.
+     */
+    public static function emitir(Cliente $cliente, string $competencia, ?string $vencimento = null, bool $extra = false, ?array $somenteOrdens = null): Cobranca
     {
         if (! Mensalidades::competenciaValida($competencia)) {
             self::erro('competencia', 'Mês inválido.');
         }
 
-        return DB::transaction(function () use ($cliente, $competencia, $vencimento) {
+        return DB::transaction(function () use ($cliente, $competencia, $vencimento, $extra, $somenteOrdens) {
             Cliente::whereKey($cliente->id)->lockForUpdate()->first();
-            if (Cobranca::where('cliente_id', $cliente->id)->where('competencia', $competencia)->where('situacao', '<>', 'cancelada')->exists()) {
+            if (! $extra && Cobranca::where('cliente_id', $cliente->id)->where('competencia', $competencia)->where('situacao', '<>', 'cancelada')->exists()) {
                 self::erro('competencia', "{$cliente->nome} já tem cobrança de ".Carbon::parse($competencia.'-01')->format('m/Y').'. Cancele a anterior para emitir de novo.');
             }
-            $ordens = OrdemServico::abertas()->where('cliente_id', $cliente->id)->orderByRaw('COALESCE(vencimento, data)')->orderBy('numero')->lockForUpdate()->get();
+            $ordens = OrdemServico::abertas()->where('cliente_id', $cliente->id)
+                ->when($somenteOrdens !== null, fn ($q) => $q->whereIn('id', $somenteOrdens ?: [0]))
+                ->orderByRaw('COALESCE(vencimento, data)')->orderBy('numero')->lockForUpdate()->get();
             if (! $ordens->contains(fn ($o) => $o->tipo !== 'credito')) {
                 self::erro('cliente', "{$cliente->nome} não tem contas em aberto.");
             }

@@ -2,6 +2,7 @@
 
 namespace App\Servicos;
 
+use App\Models\Cliente;
 use App\Models\Convenio;
 use App\Models\OrdemEtapa;
 use App\Models\OrdemServico;
@@ -38,7 +39,8 @@ class Vendas
 
     /**
      * $d: placa, tipo_veiculo_id (avulso), celular, servico_id, adicionais[], valor (serviço "até"),
-     *     convenio_id, destino (na_hora | entrega | conta), forma_pagamento_id, parcelas.
+     *     convenio_id, destino (na_hora | entrega | conta), conta_cliente_id (conta de outro cliente; padrão: o dono
+     *     do veículo), forma_pagamento_id, parcelas.
      * Devolve [ordens, mensagem].
      */
     public static function vender(array $d): array
@@ -68,8 +70,11 @@ class Vendas
         if (! in_array($destino, ['na_hora', 'entrega', 'conta'], true)) {
             self::erro('destino', 'Escolha quando o cliente paga.');
         }
-        if ($destino === 'conta' && ! $veiculo?->cliente_id) {
-            self::erro('destino', 'Só dá para lançar na conta de um cliente cadastrado.');
+        // "na conta": de qualquer cliente (ex.: mensalista que trouxe o carro do pai); padrão, o dono do veículo
+        $contaDe = null;
+        if ($destino === 'conta') {
+            $contaDe = Cliente::find((int) ($d['conta_cliente_id'] ?? 0) ?: (int) $veiculo?->cliente_id)
+                ?? self::erro('conta_cliente_id', 'Escolha o cliente que vai pagar (na conta de quem).');
         }
         if ($destino === 'na_hora' && empty($d['forma_pagamento_id'])) {
             self::erro('forma_pagamento_id', 'Escolha a forma de pagamento.');
@@ -79,31 +84,37 @@ class Vendas
         $dia = now();
         $celular = preg_replace('/\D/', '', (string) ($d['celular'] ?? '')) ?: null;
 
-        return DB::transaction(function () use ($placa, $veiculo, $tipoId, $principal, $adicionais, $convenio, $destino, $unidade, $dia, $celular, $d) {
+        return DB::transaction(function () use ($placa, $veiculo, $tipoId, $principal, $adicionais, $convenio, $destino, $contaDe, $unidade, $dia, $celular, $d) {
             $ordens = [];
             $pagaConvenio = [];
             $principalId = null;
             foreach ([$principal, ...$adicionais] as $s) {
                 $preco = Ordens::precoServico($s, $tipoId, $unidade, $dia, $s->id === $principal->id && isset($d['valor']) && $d['valor'] !== '' ? (float) $d['valor'] : null);
-                $div = Convenios::dividir($convenio, 'servico', $preco);
+                $div = Convenios::dividir($convenio, 'servico', $preco, 0, null, $s->id);
                 $base = [
                     'tipo' => 'servico', 'servico_id' => $s->id, 'principal_id' => $principalId, 'unidade_id' => $unidade,
                     'veiculo_id' => $veiculo?->id, 'placa' => $placa, 'tipo_veiculo_id' => $tipoId, 'celular' => $veiculo ? null : $celular,
                     'data' => $dia->toDateString(), 'vencimento' => $dia->toDateString(), 'etapa' => EtapasLavagem::PRIMEIRA,
                 ];
+                $desta = [];
                 if ($div['convenio'] > 0) {
-                    // o convênio paga: a ordem vai para a conta do convênio, com a placa de quem usou
-                    $o = Ordens::lancar($base + ['cliente_id' => $convenio->cliente_id, 'convenio_id' => $convenio->id, 'valor' => $div['convenio'],
+                    // o convênio paga (tudo ou até o limite): essa parte vai para a conta do convênio, com a placa de quem usou
+                    $desta[] = $o = Ordens::lancar($base + ['cliente_id' => $convenio->cliente_id, 'convenio_id' => $convenio->id, 'valor' => $div['convenio'],
                         'descricao' => mb_substr($s->nome.' · '.Placa::formatar($placa).' (convênio)', 0, 80)]);
                     $pagaConvenio[] = $o;
-                } elseif ($div['cliente'] > 0) {
-                    $o = Ordens::lancar($base + ['cliente_id' => $veiculo?->cliente_id, 'convenio_id' => $convenio?->id, 'valor' => $div['cliente'],
-                        'descricao' => mb_substr($s->nome.($div['desconto'] > 0 ? ' (desc. convênio '.Formato::moeda($div['desconto']).')' : ''), 0, 80)]);
-                } else {
-                    continue; // desconto de 100%: nada a cobrar
+                    $principalId ??= $o->id;
+                    $base['principal_id'] = $principalId; // o excedente fica ligado à venda
                 }
-                $principalId ??= $o->id;
-                $ordens[] = $o;
+                if ($div['cliente'] > 0) {
+                    // o que o convênio não cobre (ou o que passou do limite) fica com quem usou
+                    $desta[] = $o = Ordens::lancar($base + ['cliente_id' => $contaDe?->id ?? $veiculo?->cliente_id, 'convenio_id' => $convenio?->id, 'valor' => $div['cliente'],
+                        'descricao' => mb_substr($s->nome.($div['convenio'] > 0 ? ' (excedente do convênio)' : ''), 0, 80)]);
+                    $principalId ??= $o->id;
+                }
+                if (! $desta) {
+                    continue;
+                }
+                array_push($ordens, ...$desta);
             }
             if (! $ordens) {
                 self::erro('servico_id', 'Nada a cobrar nesta venda.');
@@ -115,7 +126,7 @@ class Vendas
                 Baixa::receberNaHora($doCliente, (int) $d['forma_pagamento_id'], (int) ($d['parcelas'] ?? 1));
                 $msg .= ' · pago '.Formato::moeda(collect($doCliente)->sum(fn ($o) => (float) $o->valor));
             } elseif ($doCliente && $destino === 'conta') {
-                $msg .= ' · na conta de '.$veiculo->cliente->nome;
+                $msg .= ' · na conta de '.$contaDe->nome;
             } elseif ($doCliente) {
                 $msg .= ' · paga na entrega';
             }

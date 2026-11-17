@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
 import CampoValor from '../../Components/CampoValor'
+import ContaDe from '../../Components/ContaDe'
 import { data as fData, moeda } from '../../lib/formato'
 import { placa as mPlaca, telefone } from '../../lib/mascaras'
 
@@ -10,8 +11,9 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
     const pix = formas.find((f) => f.tipo === 'pix') || formas[0]
     const { data, setData, post, processing, errors } = useForm({
         placa: '', tipo_veiculo_id: '', celular: '', servico_id: '', adicionais: [], valor: '', convenio_id: '',
-        destino: 'entrega', forma_pagamento_id: pix?.id ?? '', parcelas: 1,
+        destino: 'entrega', forma_pagamento_id: pix?.id ?? '', parcelas: 1, conta_cliente_id: '',
     })
+    const [contaDe, setContaDe] = useState(null) // cliente escolhido em "Na conta de" (padrão: o dono do veículo)
     const [info, setInfo] = useState(null) // {veiculo, avulso} ou null
 
     useEffect(() => {
@@ -23,6 +25,8 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
                     setInfo(j)
                     if (!j.veiculo && j.avulso) setData((d) => ({ ...d, tipo_veiculo_id: d.tipo_veiculo_id || j.avulso.tipo_id || '', celular: d.celular || j.avulso.celular || '' }))
                     if (j.veiculo?.cliente_id) setData((d) => ({ ...d, destino: 'conta' }))
+                    setContaDe(j.veiculo?.cliente_id ? { id: j.veiculo.cliente_id, nome: j.veiculo.cliente } : null)
+                    setData((d) => ({ ...d, conta_cliente_id: '' }))
                 }).catch(() => {})
         }, 250)
         return () => clearTimeout(t)
@@ -92,11 +96,14 @@ export default function Nova({ tipos, servicos, precos, convenios, formas }) {
                     {servico && tipoId && <p className="fw-semibold fs-5">Total: {moeda(total)}{convenio && <span className="small text-muted fw-normal"> · {convenio.resumo} (aplicado ao salvar)</span>}</p>}
 
                     <div className="btn-group w-100 mb-3 flex-wrap" role="group" aria-label="Quando paga">
-                        {[['entrega', 'Paga na entrega'], ['na_hora', 'Paga agora'], ...(veiculo?.cliente_id ? [['conta', 'Na conta do cliente']] : [])].map(([v, r]) => (
+                        {[['entrega', 'Paga na entrega'], ['na_hora', 'Paga agora'], ['conta', 'Na conta de um cliente']].map(([v, r]) => (
                             <button key={v} type="button" className={`btn ${data.destino === v ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setData('destino', v)}>{r}</button>
                         ))}
                     </div>
                     {errors.destino && <div className="text-danger small mb-2">{errors.destino}</div>}
+                    {data.destino === 'conta' && (
+                        <ContaDe key={contaDe?.id ?? 'novo'} cliente={contaDe} erro={errors.conta_cliente_id} onEscolher={(c) => { setContaDe(c); setData('conta_cliente_id', c.id) }} />
+                    )}
                     {data.destino === 'na_hora' && (
                         <div className="row g-2">
                             <div className="col-8">

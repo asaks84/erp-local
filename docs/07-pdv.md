@@ -2,6 +2,8 @@
 
 > Parte da documentação do ERP Local. Índice: [docs/README.md](README.md)
 
+O plano de construção (escopo da primeira versão, ordem e decisões em aberto) está em [15-plano-pdv.md](15-plano-pdv.md). O Local começa com **um aparelho** no balcão; o desenho já aceita mais.
+
 O PDV é online primeiro: o celular com 4G manda os eventos e o servidor calcula tudo; sem internet, ele só guarda eventos e envia quando a conexão volta. Não existe servidor local no pátio.
 
 **O que a API oferece ao PDV**

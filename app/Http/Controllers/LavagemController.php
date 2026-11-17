@@ -127,6 +127,7 @@ class LavagemController extends Controller
             'valor' => ['nullable', 'numeric', 'gt:0', 'max:99999'],
             'convenio_id' => ['nullable', 'integer'],
             'destino' => ['required', 'in:na_hora,entrega,conta'],
+            'conta_cliente_id' => ['nullable', 'integer'],
             'forma_pagamento_id' => ['nullable', 'integer'],
             'parcelas' => ['nullable', 'integer', 'min:1', 'max:24'],
         ], ['servico_id.required' => 'Escolha o serviço.', 'placa.required' => 'Informe a placa.']);

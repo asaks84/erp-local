@@ -402,6 +402,8 @@ trait ImportaCadastros
                 'ativo' => (bool) $c->cnv_ativo,
             ]);
             $conv->save();
+            // regras por serviço: refeitas do modo do sistema atual, a não ser que o convênio tenha sido editado no ERP
+            \App\Servicos\Convenios::refazerDoLegado($conv);
             $vistos[] = $conv->id;
         }
         $this->contar('Convênios', $n, $a);

@@ -4,6 +4,21 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — Convênio por serviço e "na conta de" outro cliente
+
+- **Na conta de outro cliente:** na venda de lavagem e na saída da estadia, "Na conta de um cliente" abre o campo **Na conta de** (vem com o dono do veículo; "trocar" busca qualquer cliente). A ordem fica com a placa que entrou e o cliente que paga. Ex.: mensalista traz o carro do pai e a lavagem vai para a mensalidade dele.
+- **Convênio por serviço:** a tela do convênio lista a Estadia e cada serviço (lavagens e adicionais); cada um marcado tem pagamento integral, pagamento parcial (o convênio paga até um valor; o que passar, quem usou paga) ou limite de tempo (só estadia). Serviço não marcado: quem usou paga. Sai o modo "desconto" (convênio nele aparece "Reconfigurar"). Na venda, quando o convênio paga só parte, o excedente vira uma conta de quem usou, ligada à mesma venda.
+- **Fechamento do convênio:** junto com a mensalidade, a cada X dias ou toda semana num dia. No dia (ou depois, se passou), o Início e a lista de convênios avisam com o botão **Gerar cobrança**. A cada X dias ou semanal, a cobrança leva só as contas do convênio (pode haver mais de uma no mês) e vence em 7 dias; com a mensalidade, a cobrança do mês. O aviso no PDV entra com o PDV.
+- **Paralelo:** o convênio continua vindo do sistema atual; as regras por serviço são montadas a partir do modo de lá a cada importação, até o convênio ser salvo no ERP.
+- Migration `2026_11_25_000001_convenio_por_servico` (tabela `convenio_regras`, fechamento no convênio; converte os convênios existentes). 5 testes novos (217).
+
+## 17/11/2026 — Etapa 8 (PDV): plano aberto
+
+- Novo documento `docs/15-plano-pdv.md`: o que já existe e é reaproveitado, escopo da primeira versão (um aparelho e uma impressora), como fica montado (app separado em `/pdv`, API com token do aparelho, servidor calcula tudo), Pix imediato com confirmação por consulta (o aviso do Inter exige mTLS, que a Hostinger não tem), caminhos de impressão conforme a impressora, ordem de construção (8.1 a 8.7) e as decisões em aberto.
+- Decisão: o PDV começa com um aparelho; o desenho segue aceitando vários.
+- Respostas do Cauê (decisões 1 a 4): celular Android (Samsung de entrada a comprar; testes no A56), impressora de 80 mm a comprar, balcão hoje todo em papel, PDV entra junto da virada. Decisões 5 a 7: mensalista não registra entrada; ticket perdido pela tabela normal com identificação de quem retira; conteúdo do ticket impresso (com tamanho do veículo e espaço para carimbo do convênio). Decisões 8 a 12: impressão perguntando, fechamento diário pelo gerente, PIN de gerente para sangria/cancelamento/desconto, atendentes com nível operador, crédito e débito separados; o PDV ganha receber conta de cliente. Decisão 13: a permissão de Pix do Inter já cobre a cobrança imediata e só tem itens de receber (devolução vai só para quem pagou); estorno por devolução do Inter anotado como ideia. Fluxo da estadia avulsa (desenho do Cauê) registrado na seção 8a do plano: convênio na saída, troco na tela, leitura do ticket pela câmera. Fluxo da lavagem na seção 8b: serviço e adicionais na entrada, "Pronta" com PIN, estadia depois de pronta configurável com tolerância, "Pagar agora" como exceção. Estadia com opção de marcar diária na entrada (paga na entrada ou na saída; excedente pela regra da tabela).
+- `07-pdv.md`, `10-plano-de-etapas.md`, `12-decisoes.md` e o índice atualizados. Nenhum código nesta entrada.
+
 ## 16/11/2026 — Mensagens do WhatsApp: cabeçalho e rodapé
 
 - No editor de mensagens: **cabeçalho** (linha em negrito no topo, até 60 caracteres, até uma informação variável, sem emoji nem formatação) e **rodapé** (linha cinza no fim, até 60 caracteres, texto fixo). Vão para a Meta como HEADER (texto) e FOOTER; no envio pela API, o valor da informação do cabeçalho vai junto.

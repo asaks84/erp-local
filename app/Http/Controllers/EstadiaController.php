@@ -51,7 +51,8 @@ class EstadiaController extends Controller
 
     public static function convenios(string $uso): array
     {
-        return Convenio::with('cliente:id,nome')->where('ativo', true)->where($uso === 'estadia' ? 'vale_estadia' : 'vale_servicos', true)->get()
+        return Convenio::with('cliente:id,nome', 'regras.servico')->where('ativo', true)
+            ->whereHas('regras', fn ($q) => $uso === 'estadia' ? $q->whereNull('servico_id') : $q->whereNotNull('servico_id'))->get()
             ->sortBy(fn ($c) => $c->cliente?->nome)->values()
             ->map(fn ($c) => ['id' => $c->id, 'nome' => $c->cliente?->nome, 'resumo' => $c->resumo()])->all();
     }
@@ -139,6 +140,7 @@ class EstadiaController extends Controller
         $d = $request->validate([
             'saida' => ['nullable', 'date_format:Y-m-d H:i'],
             'destino' => ['required', 'in:pago,conta,mensalista'],
+            'conta_cliente_id' => ['nullable', 'integer'],
             'forma_pagamento_id' => ['nullable', 'integer'],
             'parcelas' => ['nullable', 'integer', 'min:1', 'max:24'],
         ]);

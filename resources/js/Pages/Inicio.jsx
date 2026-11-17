@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import TituloPagina from '../Components/TituloPagina'
 import BuscaCliente from '../Components/BuscaCliente'
 import Anotacoes from '../Components/Anotacoes'
@@ -17,7 +17,7 @@ function Numero({ rotulo, valor, detalhe, href, classe = '' }) {
     return <div className="col-6 col-lg-3">{href ? <Link href={href} className="text-reset text-decoration-none">{corpo}</Link> : corpo}</div>
 }
 
-export default function Inicio({ aberto, recebido, anotacoes, conferencia, pagar, inter_vence: interVence }) {
+export default function Inicio({ aberto, recebido, anotacoes, conferencia, pagar, inter_vence: interVence, convenios_fechar: conveniosFechar = [] }) {
     const { auth, empresa } = usePage().props
     const pode = usePode()
     const primeiroNome = auth.usuario.nome.split(' ')[0]
@@ -52,6 +52,15 @@ export default function Inicio({ aberto, recebido, anotacoes, conferencia, pagar
                     <Link href={pagar.atrasadas.qtd ? '/pagar?estado=atrasadas' : '/pagar?estado=hoje'} className="btn btn-sm btn-outline-dark">Ver contas</Link>
                 </div>
             )}
+
+            {conveniosFechar.map((c) => (
+                <div key={c.id} className="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+                    <span className="flex-grow-1">
+                        <strong>Fechamento do convênio {c.nome}</strong> ({c.fechamento.toLowerCase()}{c.dia < new Date().toLocaleDateString('sv-SE') ? `, desde ${fData(c.dia)}` : ', hoje'}): {c.itens} conta(s), {moeda(c.total)}.
+                    </span>
+                    <button type="button" className="btn btn-sm btn-dark" onClick={() => router.post(`/convenios/${c.id}/fechar`)}>Gerar cobrança</button>
+                </div>
+            ))}
 
             <BuscaCliente className="mb-4 so-celular" placeholder="Buscar cliente para receber ou lançar (nome, código ou placa)" />
 

@@ -2,6 +2,7 @@
 
 namespace App\Servicos;
 
+use App\Models\Cliente;
 use App\Models\Convenio;
 use App\Models\Estadia;
 use App\Models\MensalidadeContrato;
@@ -56,7 +57,7 @@ class Estadias
         if ($entrada->isAfter(now()->addMinutes(5))) {
             self::erro('entrada', 'A entrada não pode ser no futuro.');
         }
-        $convenio = ! empty($d['convenio_id']) ? Convenio::where('ativo', true)->where('vale_estadia', true)->find($d['convenio_id']) : null;
+        $convenio = ! empty($d['convenio_id']) ? Convenio::where('ativo', true)->whereHas('regras', fn ($q) => $q->whereNull('servico_id'))->find($d['convenio_id']) : null;
         if (! empty($d['convenio_id']) && ! $convenio) {
             self::erro('convenio_id', 'Convênio não encontrado, inativo ou sem estadias.');
         }
@@ -101,7 +102,7 @@ class Estadias
             ?? self::erro('saida', 'Não há tabela de estadia para '.($e->tipo?->nome ?? 'este tipo de veículo').'. Cadastre em Configurações › Tabelas de estadia.');
         $t = new Tarifador($tarifa->regras());
         $r = $t->calcular($e->entrada, $saida);
-        $div = Convenios::dividir($e->convenio()->with('cliente')->first(), 'estadia', $r['valor'], $r['minutos'],
+        $div = Convenios::dividir($e->convenio()->with('cliente', 'regras')->first(), 'estadia', $r['valor'], $r['minutos'],
             fn (int $min) => $t->calcular($e->entrada, $e->entrada->copy()->addMinutes($min))['valor']);
 
         return [
@@ -116,7 +117,8 @@ class Estadias
     }
 
     /**
-     * Saída. $destino: pago (quem usou paga agora), conta (vai para a conta do cliente), mensalista (sem cobrança).
+     * Saída. $destino: pago (quem usou paga agora), conta (vai para a conta de um cliente: conta_cliente_id, padrão o
+     * dono do veículo), mensalista (sem cobrança).
      * A parte do convênio sempre vai para a conta do convênio. Valor zero (tolerância) não gera ordem.
      */
     public static function sair(Estadia $e, array $d): Estadia
@@ -129,8 +131,10 @@ class Estadias
         if ($destino === 'mensalista' && ! $e->mensalista) {
             self::erro('destino', 'Este veículo não tem mensalidade vigente.');
         }
-        if ($destino === 'conta' && ! $e->cliente_id) {
-            self::erro('destino', 'Só dá para lançar na conta de um cliente cadastrado.');
+        $contaDe = null;
+        if ($destino === 'conta') {
+            $contaDe = Cliente::find((int) ($d['conta_cliente_id'] ?? 0) ?: (int) $e->cliente_id)
+                ?? self::erro('conta_cliente_id', 'Escolha o cliente que vai pagar (na conta de quem).');
         }
         $cliente = $destino === 'mensalista' ? 0.0 : $c['cliente'];
         if ($cliente > 0 && $destino === 'pago' && empty($d['forma_pagamento_id'])) {
@@ -140,7 +144,7 @@ class Estadias
             self::erro('destino', 'Escolha como fica o pagamento.');
         }
 
-        return DB::transaction(function () use ($e, $c, $destino, $cliente, $d) {
+        return DB::transaction(function () use ($e, $c, $destino, $cliente, $contaDe, $d) {
             $e = Estadia::whereKey($e->id)->lockForUpdate()->first();
             if ($e->situacao !== 'patio') {
                 self::erro('saida', 'Esta estadia já foi finalizada.');
@@ -158,7 +162,7 @@ class Estadias
             }
             $ordem = null;
             if ($cliente > 0) {
-                $ordem = Ordens::lancar($base + ['cliente_id' => $e->cliente_id, 'convenio_id' => $e->convenio_id, 'celular' => $e->celular, 'valor' => $cliente,
+                $ordem = Ordens::lancar($base + ['cliente_id' => $contaDe?->id ?? $e->cliente_id, 'convenio_id' => $e->convenio_id, 'celular' => $e->celular, 'valor' => $cliente,
                     'descricao' => mb_substr('Estadia '.$periodo.($c['desconto'] > 0 ? ' (desc. convênio '.Formato::moeda($c['desconto']).')' : ''), 0, 80)]);
                 if ($destino === 'pago') {
                     Baixa::receberNaHora([$ordem], (int) $d['forma_pagamento_id'], (int) ($d['parcelas'] ?? 1));

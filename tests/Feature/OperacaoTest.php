@@ -175,14 +175,17 @@ class OperacaoTest extends TestCase
         $this->assertSame('aberta', OrdemServico::find($e->ordem_convenio_id)->situacao);
     }
 
-    public function test_convenio_desconto(): void
+    public function test_convenio_parcial_paga_ate_um_valor(): void
     {
-        $c = $this->convenio(['modo' => 'desconto', 'desconto_tipo' => 'pct', 'desconto_valor' => 20]);
+        $c = $this->convenio(['modo' => 'tudo']);
+        \App\Servicos\Convenios::salvarRegras($c, [['servico_id' => null, 'modo' => 'parcial', 'limite_valor' => 10]]);
+        // estadia de R$ 25: o convênio paga R$ 10, quem usou R$ 15
         $e = Estadias::entrar(['placa' => 'QQQ1Q11', 'tipo_veiculo_id' => $this->a->tipo->id, 'convenio_id' => $c->id, 'entrada' => '2026-11-10 09:00']);
         $e = Estadias::sair($e, ['saida' => '2026-11-10 12:00', 'destino' => 'pago', 'forma_pagamento_id' => $this->pix()]);
-        $this->assertSame('5.00', $e->desconto);
-        $this->assertSame('20.00', $e->valor_cliente);
-        $this->assertNull($e->ordem_convenio_id);
+        $this->assertSame(['10.00', '15.00', '0.00'], [$e->valor_convenio, $e->valor_cliente, $e->desconto]);
+        // abaixo do limite: o convênio paga tudo
+        $div = \App\Servicos\Convenios::dividir($c->fresh(), 'estadia', 7.5);
+        $this->assertSame([7.5, 0.0], [$div['convenio'], $div['cliente']]);
     }
 
     public function test_cancelar_so_no_patio(): void

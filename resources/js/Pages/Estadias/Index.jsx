@@ -4,6 +4,7 @@ import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Campo from '../../Components/Campo'
+import ContaDe from '../../Components/ContaDe'
 import { dataHora, moeda } from '../../lib/formato'
 import { placa as mPlaca, telefone } from '../../lib/mascaras'
 
@@ -117,7 +118,8 @@ function Saida({ estadia, formas, onFechar }) {
     const [calc, setCalc] = useState(null)
     const [erroCalc, setErroCalc] = useState(null)
     const pix = formas.find((f) => f.tipo === 'pix') || formas[0]
-    const form = useForm({ saida: '', destino: estadia.mensalista ? 'mensalista' : 'pago', forma_pagamento_id: pix?.id ?? '', parcelas: 1 })
+    const form = useForm({ saida: '', destino: estadia.mensalista ? 'mensalista' : 'pago', forma_pagamento_id: pix?.id ?? '', parcelas: 1, conta_cliente_id: estadia.cliente?.id ?? '' })
+    const [contaDe, setContaDe] = useState(estadia.cliente || null)
 
     useEffect(() => {
         setErroCalc(null)
@@ -151,10 +153,13 @@ function Saida({ estadia, formas, onFechar }) {
             {calc && calc.cliente > 0 && (
                 <>
                     <div className="btn-group w-100 mb-3 flex-wrap" role="group" aria-label="Como fica">
-                        {[['pago', 'Paga agora'], ...(estadia.cliente ? [['conta', 'Na conta do cliente']] : []), ...(estadia.mensalista ? [['mensalista', 'Mensalista']] : [])].map(([v, r]) => (
+                        {[['pago', 'Paga agora'], ['conta', 'Na conta de um cliente'], ...(estadia.mensalista ? [['mensalista', 'Mensalista']] : [])].map(([v, r]) => (
                             <button key={v} type="button" className={`btn ${form.data.destino === v ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => form.setData('destino', v)}>{r}</button>
                         ))}
                     </div>
+                    {form.data.destino === 'conta' && (
+                        <ContaDe cliente={contaDe} erro={form.errors.conta_cliente_id} onEscolher={(c) => { setContaDe(c); form.setData('conta_cliente_id', c.id) }} />
+                    )}
                     {form.data.destino === 'pago' && (
                         <div className="row g-2">
                             <div className="col-8">

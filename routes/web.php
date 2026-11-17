@@ -250,6 +250,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/convenios', [ConvenioController::class, 'store']);
         Route::get('/convenios/{convenio}', [ConvenioController::class, 'edit']);
         Route::put('/convenios/{convenio}', [ConvenioController::class, 'update']);
+        Route::post('/convenios/{convenio}/fechar', [ConvenioController::class, 'fechar']);
     });
 
     Route::middleware('permissao:configuracoes')->group(function () {

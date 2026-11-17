@@ -43,7 +43,11 @@ class InicioController extends Controller
             'conferencia' => ConferenciaController::resumo(),
             'pagar' => $u->pode('contas_pagar') ? Despesas::resumo() : null,
             // certificado da integração do Inter vencendo (boleto, baixa automática e extrato param juntos)
-            'inter_vence' => $u->pode('configuracoes') ? self::interVence() : null]);
+            'inter_vence' => $u->pode('configuracoes') ? self::interVence() : null,
+            // convênios com fechamento hoje (ou atrasado): botão "Gerar cobrança"
+            'convenios_fechar' => $u->pode('convenios') ? \App\Servicos\Convenios::aFechar()->map(fn ($x) => ['id' => $x['convenio']->id,
+                'nome' => $x['convenio']->cliente?->nome, 'dia' => $x['dia']->toDateString(), 'itens' => $x['itens'], 'total' => $x['total'],
+                'fechamento' => $x['convenio']->resumoFechamento()])->values() : []]);
     }
 
     private static function interVence(): ?array

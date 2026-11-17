@@ -100,13 +100,23 @@ class ConfiguracoesTest extends TestCase
     {
         $a = $this->criarEmpresa('a');
         $x = $this->criarCliente($a, 'CLINICA');
-        $this->actingAs($a->operador)->get('/convenios')->assertForbidden();
-        $this->actingAs($a->admin)->post('/convenios', ['cliente_id' => $x->cliente->id, 'modo' => 'desconto', 'desconto_tipo' => 'pct', 'desconto_valor' => 150, 'vale_estadia' => true])
-            ->assertSessionHasErrors('desconto_valor');
-        $this->actingAs($a->admin)->post('/convenios', ['cliente_id' => $x->cliente->id, 'modo' => 'tempo', 'limite_min' => 120, 'vale_estadia' => true])->assertRedirect('/convenios');
         app(EmpresaAtual::class)->definir($a->empresa->id);
-        $this->assertSame('Paga até 2h', Convenio::first()->resumo());
-        $this->actingAs($a->admin)->post('/convenios', ['cliente_id' => $x->cliente->id, 'modo' => 'tudo', 'vale_estadia' => true])->assertSessionHasErrors('cliente_id');
+        $lav = Servico::create(['codigo' => 'LAV', 'nome' => 'Lavagem simples']);
+        $this->actingAs($a->operador)->get('/convenios')->assertForbidden();
+        $base = ['cliente_id' => $x->cliente->id, 'fechamento' => 'mensalidade'];
+        // nada marcado; limite de tempo em serviço; parcial sem valor
+        $this->actingAs($a->admin)->post('/convenios', $base + ['regras' => []])->assertSessionHasErrors('regras');
+        $this->actingAs($a->admin)->post('/convenios', $base + ['regras' => [['servico_id' => $lav->id, 'modo' => 'tempo', 'limite_min' => 60]]])->assertSessionHasErrors('regras.0.modo');
+        $this->actingAs($a->admin)->post('/convenios', $base + ['regras' => [['servico_id' => null, 'modo' => 'parcial']]])->assertSessionHasErrors('regras.0.limite_valor');
+        $this->actingAs($a->admin)->post('/convenios', ['cliente_id' => $x->cliente->id, 'fechamento' => 'semana', 'regras' => [['servico_id' => null, 'modo' => 'integral']]])->assertSessionHasErrors('fechamento_semana');
+
+        $this->actingAs($a->admin)->post('/convenios', ['fechamento' => 'semana', 'fechamento_semana' => 2] + $base + ['regras' => [
+            ['servico_id' => null, 'modo' => 'tempo', 'limite_min' => 120], ['servico_id' => $lav->id, 'modo' => 'parcial', 'limite_valor' => 10]]])->assertRedirect('/convenios');
+        $c = Convenio::first();
+        $this->assertSame('Estadia: paga até 2h · Lavagem simples: paga até R$ 10,00', $c->resumo());
+        $this->assertSame(['Toda terça', true], [$c->resumoFechamento(), $c->regras_no_erp]);
+        $this->actingAs($a->admin)->post('/convenios', $base + ['regras' => [['servico_id' => null, 'modo' => 'integral']]])->assertSessionHasErrors('cliente_id');
+        $this->actingAs($a->admin)->get("/convenios/{$c->id}")->assertOk()->assertInertia(fn ($p) => $p->has('convenio.regras', 2)->has('opcoes', 2));
     }
 
     public function test_telas_de_configuracao_abrem(): void

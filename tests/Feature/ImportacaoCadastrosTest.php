@@ -105,7 +105,8 @@ class ImportacaoCadastrosTest extends TestCase
         $this->assertSame('2025-03-05', $m->inicio->toDateString());
         $this->assertSame($bici->id, MensalidadeContrato::where('legado_id', 11)->value('veiculo_id'));
 
-        $this->assertSame('Desconto de 15%', Convenio::firstOrFail()->resumo());
+        // "desconto" saiu dos convênios: importado, fica para reconfigurar
+        $this->assertTrue(Convenio::firstOrFail()->reconfigurar);
         $this->assertSame(1, CadastroPendente::count());
         $this->assertSame('MARIA (ESPOSA)', $c->pagadores()->value('nome'));
     }

@@ -37,9 +37,21 @@ Seis serviços concentram todas as contas de dinheiro; telas, PDV, API e relató
 - PIX menor que o total: escolher os itens pagos (pré-marca a combinação exata, mais antigos primeiro); falta nas marcadas vira desconto ou débito; sobra vira crédito.
 - Desconto só com permissão.
 
-**Convênio**
-- Modos: convênio paga tudo; convênio paga até um tempo (excedente com quem usou); desconto para quem usa (% ou R$).
-- Vale para estadias, lavagens e serviços, ou os dois. No modo por tempo, o conveniado paga o serviço inteiro.
+**Convênio** (revisto em 17/11/2026)
+- O convênio é um cliente (quem paga) com uma regra **por serviço**: a tela lista Estadia e cada serviço oferecido (lavagens e adicionais), menos mensalidade; cada serviço marcado ganha uma das opções:
+  1. **Pagamento integral:** o convênio paga tudo.
+  2. **Pagamento parcial:** o convênio paga até um limite em R$; o que passar fica com quem usou. Ex.: limite R$ 10: serviço de R$ 5 → convênio paga R$ 5; serviço de R$ 15 → convênio paga R$ 10 e quem usou paga R$ 5.
+  3. **Limite de tempo** (só estadia): o convênio paga a estadia até X tempo; o excedente fica com quem usou.
+- Serviço não marcado: quem usou paga o preço normal.
+- A parte de quem usou é paga na hora (ou na entrega da lavagem); não vai para a conta de ninguém, porque são avulsos.
+- O modo antigo "desconto para quem usa" sai: convênios que estiverem nele aparecem marcados para reconfigurar.
+- Durante o paralelo, o convênio vem do sistema atual (modo antigo) e as regras por serviço são montadas a partir dele a cada importação: "paga tudo" vira pagamento integral na estadia e/ou em todos os serviços; "até um tempo" vira limite de tempo na estadia. Depois de salvo no ERP, a importação não mexe mais nas regras daquele convênio.
+- Fechamento a cada X dias ou semanal gera uma cobrança só com as contas do convênio (pode haver mais de uma no mês), vencendo em 7 dias; junto com a mensalidade, a cobrança do mês com tudo o que o conveniado deve. O próximo fechamento conta a partir do último (ou da conta mais antiga, no primeiro).
+- **Fechamento do convênio** (quando as ordens dele viram cobrança): junto com a mensalidade, a cada X dias, ou toda semana num dia escolhido.
+- No dia do fechamento, o sistema **avisa** (tela inicial do ERP e tela do PDV) e quem confere gera a cobrança pelo botão **Gerar cobrança** do próprio aviso (no PDV, com PIN de gerente ou administrador). Nada é cobrado sozinho; passar para automático fica para depois, se fizer falta.
+
+**Conta de outro cliente** (17/11/2026)
+- Na venda e na saída da estadia, "na conta" tem o campo **Conta de:** para escolher qualquer cliente (vem preenchido com o dono do veículo, se houver). A ordem fica com a placa que entrou e o cliente que paga. Ex.: mensalista traz o carro do pai, que não está no sistema, e a lavagem vai para a mensalidade dele.
 
 ## Regras decididas para o ERP
 
