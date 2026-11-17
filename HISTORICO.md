@@ -4,6 +4,10 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 17/11/2026 — Listas: inativos embaixo
+
+- Nas listas de cadastro com itens ativos e inativos, os inativos ficam embaixo de todos os ativos: tabelas de estadia (encerradas embaixo das vigentes e futuras), formas de pagamento e contas, tipos de veículo, convênios e unidades. Serviços, usuários, funcionários, fornecedores, cartões, despesas recorrentes e aparelhos já eram assim. Ordens de serviço, cobranças e outras listas por data continuam por data.
+
 ## 17/11/2026 — Máscara de valores em todo o sistema
 
 - Todo campo de valor (R$ e %) da gestão e do PDV usa a máscara de maquininha: sempre mostra 0,00 e os números entram pelos centavos (1 → 0,01 → 0,15 → 1,50 → 15,00), com o cursor sempre no fim e o teclado numérico no celular. Vale para contas a pagar, recebimentos, mensalidades, reajuste, pausa, tarifas, serviços, formas de pagamento, convênios, funcionários, fluxo de caixa, juros e multa do boleto (que antes era um campo de número comum) e o troco das estadias.

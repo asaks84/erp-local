@@ -21,8 +21,8 @@ class FormaPagamentoController extends Controller
         FormasPagamento::garantirPadrao();
 
         return Inertia::render('Configuracoes/Pagamentos', [
-            'contas' => ContaFinanceira::orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'tipo', 'ativa']),
-            'formas' => FormaPagamento::with('conta:id,nome')->where('tipo', '<>', 'nao_informada')->orderBy('ordem')->orderBy('nome')->get()
+            'contas' => ContaFinanceira::orderByDesc('ativa')->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'tipo', 'ativa']),
+            'formas' => FormaPagamento::with('conta:id,nome')->where('tipo', '<>', 'nao_informada')->orderByDesc('ativa')->orderBy('ordem')->orderBy('nome')->get()
                 ->map(fn ($f) => [
                     ...$f->only(['id', 'nome', 'tipo', 'conta_financeira_id', 'parcelas_max', 'prazo_dias', 'ativa']),
                     'conta' => $f->conta?->nome,

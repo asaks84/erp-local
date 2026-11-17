@@ -18,7 +18,7 @@ class TipoVeiculoController extends Controller
     public function index(): Response
     {
         return Inertia::render('Configuracoes/Tipos', [
-            'tipos' => TipoVeiculo::orderBy('ordem')->orderBy('nome')->get()->map(fn ($t) => [
+            'tipos' => TipoVeiculo::orderByDesc('ativo')->orderBy('ordem')->orderBy('nome')->get()->map(fn ($t) => [
                 ...$t->only(['id', 'nome', 'detalhe', 'ordem', 'ativo']),
                 'veiculos' => Veiculo::where('tipo_veiculo_id', $t->id)->where('ativo', true)->count(),
             ]),

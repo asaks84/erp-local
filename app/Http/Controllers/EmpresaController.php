@@ -32,7 +32,7 @@ class EmpresaController extends Controller
             ],
             'cobranca_instrucoes' => $empresa->config('cobranca_instrucoes'),
             'link_cadastro' => $empresa->codigo_publico ? url('/cadastro/'.$empresa->codigo_publico) : null,
-            'unidades' => Unidade::orderBy('nome')->get(['id', 'nome', 'endereco', 'ativa']),
+            'unidades' => Unidade::orderByDesc('ativa')->orderBy('nome')->get(['id', 'nome', 'endereco', 'ativa']),
         ]);
     }
 

@@ -37,7 +37,9 @@ class TarifaController extends Controller
                     'vigencia_fim' => $t->vigencia_fim?->format('Y-m-d'),
                     'situacao' => $t->vigencia_inicio->gt($hoje) ? 'futura' : ($t->vigencia_fim && $t->vigencia_fim->lt($hoje) ? 'encerrada' : 'vigente'),
                     'resumo' => $this->resumo($t),
-                ]),
+                ])
+                // encerradas embaixo de todas as vigentes e futuras
+                ->sortBy(fn ($t) => $t['situacao'] === 'encerrada' ? 1 : 0)->values(),
         ]);
     }
 

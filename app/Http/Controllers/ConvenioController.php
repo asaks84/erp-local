@@ -25,7 +25,7 @@ class ConvenioController extends Controller
         $aFechar = Convenios::aFechar()->keyBy(fn ($x) => $x['convenio']->id);
 
         return Inertia::render('Convenios/Index', [
-            'convenios' => Convenio::with('cliente:id,nome', 'regras.servico')->get()->sortBy('cliente.nome')->values()->map(fn (Convenio $c) => [
+            'convenios' => Convenio::with('cliente:id,nome', 'regras.servico')->get()->sortBy([['ativo', 'desc'], fn ($a, $b) => strcmp((string) $a->cliente?->nome, (string) $b->cliente?->nome)])->values()->map(fn (Convenio $c) => [
                 'id' => $c->id,
                 'cliente_id' => $c->cliente_id,
                 'cliente' => $c->cliente?->nome,
