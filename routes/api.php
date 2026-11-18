@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Pdv\CaixaPdvController;
 use App\Http\Controllers\Pdv\EstadiaPdvController;
 use App\Http\Controllers\Pdv\PdvController;
 use Illuminate\Support\Facades\Route;
@@ -23,7 +24,15 @@ Route::prefix('pdv')->middleware('publica')->group(function () {
         Route::get('/estadias/buscar', [EstadiaPdvController::class, 'buscar']);
         Route::get('/estadias/{id}/calculo', [EstadiaPdvController::class, 'calculo'])->whereNumber('id');
         Route::get('/clientes', [EstadiaPdvController::class, 'clientes']);
+        // caixa (8.3)
+        Route::get('/caixa', [CaixaPdvController::class, 'estado']);
+        Route::get('/caixa/opcoes', [CaixaPdvController::class, 'opcoes']);
+        Route::get('/clientes/{id}/contas', [CaixaPdvController::class, 'contas'])->whereNumber('id');
         Route::middleware('throttle:60,1,pdv-acao')->group(function () {
+            Route::post('/caixa/resumo', [CaixaPdvController::class, 'resumo']);
+            Route::post('/caixa/movimentos', [CaixaPdvController::class, 'movimentar']);
+            Route::post('/caixa/fechar', [CaixaPdvController::class, 'fechar']);
+            Route::post('/clientes/{id}/receber', [CaixaPdvController::class, 'receber'])->whereNumber('id');
             Route::post('/estadias', [EstadiaPdvController::class, 'entrar']);
             Route::post('/estadias/{id}/saida', [EstadiaPdvController::class, 'sair'])->whereNumber('id');
             Route::post('/estadias/{id}/cancelar', [EstadiaPdvController::class, 'cancelar'])->whereNumber('id');

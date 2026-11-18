@@ -11,6 +11,7 @@ use App\Servicos\FormasPagamento;
 use App\Servicos\Ordens;
 use App\Servicos\WhatsApp\Modelos;
 use App\Servicos\WhatsApp\Regua;
+use App\Servicos\WhatsApp\WhatsAppCliente;
 use App\Support\EmpresaAtual;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -67,6 +68,11 @@ class MensagensWhatsAppTest extends TestCase
             $this->pedidos[] = $r;
             if (str_contains($r->url(), '/message_templates') && $r->method() === 'GET') {
                 return Http::response(['data' => array_map(fn ($m) => $m + ['language' => 'pt_BR', 'category' => 'UTILITY', 'id' => 'id-'.$m['name']], $this->naMeta)]);
+            }
+            if (str_contains($r->url(), '/message_templates') && $r->method() === 'DELETE') {
+                return str_contains($r->url(), 'name=recusar_meta')
+                    ? Http::response(['error' => ['message' => 'Erro da Meta', 'code' => 100]], 400)
+                    : Http::response(['success' => true]);
             }
             if (str_contains($r->url(), '/message_templates')) {
                 return Http::response(['id' => '987', 'status' => 'PENDING', 'category' => 'UTILITY']);
@@ -150,7 +156,7 @@ class MensagensWhatsAppTest extends TestCase
     {
         $this->ligar([['name' => 'cobranca_lembrete', 'status' => 'APPROVED']]);
         $c = $this->cobranca(); // hoje é 3 dias antes: passo "lembrete"
-        Modelos::sincronizar(new \App\Servicos\WhatsApp\WhatsAppCliente(Integracao::whatsapp()));
+        Modelos::sincronizar(new WhatsAppCliente(Integracao::whatsapp()));
         $g = $this->grupo('cobranca_lembrete');
 
         // editar a aprovada cria a versão 2 (rascunho)
@@ -255,5 +261,34 @@ class MensagensWhatsAppTest extends TestCase
         // a versão seguinte leva cabeçalho e rodapé junto
         $this->actingAs($this->a->admin)->post("/configuracoes/whatsapp/mensagens/grupo/{$m->grupo}/versao");
         $this->assertSame(['Lembrete para {nome}', 'Local Estacionamento · Santos'], [Modelos::ultima($m->grupo)->cabecalho, Modelos::ultima($m->grupo)->rodape]);
+    }
+
+    public function test_excluir_versao_enviada_na_meta_e_aqui_sem_deixar_a_regua_sem_aprovada(): void
+    {
+        $this->ligar([['name' => 'cobranca_lembrete', 'status' => 'APPROVED'], ['name' => 'recusar_meta', 'status' => 'PENDING']]);
+        Modelos::sincronizar(new WhatsAppCliente(Integracao::whatsapp()));
+        $g = $this->grupo('cobranca_lembrete');
+        $v1 = Modelos::ultima($g);
+        $v2 = ModeloMensagem::create(['grupo' => $g, 'versao' => 2, 'rotulo' => $v1->rotulo, 'nome' => 'cobranca_lembrete_v2', 'texto' => $v1->texto, 'situacao' => 'PENDING', 'meta_id' => '555']);
+
+        // a v1 é a única aprovada e a mensagem está na régua: não exclui
+        $this->actingAs($this->a->admin)->delete("/configuracoes/whatsapp/mensagens/{$v1->id}")->assertSessionHas('erro');
+        $this->assertNotNull($v1->fresh());
+
+        // a v2 (em análise) sai da Meta e daqui
+        $this->actingAs($this->a->admin)->delete("/configuracoes/whatsapp/mensagens/{$v2->id}")->assertSessionHas('sucesso');
+        $this->assertNull($v2->fresh());
+        $del = collect($this->pedidos)->last(fn ($r) => $r->method() === 'DELETE');
+        $this->assertStringContainsString('name=cobranca_lembrete_v2', $del->url());
+        $this->assertStringContainsString('hsm_id=555', $del->url());
+
+        // mensagem fora da régua: exclui mesmo sendo a única; se a Meta recusa (e ainda tem lá), fica
+        $outra = ModeloMensagem::create(['rotulo' => 'Teste', 'nome' => 'recusar_meta', 'texto' => 'Olá, {nome}!', 'situacao' => 'PENDING']);
+        $outra->update(['grupo' => $outra->id]);
+        $this->actingAs($this->a->admin)->delete("/configuracoes/whatsapp/mensagens/{$outra->id}")->assertSessionHas('erro');
+        $this->assertNotNull($outra->fresh());
+        $this->naMeta = [['name' => 'cobranca_lembrete', 'status' => 'APPROVED']]; // já apagada lá: conta como excluída
+        $this->actingAs($this->a->admin)->delete("/configuracoes/whatsapp/mensagens/{$outra->id}")->assertSessionHas('sucesso');
+        $this->assertNull($outra->fresh());
     }
 }

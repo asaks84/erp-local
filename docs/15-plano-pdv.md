@@ -200,6 +200,19 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - **Gestão › Estadias:** entrada com modelo e marcar diária (paga agora ou na saída, com troco); saída com convênio, troco e ticket perdido; o pátio mostra modelo, diária e "PDV". Pagamentos do PDV saem com origem "pdv" e o aparelho, e entram no Resultado como qualquer recebimento.
 - **QR do ticket:** leva o endereço `/t/código`. A página do cliente nesse endereço é a parte 8.6; até lá o QR serve para a leitura no balcão.
 
+## 8e. Como ficou a parte 8.3, caixa (18/11/2026)
+
+- **Só o que passa pelo PDV entra no caixa:** recebimentos feitos no celular (estadia, diária, conta de cliente; lavagem na 8.4) e os movimentos da gaveta. Recebido pela gestão não entra.
+- **Um caixa aberto por vez.** Abre sozinho no primeiro uso com o troco deixado no último fechamento.
+- **PDV › Caixa:**
+  - **Receber conta de cliente:** busca o cliente (nome, código ou placa), marca as contas (as em aberto vêm marcadas; crédito do cliente abate), forma de pagamento, em dinheiro "Quanto o cliente deu?" com troco. PIN de quem atende. Boleto de cobrança quitada é cancelado no Inter, como na gestão. Desconto de pontualidade, sobra e falta ficam na gestão.
+  - **Retirada (PIN de gerente):** **Sangria** (destino Cofre, Depósito no banco ou Retirada do sócio; valor e motivo) ou **Pagamento** (destino = categoria da despesa, as mais usadas primeiro; valor e descrição opcional). Não deixa tirar mais do que a gaveta deveria ter.
+  - **Suprimento (PIN de gerente):** valor e motivo.
+  - **Fechar o caixa (PIN de gerente):** recebido por serviço (mensalidades, estadias, lavagens) e por forma (dinheiro, Pix, débito, crédito...), a conta do dinheiro (troco inicial + dinheiro + suprimentos − sangrias, pagamentos e retiradas = deveria ter), o gerente digita o contado (mostra certo, sobrando ou faltando) e o troco que fica (no máximo o contado), observação opcional. Pergunta se imprime o resumo. O troco deixado abre o caixa seguinte.
+- **Onde cada coisa aparece:** pagamento vira despesa paga em dinheiro em Contas a pagar (entra no Resultado como despesa); retirada do sócio não é despesa: o Resultado mostra "(−) Retiradas dos sócios" abaixo do lucro e "Ficou na empresa", e o fluxo de caixa mostra a saída; sangria não aparece no Resultado.
+- **Gestão › Resultado e caixa › Caixa do PDV:** caixas do mês (aberto, fechado, recebido, deveria ter, contado, diferença) com o detalhe de cada um, e as retiradas dos sócios (as do PDV entram sozinhas; as que saíram do banco são registradas ali).
+- Permissão: "Gerente no PDV" (Níveis de acesso › Operação); administrador tem sempre.
+
 ## 9. Riscos e cuidados
 
 - **Impressora:** é o ponto que mais pode atrasar. Testar a impressora escolhida logo no começo (um ticket de teste) antes de construir o resto em cima.

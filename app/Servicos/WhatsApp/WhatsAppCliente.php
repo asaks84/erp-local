@@ -49,7 +49,11 @@ class WhatsAppCliente
     {
         try {
             $req = Http::withToken($this->integracao->credencial('token'))->acceptJson()->timeout(20)->connectTimeout(8);
-            $r = $metodo === 'GET' ? $req->get(self::BASE.$caminho, $dados) : $req->post(self::BASE.$caminho, $dados);
+            $r = match ($metodo) {
+                'GET' => $req->get(self::BASE.$caminho, $dados),
+                'DELETE' => $req->delete(self::BASE.$caminho.'?'.http_build_query($dados)),
+                default => $req->post(self::BASE.$caminho, $dados),
+            };
         } catch (ConnectionException) {
             throw new WhatsAppErro('Sem conexão com a Meta agora. Tente de novo daqui a pouco.');
         }
@@ -84,6 +88,21 @@ class WhatsAppCliente
     public function criarModelo(array $modelo): array
     {
         return $this->chamar('POST', '/'.$this->integracao->credencial('waba_id').'/message_templates', $modelo)->json() ?? [];
+    }
+
+    /**
+     * Exclui o modelo na Meta (o nome fica bloqueado por 30 dias). Se a Meta disser que não achou, confere a
+     * lista: já apagado lá conta como excluído. Com o id, apaga só aquele idioma.
+     */
+    public function excluirModelo(string $nome, ?string $metaId = null): void
+    {
+        try {
+            $this->chamar('DELETE', '/'.$this->integracao->credencial('waba_id').'/message_templates', array_filter(['name' => $nome, 'hsm_id' => $metaId]));
+        } catch (WhatsAppErro $e) {
+            if (collect($this->modelosDetalhes())->contains('name', $nome)) {
+                throw $e;
+            }
+        }
     }
 
     /**

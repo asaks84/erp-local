@@ -1,38 +1,43 @@
 <?php
 
+use App\Http\Controllers\AnotacaoController;
+use App\Http\Controllers\AparelhoController;
 use App\Http\Controllers\AtividadeController;
-use App\Http\Controllers\CartaoController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\MensalistasController;
 use App\Http\Controllers\AtualizacaoController;
 use App\Http\Controllers\AtualizarPublicoController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AvisoController;
 use App\Http\Controllers\BoletoController;
 use App\Http\Controllers\CadastroPublicoController;
+use App\Http\Controllers\CaixaController;
+use App\Http\Controllers\CartaoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\CobrancaPublicaController;
 use App\Http\Controllers\ConferenciaController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\ContratoController;
-use App\Http\Controllers\DespesaController;
-use App\Http\Controllers\FornecedorController;
-use App\Http\Controllers\FuncionarioController;
-use App\Http\Controllers\PlanoContaController;
-use App\Http\Controllers\RecorrenteController;
 use App\Http\Controllers\ConvenioController;
+use App\Http\Controllers\DespesaController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\EstadiaController;
 use App\Http\Controllers\EtapaLavagemController;
 use App\Http\Controllers\ExtratoController;
 use App\Http\Controllers\FormaPagamentoController;
-use App\Http\Controllers\AnotacaoController;
+use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\InterController;
 use App\Http\Controllers\LavagemController;
+use App\Http\Controllers\MensagemController;
 use App\Http\Controllers\MensalidadeController;
+use App\Http\Controllers\MensalistasController;
 use App\Http\Controllers\NivelController;
 use App\Http\Controllers\OrdemController;
 use App\Http\Controllers\PagadorController;
 use App\Http\Controllers\PendenteController;
+use App\Http\Controllers\PlanoContaController;
+use App\Http\Controllers\RecorrenteController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ResultadoController;
 use App\Http\Controllers\ServicoController;
@@ -41,7 +46,11 @@ use App\Http\Controllers\TipoVeiculoController;
 use App\Http\Controllers\UnidadeController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
+use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\WhatsAppWebhookController;
+use App\Models\Empresa;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // Toda rota declara a permissão que exige ("permissao:<chave>", ou "permissao:livre" para
 // qualquer usuário logado) ou que é pública ("publica"). Rota sem isso é bloqueada.
@@ -62,17 +71,17 @@ Route::middleware('publica')->group(function () {
     Route::post('/atualizar/{token}/placa', [AtualizarPublicoController::class, 'placa'])->middleware('throttle:20,10');
     Route::post('/atualizar/{token}', [AtualizarPublicoController::class, 'enviar'])->middleware('throttle:10,60');
     // página pública da cobrança (link dos avisos do WhatsApp) e política de privacidade
-    Route::get('/c/{token}', \App\Http\Controllers\CobrancaPublicaController::class)->middleware('throttle:60,1');
+    Route::get('/c/{token}', CobrancaPublicaController::class)->middleware('throttle:60,1');
     // PDV: app separado (React próprio), fala com o servidor só pela API (routes/api.php)
-Route::get('/pdv/{tela?}', fn () => view('pdv'))->where('tela', '.*')->middleware('publica');
-Route::get('/privacidade', function () {
-        $e = \App\Models\Empresa::withoutGlobalScopes()->where('ativa', true)->orderBy('id')->first();
+    Route::get('/pdv/{tela?}', fn () => view('pdv'))->where('tela', '.*')->middleware('publica');
+    Route::get('/privacidade', function () {
+        $e = Empresa::withoutGlobalScopes()->where('ativa', true)->orderBy('id')->first();
 
-        return \Inertia\Inertia::render('Privacidade', ['empresa_publica' => ['nome' => $e?->nome ?? config('app.name'), 'telefone' => $e?->telefone, 'email' => $e?->email]]);
+        return Inertia::render('Privacidade', ['empresa_publica' => ['nome' => $e?->nome ?? config('app.name'), 'telefone' => $e?->telefone, 'email' => $e?->email]]);
     });
     // webhook da Meta (WhatsApp): sem sessão de usuário; a Meta não manda o token de formulário
-    Route::get('/webhooks/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verificar']);
-    Route::post('/webhooks/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receber'])->middleware('throttle:600,1');
+    Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verificar']);
+    Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receber'])->middleware('throttle:600,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -123,11 +132,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/mensalidades/{contrato}/primeira-cobranca', [MensalidadeController::class, 'confirmarPrimeira']);
 
         Route::get('/cobrancas', [CobrancaController::class, 'index']);
-        Route::get('/avisos', [\App\Http\Controllers\AvisoController::class, 'index']);
-        Route::post('/avisos/enviar-todos', [\App\Http\Controllers\AvisoController::class, 'enviarTodos']);
-        Route::post('/avisos/{aviso}/manual', [\App\Http\Controllers\AvisoController::class, 'manual']);
-        Route::post('/avisos/{aviso}/enviar', [\App\Http\Controllers\AvisoController::class, 'enviar']);
-        Route::post('/avisos/{aviso}/dispensar', [\App\Http\Controllers\AvisoController::class, 'dispensar']);
+        Route::get('/avisos', [AvisoController::class, 'index']);
+        Route::post('/avisos/enviar-todos', [AvisoController::class, 'enviarTodos']);
+        Route::post('/avisos/{aviso}/manual', [AvisoController::class, 'manual']);
+        Route::post('/avisos/{aviso}/enviar', [AvisoController::class, 'enviar']);
+        Route::post('/avisos/{aviso}/dispensar', [AvisoController::class, 'dispensar']);
         Route::get('/cobrancas/gerar', [CobrancaController::class, 'gerar']);
         Route::post('/cobrancas/gerar', [CobrancaController::class, 'emitirLote']);
         Route::get('/cobrancas/imprimir', [CobrancaController::class, 'imprimir']);
@@ -169,6 +178,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:resultado')->group(function () {
         Route::get('/resultado', [ResultadoController::class, 'mes']);
         Route::get('/resultado/fluxo', [ResultadoController::class, 'fluxo']);
+        Route::get('/resultado/caixas', [CaixaController::class, 'index']);
+        Route::post('/resultado/retiradas', [CaixaController::class, 'retirada']);
+        Route::delete('/resultado/retiradas/{movimento}', [CaixaController::class, 'apagarRetirada']);
     });
     Route::middleware('permissao:faturamento')->group(function () {
         Route::get('/relatorios/recebimentos', [RelatorioController::class, 'recebimentos']);
@@ -268,22 +280,22 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/inter/testar', [InterController::class, 'testar']);
         Route::post('/configuracoes/inter/desligar', [InterController::class, 'desligar']);
         Route::put('/configuracoes/inter/regras', [InterController::class, 'regras']);
-        Route::get('/configuracoes/whatsapp', [\App\Http\Controllers\WhatsAppController::class, 'index']);
-        Route::post('/configuracoes/whatsapp/credenciais', [\App\Http\Controllers\WhatsAppController::class, 'credenciais']);
-        Route::post('/configuracoes/whatsapp/testar', [\App\Http\Controllers\WhatsAppController::class, 'testar']);
-        Route::post('/configuracoes/whatsapp/desligar', [\App\Http\Controllers\WhatsAppController::class, 'desligar']);
-        Route::get('/configuracoes/aparelhos', [\App\Http\Controllers\AparelhoController::class, 'index']);
-        Route::post('/configuracoes/aparelhos', [\App\Http\Controllers\AparelhoController::class, 'store']);
-        Route::put('/configuracoes/aparelhos/config', [\App\Http\Controllers\AparelhoController::class, 'config']);
-        Route::put('/configuracoes/aparelhos/{aparelho}', [\App\Http\Controllers\AparelhoController::class, 'update']);
-        Route::post('/configuracoes/aparelhos/{aparelho}/codigo', [\App\Http\Controllers\AparelhoController::class, 'codigo']);
-        Route::post('/configuracoes/aparelhos/{aparelho}/desativar', [\App\Http\Controllers\AparelhoController::class, 'desativar']);
-        Route::get('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'index']);
-        Route::post('/configuracoes/whatsapp/mensagens', [\App\Http\Controllers\MensagemController::class, 'store']);
-        Route::put('/configuracoes/whatsapp/mensagens/{mensagem}', [\App\Http\Controllers\MensagemController::class, 'update']);
-        Route::delete('/configuracoes/whatsapp/mensagens/{mensagem}', [\App\Http\Controllers\MensagemController::class, 'destroy']);
-        Route::post('/configuracoes/whatsapp/mensagens/grupo/{grupo}/versao', [\App\Http\Controllers\MensagemController::class, 'novaVersao'])->whereNumber('grupo');
-        Route::put('/configuracoes/whatsapp/regua', [\App\Http\Controllers\WhatsAppController::class, 'regua']);
+        Route::get('/configuracoes/whatsapp', [WhatsAppController::class, 'index']);
+        Route::post('/configuracoes/whatsapp/credenciais', [WhatsAppController::class, 'credenciais']);
+        Route::post('/configuracoes/whatsapp/testar', [WhatsAppController::class, 'testar']);
+        Route::post('/configuracoes/whatsapp/desligar', [WhatsAppController::class, 'desligar']);
+        Route::get('/configuracoes/aparelhos', [AparelhoController::class, 'index']);
+        Route::post('/configuracoes/aparelhos', [AparelhoController::class, 'store']);
+        Route::put('/configuracoes/aparelhos/config', [AparelhoController::class, 'config']);
+        Route::put('/configuracoes/aparelhos/{aparelho}', [AparelhoController::class, 'update']);
+        Route::post('/configuracoes/aparelhos/{aparelho}/codigo', [AparelhoController::class, 'codigo']);
+        Route::post('/configuracoes/aparelhos/{aparelho}/desativar', [AparelhoController::class, 'desativar']);
+        Route::get('/configuracoes/whatsapp/mensagens', [MensagemController::class, 'index']);
+        Route::post('/configuracoes/whatsapp/mensagens', [MensagemController::class, 'store']);
+        Route::put('/configuracoes/whatsapp/mensagens/{mensagem}', [MensagemController::class, 'update']);
+        Route::delete('/configuracoes/whatsapp/mensagens/{mensagem}', [MensagemController::class, 'destroy']);
+        Route::post('/configuracoes/whatsapp/mensagens/grupo/{grupo}/versao', [MensagemController::class, 'novaVersao'])->whereNumber('grupo');
+        Route::put('/configuracoes/whatsapp/regua', [WhatsAppController::class, 'regua']);
         Route::put('/clientes/{cliente}/regras-boleto', [InterController::class, 'cliente']);
         Route::get('/conferencia', ConferenciaController::class);
         Route::get('/configuracoes/plano-contas', [PlanoContaController::class, 'index']);

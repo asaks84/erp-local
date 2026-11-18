@@ -205,6 +205,20 @@ function Editor({ modelo, novo, props, aoCancelar }) {
     )
 }
 
+/** excluir uma versão já enviada: apaga na Meta (pela API) e aqui; pede confirmação */
+function ExcluirVersao({ v, pequeno = false }) {
+    const [certeza, setCerteza] = useState(false)
+    const cls = pequeno ? 'btn btn-sm btn-link text-danger p-0' : 'btn btn-outline-danger me-auto'
+    if (!certeza) return <button type="button" className={cls} onClick={() => setCerteza(true)}>Excluir{pequeno ? '' : ` versão ${v.versao}`}</button>
+    return (
+        <span className={`d-inline-flex flex-wrap align-items-center gap-2 ${pequeno ? '' : 'me-auto'}`}>
+            <span className="small text-muted">Exclui na Meta também; o nome {v.nome} fica bloqueado lá por 30 dias.</span>
+            <button type="button" className={pequeno ? 'btn btn-sm btn-danger' : 'btn btn-danger'} onClick={() => router.delete(`/configuracoes/whatsapp/mensagens/${v.id}`, { preserveScroll: true })}>Confirmar exclusão</button>
+            <button type="button" className={pequeno ? 'btn btn-sm btn-link' : 'btn btn-link'} onClick={() => setCerteza(false)}>Cancelar</button>
+        </span>
+    )
+}
+
 function Mensagem({ g, props }) {
     const ult = g.versoes[0]
     const enviadas = g.versoes.filter((v) => v.situacao !== 'rascunho')
@@ -246,7 +260,8 @@ function Mensagem({ g, props }) {
                             </div>
                             <div className="col-md-5"><Previa texto={ult.texto} cabecalho={ult.cabecalho} rodape={ult.rodape} botao={ult.finalidade === 'cobranca' && ult.botao} rotuloBotao={props.botao} exemplos={props.exemplos} /></div>
                         </div>
-                        <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                        <div className="d-flex flex-wrap justify-content-end gap-2 mt-3 pt-3 border-top">
+                            <ExcluirVersao v={ult} />
                             <button type="button" className="btn btn-primary" onClick={() => router.post(`/configuracoes/whatsapp/mensagens/grupo/${g.grupo}/versao`, {}, { preserveScroll: true })}>
                                 Editar (cria a versão {ult.versao + 1})
                             </button>
@@ -259,7 +274,7 @@ function Mensagem({ g, props }) {
                         <summary className="small">Versões anteriores</summary>
                         {enviadas.filter((v) => v.id !== ult.id).map((v) => (
                             <div key={v.id} className="small border-top pt-2 mt-2">
-                                <div className="d-flex align-items-center gap-2"><strong>Versão {v.versao}</strong><Selo s={v.situacao} /><span className="text-muted">{v.nome}</span></div>
+                                <div className="d-flex flex-wrap align-items-center gap-2"><strong>Versão {v.versao}</strong><Selo s={v.situacao} /><span className="text-muted">{v.nome}</span><span className="ms-auto"><ExcluirVersao v={v} pequeno /></span></div>
                                 {v.motivo && <div className="text-danger-emphasis">{v.motivo}</div>}
                                 <div className="text-muted text-pre-wrap">{v.texto}</div>
                             </div>

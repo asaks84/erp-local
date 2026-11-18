@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Pdv;
 use App\Http\Controllers\Controller;
 use App\Models\Aparelho;
 use App\Models\Empresa;
+use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Servicos\Pdv\Aparelhos;
 use App\Servicos\Pdv\Pins;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 /** API do PDV, base (etapa 8.1): pareamento, dados do aparelho e PIN. */
 class PdvController extends Controller
@@ -30,6 +32,17 @@ class PdvController extends Controller
         return $u;
     }
 
+    /** PIN de gerente ou administrador (permissão "Gerente no PDV"): caixa, retiradas, cancelamentos */
+    public static function gerente(Request $r, string $acao = 'Isso'): Usuario
+    {
+        $u = self::pessoa($r);
+        if (! $u->pode('pdv_gerente')) {
+            throw ValidationException::withMessages(['pin' => $acao.' pede o PIN de um gerente ou administrador.']);
+        }
+
+        return $u;
+    }
+
     public function parear(Request $r): JsonResponse
     {
         $d = $r->validate(['codigo' => ['required', 'string', 'max:12'], 'versao' => ['nullable', 'string', 'max:20']]);
@@ -42,7 +55,7 @@ class PdvController extends Controller
     {
         $a = self::aparelho($r)->load('unidade');
         $e = Empresa::atual();
-        $u = $a->unidade ?? \App\Models\Unidade::orderBy('id')->first();
+        $u = $a->unidade ?? Unidade::orderBy('id')->first();
 
         return response()->json([
             'aparelho' => ['id' => $a->id, 'nome' => $a->nome, 'unidade' => $a->unidade?->nome],

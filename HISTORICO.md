@@ -4,6 +4,28 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 18/11/2026 — Histórico de estadias
+
+- Estadias ganhou abas **Pátio | Histórico** (o histórico existia, mas só por um botão no canto).
+- Histórico: filtro por situação (todas, finalizadas, canceladas, no pátio), busca também por modelo, e os **totais do período** (estadias, total cobrado, pago na hora com as diárias pagas na entrada, na conta, convênios). A lista mostra modelo, tamanho, diária marcada, se veio do PDV, ticket perdido e o motivo do cancelamento. 1 teste novo (235).
+
+## 18/11/2026 — PDV, parte 8.3: caixa
+
+- **PDV › Caixa:** receber conta de cliente no balcão (cliente, contas, forma, troco, recibo); **Retirada** com PIN de gerente: sangria (cofre, depósito no banco ou retirada do sócio) ou pagamento de despesa com o dinheiro da gaveta (vira despesa paga em Contas a pagar, com a categoria); **Suprimento**; **Fechar o caixa** (recebido por serviço e por forma, dinheiro que deveria ter, contado, diferença, troco que fica, resumo impresso). O troco deixado abre o próximo caixa.
+- Tudo o que é recebido pelo PDV cai no caixa aberto; recebido pela gestão não.
+- **Gestão › Resultado e caixa › Caixa do PDV:** caixas do mês com o detalhe e as retiradas dos sócios (registrar as que saíram do banco).
+- **Resultado do mês:** "(−) Retiradas dos sócios" abaixo do lucro e "Ficou na empresa"; fluxo de caixa mostra a retirada como saída.
+- Migration `2026_11_28_000001_caixa_pdv` (caixas, caixa_movimentos, pagamentos.caixa_id). 2 testes novos (234).
+
+## 17/11/2026 — WhatsApp: excluir modelo
+
+- No editor de mensagens (Configurações › WhatsApp › Mensagens), versões já enviadas à Meta ganharam **Excluir**, com confirmação: apaga o modelo na Meta pela API e no ERP (o nome fica bloqueado na Meta por 30 dias; se já tinha sido apagado lá, só some daqui). Não deixa a régua sem mensagem nem tirar a única versão aprovada de uma mensagem da régua. Com a integração desligada, exclui só no ERP e avisa para apagar no Gerenciador do WhatsApp. 1 teste novo (232).
+
+## 17/11/2026 — WhatsApp: primeiro aviso real pela API
+
+- Modelos aprovados pela Meta; aviso de cobrança enviado pela API e entregue, com o botão "Ver cobrança" abrindo a página da cobrança; a situação passou a "Entregue" pelo webhook. Envio automático segue desligado por enquanto.
+- Registrado para os arremates: o cliente gerar Pix na página da cobrança quando não houver boleto.
+
 ## 17/11/2026 — Listas: inativos embaixo
 
 - Nas listas de cadastro com itens ativos e inativos, os inativos ficam embaixo de todos os ativos: tabelas de estadia (encerradas embaixo das vigentes e futuras), formas de pagamento e contas, tipos de veículo, convênios e unidades. Serviços, usuários, funcionários, fornecedores, cartões, despesas recorrentes e aparelhos já eram assim. Ordens de serviço, cobranças e outras listas por data continuam por data.

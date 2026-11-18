@@ -208,18 +208,38 @@ class EstadiaController extends Controller
         return back()->with('sucesso', 'Estadia de '.$estadia->rotulo().' cancelada.');
     }
 
+    /** Histórico: estadias por data de entrada, com busca, situação e os totais do período (de tudo o que o filtro pega) */
     public function historico(Request $request): Response
     {
-        $f = $request->validate(['q' => ['nullable', 'string', 'max:40'], 'de' => ['nullable', 'date_format:Y-m-d'], 'ate' => ['nullable', 'date_format:Y-m-d']]);
+        $f = $request->validate(['q' => ['nullable', 'string', 'max:40'], 'de' => ['nullable', 'date_format:Y-m-d'], 'ate' => ['nullable', 'date_format:Y-m-d'],
+            'situacao' => ['nullable', 'in:todas,finalizada,cancelada,patio']]);
         $de = $f['de'] ?? now()->subDays(30)->toDateString();
         $ate = $f['ate'] ?? now()->toDateString();
+        if ($ate < $de) {
+            [$de, $ate] = [$ate, $de];
+        }
         $q = trim((string) ($f['q'] ?? ''));
-        $lista = Estadia::with(['tipo:id,nome', 'cliente:id,nome', 'convenio.cliente:id,nome'])
+        $situacao = $f['situacao'] ?? 'todas';
+        $base = Estadia::query()
             ->whereBetween('entrada', [$de.' 00:00:00', $ate.' 23:59:59'])
+            ->when($situacao !== 'todas', fn ($w) => $w->where('situacao', $situacao))
             ->when($q !== '', fn ($w) => $w->where(fn ($w) => $w->where('placa', 'like', '%'.Placa::normalizar($q).'%')
-                ->orWhere('identificacao', 'like', '%'.$q.'%')->when(ctype_digit($q), fn ($w) => $w->orWhere('numero', (int) $q))))
+                ->orWhere('identificacao', 'like', '%'.$q.'%')->orWhere('modelo', 'like', '%'.$q.'%')
+                ->when(ctype_digit($q), fn ($w) => $w->orWhere('numero', (int) $q))));
+        $t = (clone $base)->toBase()->selectRaw("COUNT(*) AS qtd,
+            SUM(situacao = 'finalizada') AS finalizadas, SUM(situacao = 'cancelada') AS canceladas, SUM(situacao = 'patio') AS patio,
+            SUM(CASE WHEN situacao = 'finalizada' THEN COALESCE(valor_calculado, 0) ELSE 0 END) AS cobrado,
+            SUM(CASE WHEN situacao = 'finalizada' AND destino = 'pago' THEN COALESCE(valor_cliente, 0) ELSE 0 END) + SUM(CASE WHEN situacao <> 'cancelada' THEN pago_entrada ELSE 0 END) AS na_hora,
+            SUM(CASE WHEN situacao = 'finalizada' AND destino = 'conta' THEN COALESCE(valor_cliente, 0) ELSE 0 END) AS na_conta,
+            SUM(CASE WHEN situacao = 'finalizada' THEN valor_convenio ELSE 0 END) AS convenio")->first();
+        $lista = (clone $base)->with(['tipo:id,nome', 'cliente:id,nome', 'convenio.cliente:id,nome', 'pacote:id,nome'])
             ->orderByDesc('entrada')->paginate(50)->withQueryString()->through(fn ($e) => self::linha($e));
 
-        return Inertia::render('Estadias/Historico', ['estadias' => $lista, 'filtros' => ['q' => $q, 'de' => $de, 'ate' => $ate]]);
+        return Inertia::render('Estadias/Historico', [
+            'estadias' => $lista,
+            'filtros' => ['q' => $q, 'de' => $de, 'ate' => $ate, 'situacao' => $situacao],
+            'totais' => ['qtd' => (int) $t->qtd, 'finalizadas' => (int) $t->finalizadas, 'canceladas' => (int) $t->canceladas, 'patio' => (int) $t->patio,
+                'cobrado' => round((float) $t->cobrado, 2), 'na_hora' => round((float) $t->na_hora, 2), 'na_conta' => round((float) $t->na_conta, 2), 'convenio' => round((float) $t->convenio, 2)],
+        ]);
     }
 }

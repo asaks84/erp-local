@@ -19,7 +19,7 @@ export default function Mes({ resultado: r, historico, atual }) {
     const ir = (dados) => router.get('/resultado', { mes: r.mes, regime: r.regime, ...dados }, { preserveScroll: true, preserveState: true })
     const maior = Math.max(1, ...historico.flatMap((h) => [h.receitas, h.despesas]))
     const positivo = r.resultado >= 0
-    const extras = r.total_investimentos > 0 || r.fora_empresa > 0
+    const extras = r.total_investimentos > 0 || r.fora_empresa > 0 || r.retiradas > 0
     return (
         <div className="pagina">
             <AbasResultado />
@@ -71,7 +71,8 @@ export default function Mes({ resultado: r, historico, atual }) {
                                         <tr key={`i${l.id}`} className={l.nivel === 1 ? '' : 'small'}><td style={{ paddingLeft: `${0.75 + (l.nivel - 1) * 1.25}rem` }}>(−) {l.nome}</td><td className="text-end text-nowrap">{moeda(-l.valor)}</td></tr>
                                     ))}
                                     {r.fora_empresa > 0 && <tr><td>(−) Compras no cartão que não são da empresa</td><td className="text-end text-nowrap">{moeda(-r.fora_empresa)}</td></tr>}
-                                    {extras && <tr className="fw-bold"><td>Sobrou no fim</td><td className={`text-end ${r.resultado_final >= 0 ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado_final)}</td></tr>}
+                                    {r.retiradas > 0 && <tr><td>(−) Retiradas dos sócios <Link href={`/resultado/caixas?mes=${r.mes}`} className="small">ver</Link></td><td className="text-end text-nowrap">{moeda(-r.retiradas)}</td></tr>}
+                                    {extras && <tr className="fw-bold"><td>{r.retiradas > 0 ? 'Ficou na empresa' : 'Sobrou no fim'}</td><td className={`text-end ${r.resultado_final >= 0 ? 'text-success' : 'text-danger'}`}>{moeda(r.resultado_final)}</td></tr>}
                                 </tfoot>
                             </table>
                         </div>

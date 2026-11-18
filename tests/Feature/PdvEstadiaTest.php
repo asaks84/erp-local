@@ -203,4 +203,25 @@ class PdvEstadiaTest extends TestCase
         $this->actingAs($this->a->operador)->post("/estadias/{$e->id}/saida", ['destino' => 'pago'])->assertSessionHasNoErrors();
         $this->assertSame('pago_entrada', $e->fresh()->destino);
     }
+
+    public function test_historico_com_situacao_e_totais_do_periodo(): void
+    {
+        $tipo = $this->a->tipo->id;
+        $u = $this->a->operador;
+        $this->actingAs($u)->post('/estadias', ['placa' => 'HIS1A11', 'modelo' => 'Gol', 'tipo_veiculo_id' => $tipo])->assertSessionHasNoErrors();
+        $this->actingAs($u)->post('/estadias', ['placa' => 'HIS1A22', 'tipo_veiculo_id' => $tipo, 'pacote_id' => $this->diaria->id, 'pagar_agora' => true, 'forma_pagamento_id' => $this->forma('pix')]);
+        $this->actingAs($u)->post('/estadias', ['placa' => 'HIS1A33', 'tipo_veiculo_id' => $tipo]);
+        Carbon::setTestNow('2026-11-10 14:00:00');
+        $e1 = Estadia::where('placa', 'HIS1A11')->first();
+        $this->actingAs($u)->post("/estadias/{$e1->id}/saida", ['destino' => 'pago', 'forma_pagamento_id' => $this->forma('dinheiro')])->assertSessionHasNoErrors(); // 20
+        $this->actingAs($this->a->admin)->post('/estadias/'.Estadia::where('placa', 'HIS1A33')->value('id').'/cancelar', ['motivo' => 'engano'])->assertSessionHasNoErrors();
+
+        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30')->assertInertia(fn ($p) => $p->component('Estadias/Historico')
+            ->where('totais.qtd', 3)->where('totais.finalizadas', 1)->where('totais.patio', 1)->where('totais.canceladas', 1)
+            ->where('totais.cobrado', 20)->where('totais.na_hora', 60) // 20 na saída + diária de 40 paga na entrada
+            ->has('estadias.data', 3));
+        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30&situacao=cancelada')->assertInertia(fn ($p) => $p->where('totais.qtd', 1)
+            ->where('estadias.data.0.motivo_cancelamento', 'engano'));
+        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30&q=gol')->assertInertia(fn ($p) => $p->has('estadias.data', 1)->where('estadias.data.0.modelo', 'Gol'));
+    }
 }

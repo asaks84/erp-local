@@ -2,7 +2,9 @@
 
 namespace App\Servicos;
 
+use App\Models\OrdemServico;
 use App\Models\PlanoConta;
+use App\Servicos\Pdv\Caixas;
 use App\Support\EmpresaAtual;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -232,7 +234,9 @@ class Resultado
         }
         $totRec = round(array_sum(array_column(array_filter($receitas, fn ($l) => $l['nivel'] === 1), 'valor')), 2);
         $totDesp = round(array_sum(array_column(array_filter($despesas, fn ($l) => $l['nivel'] === 1), 'valor')), 2);
-        [$de] = self::limites($ym);
+        [$de, $ate] = self::limites($ym);
+        // retirada dos sócios: não é despesa (o lucro não muda), mas sai do que ficou na empresa
+        $retiradas = Caixas::retiradas($de, $ate);
 
         return [
             'mes' => $ym, 'regime' => $regime,
@@ -244,7 +248,8 @@ class Resultado
             'investimentos' => $investimentos,
             'total_investimentos' => $totInv = round(array_sum(array_column(array_filter($investimentos, fn ($l) => $l['nivel'] === 1), 'valor')), 2),
             'fora_empresa' => $fora,
-            'resultado_final' => round($totRec - $totDesp - $totInv - $fora, 2),
+            'retiradas' => $retiradas,
+            'resultado_final' => round($totRec - $totDesp - $totInv - $fora - $retiradas, 2),
             // no olhar de referência, quanto das despesas do mês ainda não foi pago
             'excluidos' => $regime === 'referencia' ? self::abertoDeExcluidos($ym) : ['qtd' => 0, 'valor' => 0.0],
             'a_pagar' => $regime === 'referencia' ? round((float) DB::table('despesas')->where('empresa_id', self::empresa())->where('situacao', 'aberta')->where('competencia', $de)->sum('valor'), 2) : 0.0,
@@ -334,6 +339,12 @@ class Resultado
             $add((string) $d->pago_em, 'saidas', $d->descricao, (float) ($d->valor_pago ?? $d->valor), false);
         }
 
+        // retiradas dos sócios (da gaveta do PDV ou do banco)
+        $ret = DB::table('caixa_movimentos')->where('empresa_id', $e)->where('tipo', 'retirada')->whereBetween('data', [$de, $ate])->get(['data', 'valor']);
+        foreach ($ret as $x) {
+            $add((string) $x->data, 'saidas', 'Retirada do sócio', (float) $x->valor, false);
+        }
+
         // estornos a clientes (devolução feita no app do banco)
         $est = DB::table('estornos')->where('empresa_id', $e)->where('situacao', 'feito')->whereBetween('estornado_em', [$de, $ate])->get(['estornado_em', 'valor']);
         foreach ($est as $x) {
@@ -346,7 +357,7 @@ class Resultado
             $receber = DB::table('ordens_servico')->where('empresa_id', $e)->where('situacao', 'aberta')->where('tipo', '<>', 'credito')
                 ->whereBetween('vencimento', [$inicioPrev, $ate])->groupBy('vencimento', 'tipo')->selectRaw('vencimento, tipo, SUM(valor) AS total, COUNT(*) AS qtd')->get();
             foreach ($receber as $r) {
-                $add((string) $r->vencimento, 'entradas', 'A receber · '.(\App\Models\OrdemServico::TIPOS[$r->tipo] ?? $r->tipo), (float) $r->total, true);
+                $add((string) $r->vencimento, 'entradas', 'A receber · '.(OrdemServico::TIPOS[$r->tipo] ?? $r->tipo), (float) $r->total, true);
             }
             $pagar = DB::table('despesas')->where('empresa_id', $e)->where('situacao', 'aberta')->whereBetween('vencimento', [$inicioPrev, $ate])->get(['vencimento', 'descricao', 'valor']);
             foreach ($pagar as $d) {

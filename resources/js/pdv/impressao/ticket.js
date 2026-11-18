@@ -79,3 +79,53 @@ export function montarRecibo(r, eu, opcoes = {}) {
 
     return tk.avancar(4).cortar().pronto()
 }
+
+function cabecalho(tk, eu, titulo) {
+    const e = eu.empresa || {}
+    tk.alinhar('centro').negrito().linha(e.nome || 'Estacionamento').negrito(false)
+    if (e.documento) tk.linha(`CNPJ ${e.documento}`)
+    tk.alinhar('esquerda').traco()
+    tk.alinhar('centro').negrito().linha(titulo).negrito(false).alinhar('esquerda')
+}
+
+/** recibo de conta paga no balcão (mensalidade e outras contas do cliente) */
+export function montarReciboConta(r, eu, opcoes = {}) {
+    const tk = new Ticket(opcoes)
+    cabecalho(tk, eu, 'RECIBO')
+    tk.par('Cliente', r.cliente).par('Data', r.data).traco()
+    r.itens.forEach((i) => tk.par(i.descricao.slice(0, 32), moeda(i.valor)))
+    tk.traco().negrito().par(`Pago (${r.forma})`, moeda(r.total)).negrito(false)
+    if (r.observacao) tk.linha(r.observacao)
+    tk.traco().alinhar('centro').linha('Obrigado!').alinhar('esquerda')
+
+    return tk.avancar(4).cortar().pronto()
+}
+
+/** resumo do fechamento do caixa */
+export function montarFechamento(r, eu, opcoes = {}) {
+    const tk = new Ticket(opcoes)
+    cabecalho(tk, eu, 'FECHAMENTO DE CAIXA')
+    tk.par('Aberto', r.aberto_em.split(' ').map((p, i) => (i ? p : p.split('-').reverse().join('/'))).join(' '))
+    tk.par('Fechado', (r.fechado_em || '').split(' ').map((p, i) => (i ? p : p.split('-').reverse().join('/'))).join(' '))
+    if (r.fechado_por) tk.par('Por', r.fechado_por)
+    tk.traco().negrito().linha('POR SERVIÇO').negrito(false)
+    r.por_servico.forEach((l) => tk.par(`${l.servico} (${l.qtd})`.slice(0, 32), moeda(l.total)))
+    tk.negrito().par('Total recebido', moeda(r.total_recebido)).negrito(false)
+    tk.traco().negrito().linha('POR FORMA').negrito(false)
+    r.por_forma.forEach((l) => tk.par(l.forma, moeda(l.total)))
+    tk.traco().negrito().linha('DINHEIRO').negrito(false)
+    tk.par('Troco inicial', moeda(r.troco_inicial)).par('+ Recebido', moeda(r.dinheiro_recebido))
+    if (r.suprimentos > 0) tk.par('+ Suprimentos', moeda(r.suprimentos))
+    if (r.sangrias > 0) tk.par('- Sangrias', moeda(r.sangrias))
+    if (r.pagamentos > 0) tk.par('- Pagamentos', moeda(r.pagamentos))
+    if (r.retiradas > 0) tk.par('- Retiradas', moeda(r.retiradas))
+    tk.negrito().par('Deveria ter', moeda(r.dinheiro_esperado)).negrito(false)
+    tk.par('Contado', moeda(r.dinheiro_contado)).par('Diferença', moeda(r.diferenca)).par('Fica de troco', moeda(r.troco_deixado))
+    if (r.movimentos.length) {
+        tk.traco().negrito().linha('MOVIMENTOS').negrito(false)
+        r.movimentos.forEach((m) => tk.par(`${m.hora.slice(6)} ${m.rotulo}`.slice(0, 32), moeda(m.sinal * m.valor)))
+    }
+    tk.traco().linha('Conferido: ____________________')
+
+    return tk.avancar(4).cortar().pronto()
+}

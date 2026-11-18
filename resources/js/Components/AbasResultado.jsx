@@ -1,11 +1,11 @@
 import { Link, usePage } from '@inertiajs/react'
 
-const ABAS = [['/resultado', 'Resultado do mês'], ['/resultado/fluxo', 'Fluxo de caixa']]
+const ABAS = [['/resultado', 'Resultado do mês'], ['/resultado/fluxo', 'Fluxo de caixa'], ['/resultado/caixas', 'Caixa do PDV']]
 
 /** Abas de Gestão › Resultado e caixa. */
 export default function AbasResultado() {
     const caminho = usePage().url.split('?')[0]
-    const acesa = caminho.startsWith('/resultado/fluxo') ? '/resultado/fluxo' : '/resultado'
+    const acesa = ABAS.map(([h]) => h).filter((h) => caminho.startsWith(h)).pop() || '/resultado'
     return (
         <nav className="abas-config mb-3" aria-label="Resultado e caixa">
             <ul className="nav nav-underline flex-nowrap">

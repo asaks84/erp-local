@@ -1,10 +1,11 @@
-import { Link, router, useForm } from '@inertiajs/react'
+import { router, useForm } from '@inertiajs/react'
 import { useEffect, useRef, useState } from 'react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import Janela from '../../Components/Janela'
 import Campo from '../../Components/Campo'
 import CampoValor from '../../Components/CampoValor'
+import AbasEstadias from '../../Components/AbasEstadias'
 import ContaDe from '../../Components/ContaDe'
 import { dataHora, moeda } from '../../lib/formato'
 import { placa as mPlaca, telefone } from '../../lib/mascaras'
@@ -280,9 +281,8 @@ export default function EstadiasIndex({ patio, hoje, resumo_hoje, tipos, conveni
 
     return (
         <div className="pagina">
-            <TituloPagina titulo="Estadias">
-                <Link href="/estadias/historico" className="btn btn-outline-secondary">Histórico</Link>
-            </TituloPagina>
+            <AbasEstadias />
+            <TituloPagina titulo="Estadias" />
             <Entrada tipos={tipos} convenios={convenios} formas={formas} />
 
             <div className="d-flex align-items-baseline gap-2 mb-2">

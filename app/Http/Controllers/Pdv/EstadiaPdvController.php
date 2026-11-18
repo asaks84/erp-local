@@ -146,10 +146,7 @@ class EstadiaPdvController extends Controller
     public function cancelar(Request $r, int $id): JsonResponse
     {
         $d = $r->validate(['motivo' => ['required', 'string', 'max:200']], ['motivo.required' => 'Informe o motivo.']);
-        $u = PdvController::pessoa($r);
-        if (! $u->pode('pdv_gerente')) {
-            throw ValidationException::withMessages(['pin' => 'Cancelar pede o PIN de um gerente ou administrador.']);
-        }
+        PdvController::gerente($r, 'Cancelar');
         $e = self::achar($id);
         Estadias::cancelar($e, $d['motivo']);
 

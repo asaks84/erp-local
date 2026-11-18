@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\PertenceAEmpresa;
+use App\Servicos\Pdv\Caixas;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -23,6 +24,10 @@ class Pagamento extends Modelo
             if ($a && in_array($p->origem ?? 'gestao', ['gestao', null], true)) {
                 $p->origem = 'pdv';
                 $p->aparelho_id = $a->id;
+            }
+            // tudo o que entra pelo PDV cai no caixa aberto do balcão
+            if ($p->origem === 'pdv' && ! $p->caixa_id) {
+                $p->caixa_id = Caixas::atual()->id;
             }
         });
     }

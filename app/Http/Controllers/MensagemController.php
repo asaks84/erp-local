@@ -195,17 +195,38 @@ class MensagemController extends Controller
     }
 
     /** descarta um rascunho (se for a única versão, a mensagem some) */
+    /**
+     * Rascunho: descarta. Versão já enviada à Meta: exclui lá pela API e aqui. A régua não pode ficar sem
+     * versão (nem sem a aprovada, se era a única aprovada).
+     */
     public function destroy(ModeloMensagem $mensagem): RedirectResponse
     {
-        if (! $mensagem->rascunho()) {
-            return back()->with('erro', 'Só dá para descartar rascunho.');
+        $outras = Modelos::versoes($mensagem->grupo)->where('id', '<>', $mensagem->id);
+        $unica = $outras->isEmpty();
+        $passos = Regua::passos();
+        $naRegua = collect($passos)->contains(fn ($p) => Modelos::doPasso($p['dias'], $passos) === $mensagem->grupo);
+        if ($naRegua && ($unica || ($mensagem->situacao === 'APPROVED' && ! $outras->contains('situacao', 'APPROVED')))) {
+            return back()->with('erro', $unica
+                ? 'Essa mensagem está na régua de cobrança: escolha outra mensagem para o passo antes de apagar.'
+                : 'Essa é a única versão aprovada de uma mensagem da régua: os avisos pela API param. Troque a mensagem do passo na régua ou espere outra versão ser aprovada.');
         }
-        $unica = Modelos::versoes($mensagem->grupo)->count() === 1;
-        if ($unica) {
-            $passos = Regua::passos();
-            if (collect($passos)->contains(fn ($p) => Modelos::doPasso($p['dias'], $passos) === $mensagem->grupo)) {
-                return back()->with('erro', 'Essa mensagem está na régua de cobrança: escolha outra mensagem para o passo antes de apagar.');
+        if (! $mensagem->rascunho()) {
+            $api = $this->api();
+            if ($api) {
+                try {
+                    $api->excluirModelo($mensagem->nome, $mensagem->meta_id);
+                } catch (WhatsAppErro $e) {
+                    return back()->with('erro', 'A Meta não excluiu: '.$e->getMessage());
+                }
             }
+            $rotulo = $mensagem->rotulo.' v'.$mensagem->versao;
+            $grupo = $mensagem->grupo;
+            $mensagem->delete();
+            Atividades::registrar('whatsapp_mensagem', 'modelo do WhatsApp excluído: '.$rotulo.' ('.$mensagem->nome.')'.($api ? '' : ' só no ERP'));
+
+            return redirect('/configuracoes/whatsapp/mensagens'.($unica ? '' : '?grupo='.$grupo))->with('sucesso', $api
+                ? 'Modelo excluído aqui e na Meta. O nome '.$mensagem->nome.' fica bloqueado na Meta por 30 dias.'
+                : 'Modelo excluído no ERP. Com a integração desligada, exclua também no Gerenciador do WhatsApp.');
         }
         $rotulo = $mensagem->rotulo;
         $grupo = $mensagem->grupo;
