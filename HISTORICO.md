@@ -4,6 +4,16 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 18/11/2026 — Busca de cliente no celular
+
+- Corrigido: no celular, tocar num resultado da busca de cliente (ex.: no Início) às vezes abria a tela que estava embaixo da lista (o card "Em aberto" levava a Contas em aberto). A escolha agora acontece no clique, e não no início do toque, então o "clique fantasma" não cai mais no link de baixo.
+
+## 18/11/2026 — PDV: PIN pelo teclado do celular e dados do carro entre estadia e lavagem
+
+- O PIN agora é digitado no teclado numérico do próprio celular (campo com os dígitos escondidos, sem senha salva do navegador), no lugar do teclado na tela; confere sozinho ao completar 4 dígitos e, se errar, o campo volta selecionado.
+- Placa avulsa que já passou pela lavagem traz modelo, tamanho e celular na entrada da estadia, e vice-versa (vale a visita mais recente, estadia ou lavagem).
+- O PDV avisa o navegador para encolher a tela quando o teclado abre, para nada ficar escondido atrás dele. 1 teste novo (239).
+
 ## 18/11/2026 — PDV, parte 8.4: lavagem
 
 - **PDV › Lavagem:** nova lavagem em etapas (placa, modelo e tamanho, serviço com o preço do tamanho, adicionais, celular, na entrega ou pagar agora com troco, ticket próprio), lista das em andamento com a próxima etapa em um toque, e entrega em etapas (convênio escolhido na hora, pagar agora, na conta do cliente ou de outro, recibo com troco).

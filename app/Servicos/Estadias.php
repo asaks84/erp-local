@@ -7,6 +7,7 @@ use App\Models\Convenio;
 use App\Models\Estadia;
 use App\Models\FormaPagamento;
 use App\Models\MensalidadeContrato;
+use App\Models\OrdemServico;
 use App\Models\Pagamento;
 use App\Models\TipoVeiculo;
 use App\Support\Atividades;
@@ -30,6 +31,30 @@ class Estadias
     private static function erro(string $campo, string $msg): never
     {
         throw ValidationException::withMessages([$campo => $msg]);
+    }
+
+    /**
+     * Última visita de uma placa avulsa (sem cadastro), seja estadia ou lavagem: modelo, tamanho e celular
+     * da mais recente, completando o que faltar com a outra. Serve para preencher a entrada no PDV.
+     */
+    public static function ultimaVisita(string $placa): ?array
+    {
+        $e = Estadia::where('placa', $placa)->where('situacao', '<>', 'cancelada')->latest('entrada')->first(['modelo', 'tipo_veiculo_id', 'celular', 'entrada']);
+        $o = OrdemServico::where('placa', $placa)->whereNull('cliente_id')->where('situacao', '<>', 'cancelada')->orderByDesc('id')
+            ->first(['veiculo_descricao', 'tipo_veiculo_id', 'celular', 'data', 'criado_em']);
+        $visitas = collect([
+            $e ? ['quando' => $e->entrada, 'modelo' => $e->modelo, 'tipo_id' => $e->tipo_veiculo_id, 'celular' => $e->celular] : null,
+            $o ? ['quando' => $o->criado_em ?? $o->data, 'modelo' => $o->veiculo_descricao, 'tipo_id' => $o->tipo_veiculo_id, 'celular' => $o->celular] : null,
+        ])->filter()->sortByDesc(fn ($v) => $v['quando']->timestamp)->values();
+        if ($visitas->isEmpty()) {
+            return null;
+        }
+        $r = ['quando' => $visitas[0]['quando']->format('d/m/Y')];
+        foreach (['modelo', 'tipo_id', 'celular'] as $k) {
+            $r[$k] = $visitas->pluck($k)->first(fn ($v) => $v !== null && $v !== '');
+        }
+
+        return $r;
     }
 
     /** código do ticket (vai no QR): difícil de adivinhar */

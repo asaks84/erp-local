@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 
 /**
@@ -39,16 +39,22 @@ export function PinProvider({ memoriaMin, children }) {
 
 export const usePin = () => useContext(Ctx)
 
-/** teclado numérico grande; confere o PIN no servidor ao completar 4 dígitos */
+/**
+ * PIN pelo teclado numérico do próprio celular (mais rápido que um teclado na tela). O campo é texto com os
+ * dígitos escondidos, para o navegador não oferecer senha salva; confere no servidor ao completar 4 dígitos.
+ */
 export function TecladoPin({ titulo, onCancelar, onConferido }) {
     const [pin, setPin] = useState('')
     const [erro, setErro] = useState(null)
     const [conferindo, setConferindo] = useState(false)
+    const campo = useRef(null)
+    // PIN errado: o campo volta a ficar selecionado, com o teclado aberto
+    useEffect(() => { if (!conferindo) campo.current?.focus() }, [conferindo])
 
-    const digitar = (d) => {
+    const mudar = (valor) => {
         if (conferindo) return
+        const novo = valor.replace(/\D/g, '').slice(0, 4)
         setErro(null)
-        const novo = (pin + d).slice(0, 4)
         setPin(novo)
         if (novo.length === 4) {
             setConferindo(true)
@@ -61,19 +67,14 @@ export function TecladoPin({ titulo, onCancelar, onConferido }) {
 
     return (
         <div className="pdv-pin" role="dialog" aria-modal="true" aria-label={titulo}>
-            <div className="pdv-pin-caixa">
-                <div className="fw-semibold text-center mb-2">{titulo}</div>
-                <div className="pdv-pin-pontos" aria-live="polite">
-                    {[0, 1, 2, 3].map((i) => <span key={i} className={i < pin.length ? 'cheio' : ''} />)}
-                </div>
-                <div className="pdv-pin-erro text-danger small text-center">{conferindo ? <span className="text-muted">Conferindo…</span> : erro}</div>
-                <div className="pdv-teclado">
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => <button key={d} type="button" onClick={() => digitar(d)}>{d}</button>)}
-                    <button type="button" className="pdv-tecla-texto" onClick={onCancelar}>Cancelar</button>
-                    <button type="button" onClick={() => digitar('0')}>0</button>
-                    <button type="button" className="pdv-tecla-texto" onClick={() => { setPin(pin.slice(0, -1)); setErro(null) }} aria-label="Apagar">⌫</button>
-                </div>
-            </div>
+            <form className="pdv-pin-caixa" onSubmit={(e) => e.preventDefault()} autoComplete="off">
+                <label className="fw-semibold text-center mb-2 d-block" htmlFor="pdv-pin-campo">{titulo}</label>
+                <input ref={campo} id="pdv-pin-campo" className="form-control form-control-lg text-center texto-oculto pdv-pin-campo" type="text" inputMode="numeric" pattern="[0-9]*"
+                    autoComplete="off" autoCorrect="off" spellCheck="false" maxLength={4} autoFocus value={pin} disabled={conferindo}
+                    onChange={(e) => mudar(e.target.value)} aria-describedby="pdv-pin-erro" />
+                <div id="pdv-pin-erro" className="pdv-pin-erro text-danger small text-center" aria-live="polite">{conferindo ? <span className="text-muted">Conferindo…</span> : erro}</div>
+                <button type="button" className="btn btn-outline-secondary btn-lg w-100 mt-2" onClick={onCancelar}>Cancelar</button>
+            </form>
         </div>
     )
 }

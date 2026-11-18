@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pdv;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\EstadiaController;
 use App\Models\Estadia;
+use App\Models\EtapaLavagem;
 use App\Models\FormaPagamento;
 use App\Models\OrdemServico;
 use App\Models\Pagamento;
@@ -43,7 +44,7 @@ class LavagemPdvController extends Controller
             'servicos' => $grupo->where('situacao', '<>', 'cancelada')->map(fn ($o) => $o->descricao)->values(),
             'total' => round((float) $grupo->where('situacao', '<>', 'cancelada')->sum('valor'), 2),
             'pago' => $abertas->whereNull('cliente_id')->isEmpty(),
-            'etapa' => $p->etapa, 'etapa_nome' => $etapas[$p->etapa] ?? \App\Models\EtapaLavagem::where('chave', $p->etapa)->value('nome') ?? ucfirst((string) $p->etapa),
+            'etapa' => $p->etapa, 'etapa_nome' => $etapas[$p->etapa] ?? EtapaLavagem::where('chave', $p->etapa)->value('nome') ?? ucfirst((string) $p->etapa),
             'proxima' => $prox ? ['chave' => $prox, 'nome' => $etapas[$prox]] : null,
             'pronta' => $p->etapa === Lavagens::etapaPronta(),
             'desde' => $p->criado_em?->format('Y-m-d H:i'),
@@ -96,7 +97,7 @@ class LavagemPdvController extends Controller
             return response()->json(['placa' => null]);
         }
         $v = Vendas::veiculoDaPlaca($p);
-        $ultima = $v ? null : OrdemServico::where('placa', $p)->whereNull('cliente_id')->orderByDesc('id')->first(['tipo_veiculo_id', 'celular', 'data', 'veiculo_descricao']);
+        $ultima = $v ? null : Estadias::ultimaVisita($p);
         $patio = Estadia::where('situacao', 'patio')->where('placa', $p)->first();
         $andamento = OrdemServico::where('placa', $p)->where('tipo', 'servico')->whereNull('principal_id')->whereNotNull('etapa')
             ->where('etapa', '<>', EtapasLavagem::ULTIMA)->where('situacao', '<>', 'cancelada')->first();
@@ -107,7 +108,7 @@ class LavagemPdvController extends Controller
             'estadia' => $patio ? ['id' => $patio->id, 'numero' => $patio->numero, 'entrada' => $patio->entrada->format('d/m H:i'), 'pago_entrada' => (float) $patio->pago_entrada] : null,
             'veiculo' => $v ? ['modelo' => trim($v->marca.' '.$v->modelo) ?: null, 'tipo_id' => $v->tipo_veiculo_id, 'cliente' => $v->cliente?->nome,
                 'cliente_id' => $v->cliente_id, 'mensalista' => (bool) Estadias::contratoVigente($v->id)] : null,
-            'ultima' => $ultima ? ['modelo' => $ultima->veiculo_descricao, 'tipo_id' => $ultima->tipo_veiculo_id, 'celular' => $ultima->celular, 'quando' => $ultima->data->format('d/m/Y')] : null,
+            'ultima' => $ultima,
         ]);
     }
 

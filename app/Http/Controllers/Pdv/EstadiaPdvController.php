@@ -55,14 +55,14 @@ class EstadiaPdvController extends Controller
         }
         $noPatio = Estadia::where('situacao', 'patio')->where('placa', $p)->first();
         $v = Vendas::veiculoDaPlaca($p);
-        $ultima = $v ? null : Estadia::where('placa', $p)->where('situacao', '<>', 'cancelada')->latest('entrada')->first();
+        $ultima = $v ? null : Estadias::ultimaVisita($p);
 
         return response()->json([
             'placa' => Placa::formatar($p),
             'no_patio' => $noPatio ? ['id' => $noPatio->id, 'numero' => $noPatio->numero, 'entrada' => $noPatio->entrada->format('d/m H:i')] : null,
             'veiculo' => $v ? ['modelo' => trim($v->marca.' '.$v->modelo) ?: null, 'tipo_id' => $v->tipo_veiculo_id, 'cliente' => $v->cliente?->nome,
                 'mensalista' => (bool) Estadias::contratoVigente($v->id)] : null,
-            'ultima' => $ultima ? ['modelo' => $ultima->modelo, 'tipo_id' => $ultima->tipo_veiculo_id, 'quando' => $ultima->entrada->format('d/m/Y')] : null,
+            'ultima' => $ultima,
         ]);
     }
 

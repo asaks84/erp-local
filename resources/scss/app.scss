@@ -196,6 +196,8 @@ body.pdv { background: var(--bs-body-bg); }
     span.cheio { background: var(--bs-body-color); border-color: var(--bs-body-color); }
 }
 .pdv-pin-erro { min-height: 1.5em; }
+.pdv-pin-campo { font-size: 1.75rem; letter-spacing: .6em; max-width: 220px; margin: 0 auto; }
+.pdv-pin-pontos { cursor: text; }
 .pdv-teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
     button { height: 64px; border-radius: 12px; border: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); font-size: 1.5rem; font-weight: 600; color: var(--bs-body-color); }
     button:active { background: var(--bs-secondary-bg); }

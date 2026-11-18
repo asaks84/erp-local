@@ -32,6 +32,8 @@ export default function BuscaCliente({ onEscolher, placeholder = 'Buscar cliente
         return () => document.removeEventListener('pointerdown', fora)
     }, [])
 
+    // escolhe no clique (não no toque inicial): se a lista sumisse no toque, o "clique fantasma" do celular
+    // caía no que estava embaixo dela (ex.: o card "Em aberto" do Início) e abria outra tela
     function escolher(c) {
         setAberta(false)
         setTexto(onEscolher ? c.nome : '')
@@ -58,7 +60,7 @@ export default function BuscaCliente({ onEscolher, placeholder = 'Buscar cliente
                     {lista.length === 0 && <li className="busca-vazio">Nenhum cliente encontrado.</li>}
                     {lista.map((c, i) => (
                         <li key={c.id} role="option" aria-selected={i === ativo} className={i === ativo ? 'ativo' : undefined}
-                            onPointerDown={(e) => { e.preventDefault(); escolher(c) }} onMouseEnter={() => setAtivo(i)}>
+                            onPointerDown={(e) => e.preventDefault()} onClick={() => escolher(c)} onMouseEnter={() => setAtivo(i)}>
                             <strong>{c.nome}</strong>
                             <small>{c.detalhe}</small>
                         </li>

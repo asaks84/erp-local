@@ -183,4 +183,14 @@ class PdvLavagemTest extends TestCase
         Carbon::setTestNow('2026-11-10 12:00:00');
         $this->pdv()->getJson("/api/pdv/lavagens/{$v2['lavagem']['id']}/calculo")->assertJsonPath('calculo.estadia', null)->assertJsonPath('calculo.a_pagar', 40);
     }
+
+    public function test_dados_do_carro_passam_da_lavagem_para_a_estadia_e_vice_versa(): void
+    {
+        $this->vender('VIS1T22', ['modelo' => 'Onix prata', 'celular' => '13988887777']);
+        $this->pdv()->getJson('/api/pdv/estadias/placa/VIS1T22')->assertJsonPath('ultima.modelo', 'Onix prata')
+            ->assertJsonPath('ultima.tipo_id', $this->a->tipo->id)->assertJsonPath('ultima.celular', '13988887777');
+        Carbon::setTestNow('2026-11-11 09:00:00');
+        $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'VIS2T33', 'modelo' => 'HB20 azul', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])->assertOk();
+        $this->pdv()->getJson('/api/pdv/lavagens/placa/VIS2T33')->assertJsonPath('ultima.modelo', 'HB20 azul')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
+    }
 }
