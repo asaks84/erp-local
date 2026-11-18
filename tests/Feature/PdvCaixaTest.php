@@ -96,7 +96,7 @@ class PdvCaixaTest extends TestCase
         // só gerente vê o caixa
         $this->pdv()->postJson('/api/pdv/caixa/resumo', ['pin' => '4831'])->assertStatus(422)->assertJsonValidationErrors('pin');
         $r = $this->pdv()->postJson('/api/pdv/caixa/resumo', ['pin' => '5072'])->assertOk()->json();
-        $this->assertSame([['Mensalidades', 1, 180], ['Estadias', 2, 40], ['Lavagens e serviços', 0, 0]], array_map(fn ($l) => [$l['servico'], $l['qtd'], $l['total']], $r['por_servico']));
+        $this->assertSame([['Contas de clientes', 1, 180], ['Estadias', 2, 40], ['Lavagens e serviços', 0, 0]], array_map(fn ($l) => [$l['servico'], $l['qtd'], $l['total']], $r['por_servico']));
         $this->assertSame(220, $r['total_recebido']);
         $this->assertEqualsCanonicalizing([['Dinheiro', 200], ['Pix', 20]], array_map(fn ($l) => [$l['forma'], $l['total']], $r['por_forma']));
         $this->assertSame(200, $r['dinheiro_esperado']); // troco inicial 0 + 200 em dinheiro (20 + 180)

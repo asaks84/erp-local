@@ -13,6 +13,7 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 - **PDV › Caixa:** receber conta de cliente no balcão (cliente, contas, forma, troco, recibo); **Retirada** com PIN de gerente: sangria (cofre, depósito no banco ou retirada do sócio) ou pagamento de despesa com o dinheiro da gaveta (vira despesa paga em Contas a pagar, com a categoria); **Suprimento**; **Fechar o caixa** (recebido por serviço e por forma, dinheiro que deveria ter, contado, diferença, troco que fica, resumo impresso). O troco deixado abre o próximo caixa.
 - Tudo o que é recebido pelo PDV cai no caixa aberto; recebido pela gestão não.
+- No fechamento, o que foi recebido em "Receber conta de cliente" aparece numa linha só, **Contas de clientes** (mensalidades e serviços que estavam na conta), separado das estadias e lavagens feitas no dia. Migration `2026_11_28_000002_pagamentos_pdv_tipo`.
 - **Gestão › Resultado e caixa › Caixa do PDV:** caixas do mês com o detalhe e as retiradas dos sócios (registrar as que saíram do banco).
 - **Resultado do mês:** "(−) Retiradas dos sócios" abaixo do lucro e "Ficou na empresa"; fluxo de caixa mostra a retirada como saída.
 - Migration `2026_11_28_000001_caixa_pdv` (caixas, caixa_movimentos, pagamentos.caixa_id). 2 testes novos (234).

@@ -114,6 +114,7 @@ class CaixaPdvController extends Controller
         [$p, $msg] = Baixa::receber($cliente, ['ordens' => $d['ordens'], 'valor' => $total, 'forma_pagamento_id' => $d['forma_pagamento_id'],
             'parcelas' => $d['parcelas'] ?? 1, 'origem' => 'pdv',
             'observacao' => $troco > 0 ? 'Recebido '.Formato::moeda($recebido).' · troco '.Formato::moeda($troco) : null]);
+        $p->update(['pdv_tipo' => 'conta']);
         CobrancaController::cancelarBoletosResolvidos();
 
         return response()->json([

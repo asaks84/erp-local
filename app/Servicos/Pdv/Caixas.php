@@ -55,20 +55,23 @@ class Caixas
         }
         $pags = DB::table('pagamentos as p')->leftJoin('formas_pagamento as f', 'f.id', '=', 'p.forma_pagamento_id')
             ->where('p.caixa_id', $c->id)->where('p.situacao', 'confirmado')
-            ->get(['p.id', 'p.valor', 'f.nome as forma', 'f.tipo as forma_tipo', 'f.ordem']);
+            ->get(['p.id', 'p.valor', 'p.pdv_tipo', 'f.nome as forma', 'f.tipo as forma_tipo', 'f.ordem']);
         $porForma = $pags->groupBy('forma')->map(fn ($g, $nome) => ['forma' => $nome ?: 'Não informada', 'tipo' => $g->first()->forma_tipo,
             'qtd' => $g->count(), 'total' => round($g->sum('valor'), 2), 'ordem' => (int) $g->first()->ordem])->sortBy('ordem')->values()
             ->map(fn ($l) => collect($l)->except('ordem')->all())->all();
 
+        // conta de cliente recebida no balcão: uma linha só (mensalidades e serviços que estavam na conta, de outros dias);
+        // o resto, pelo serviço feito no dia
+        $contas = $pags->where('pdv_tipo', 'conta');
         $itens = DB::table('pagamento_itens as i')->join('ordens_servico as o', 'o.id', '=', 'i.ordem_id')
-            ->whereIn('i.pagamento_id', $pags->pluck('id'))->get(['o.id', 'o.tipo', 'i.valor']);
-        $nomes = ['mensalidade' => 'Mensalidades', 'estadia' => 'Estadias', 'servico' => 'Lavagens e serviços'];
-        $porServico = [];
-        foreach (['mensalidade', 'estadia', 'servico'] as $t) {
+            ->whereIn('i.pagamento_id', $pags->where('pdv_tipo', '<>', 'conta')->pluck('id'))->get(['o.id', 'o.tipo', 'i.valor']);
+        $nomes = ['estadia' => 'Estadias', 'servico' => 'Lavagens e serviços'];
+        $porServico = [['servico' => 'Contas de clientes', 'qtd' => $contas->count(), 'total' => round($contas->sum('valor'), 2)]];
+        foreach (['estadia', 'servico'] as $t) {
             $g = $itens->where('tipo', $t);
             $porServico[] = ['servico' => $nomes[$t], 'qtd' => $g->pluck('id')->unique()->count(), 'total' => round($g->sum('valor'), 2)];
         }
-        $outros = $itens->whereNotIn('tipo', ['mensalidade', 'estadia', 'servico', 'credito']);
+        $outros = $itens->whereNotIn('tipo', ['estadia', 'servico', 'credito']);
         if ($outros->isNotEmpty()) {
             $porServico[] = ['servico' => 'Outros', 'qtd' => $outros->pluck('id')->unique()->count(), 'total' => round($outros->sum('valor'), 2)];
         }
