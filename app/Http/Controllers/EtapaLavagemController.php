@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Empresa;
 use App\Models\EtapaLavagem;
 use App\Models\OrdemServico;
 use App\Servicos\EtapasLavagem;
+use App\Servicos\Pdv\Lavagens;
 use App\Support\Atividades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +26,21 @@ class EtapaLavagemController extends Controller
                 ...$e->only(['id', 'chave', 'nome', 'ativa', 'fixa']),
                 'usada' => in_array($e->chave, $usadas, true),
             ])->values(),
+            'estadia' => Lavagens::regraEstadia(),
+            'pronta' => Lavagens::etapaPronta() ? EtapasLavagem::ativas()[Lavagens::etapaPronta()] : null,
         ]);
+    }
+
+    /** estadia depois que a lavagem ficou pronta: cobrar ou não, e a tolerância */
+    public function estadia(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['cobrar' => ['required', 'boolean'], 'tolerancia_min' => ['required', 'integer', 'min:0', 'max:1440']]);
+        $e = Empresa::atual();
+        $e->configuracoes = array_merge($e->configuracoes ?? [], ['lavagem_estadia_cobrar' => (bool) $d['cobrar'], 'lavagem_estadia_tolerancia_min' => (int) $d['tolerancia_min']]);
+        $e->save();
+        Atividades::registrar('configuracao', 'estadia depois da lavagem pronta: '.($d['cobrar'] ? 'cobra após '.$d['tolerancia_min'].' min' : 'não cobra'));
+
+        return back()->with('sucesso', 'Regra da estadia depois de pronta salva.');
     }
 
     private function nome(Request $request, ?EtapaLavagem $e = null): string

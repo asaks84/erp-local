@@ -43,7 +43,33 @@ function Linha({ e, primeira, ultima }) {
     )
 }
 
-export default function Etapas({ etapas }) {
+function EstadiaDepois({ estadia, pronta }) {
+    const form = useForm({ cobrar: estadia.cobrar, tolerancia_min: estadia.tolerancia_min })
+    return (
+        <form className="card mt-3" onSubmit={(ev) => { ev.preventDefault(); form.post('/configuracoes/etapas/estadia', { preserveScroll: true }) }}>
+            <div className="card-body">
+                <h2 className="h6">Estadia depois que a lavagem fica pronta</h2>
+                <p className="small text-muted">Na entrega pelo PDV: se o carro ficar no pátio depois de pronto, o tempo pode ser cobrado como estadia pela tabela do tamanho do veículo.
+                    {pronta ? ` "Pronta" é a etapa ${pronta} (a última antes de Entregue).` : ' Ative uma etapa entre Aguardando e Entregue para marcar quando fica pronta.'}</p>
+                <div className="form-check form-switch mb-2">
+                    <input className="form-check-input" type="checkbox" role="switch" id="cobrar" checked={form.data.cobrar} onChange={(ev) => form.setData('cobrar', ev.target.checked)} />
+                    <label className="form-check-label" htmlFor="cobrar">Cobrar a estadia depois de pronta</label>
+                </div>
+                {form.data.cobrar && (
+                    <div className="d-flex align-items-center gap-2">
+                        <label htmlFor="tol" className="small">Tolerância</label>
+                        <input id="tol" type="number" min="0" max="1440" className="form-control" style={{ maxWidth: 110 }} value={form.data.tolerancia_min} onChange={(ev) => form.setData('tolerancia_min', ev.target.value)} />
+                        <span className="small text-muted">minutos depois de pronta. Passou disso, cobra todo o tempo desde que ficou pronta.</span>
+                    </div>
+                )}
+                {form.errors.tolerancia_min && <div className="text-danger small">{form.errors.tolerancia_min}</div>}
+            </div>
+            <div className="card-footer bg-transparent text-end p-3"><button type="submit" className="btn btn-primary" disabled={form.processing}>Salvar</button></div>
+        </form>
+    )
+}
+
+export default function Etapas({ etapas, estadia, pronta }) {
     const novo = useForm({ nome: '' })
     const meio = etapas.filter((e) => !e.fixa)
     return (
@@ -66,6 +92,7 @@ export default function Etapas({ etapas }) {
                         <div className="form-text">A nova etapa entra antes de Entregue; use as setas para mudar a ordem.</div>
                     </form>
                 </div>
+                <EstadiaDepois estadia={estadia} pronta={pronta} />
             </div>
         </div>
     )

@@ -305,6 +305,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/configuracoes/plano-contas/{conta}', [PlanoContaController::class, 'destroy']);
         Route::get('/configuracoes/etapas', [EtapaLavagemController::class, 'index']);
         Route::post('/configuracoes/etapas', [EtapaLavagemController::class, 'store']);
+        Route::post('/configuracoes/etapas/estadia', [EtapaLavagemController::class, 'estadia']);
         Route::put('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'update']);
         Route::post('/configuracoes/etapas/{etapa}/mover', [EtapaLavagemController::class, 'mover']);
         Route::delete('/configuracoes/etapas/{etapa}', [EtapaLavagemController::class, 'destroy']);

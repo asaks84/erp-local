@@ -213,6 +213,14 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - **Gestão › Resultado e caixa › Caixa do PDV:** caixas do mês (aberto, fechado, recebido, deveria ter, contado, diferença) com o detalhe de cada um, e as retiradas dos sócios (as do PDV entram sozinhas; as que saíram do banco são registradas ali).
 - Permissão: "Gerente no PDV" (Níveis de acesso › Operação); administrador tem sempre.
 
+## 8f. Como ficou a parte 8.4, lavagem (18/11/2026)
+
+- **PDV › Lavagem:** Nova, Entregar (QR), busca por número ou placa e a lista das em andamento, com a etapa e o botão da próxima etapa (um toque, com PIN). Na última etapa antes de Entregue, o botão vira Entregar.
+- **Nova lavagem, em etapas:** placa (aviso de lavagem já em andamento, de mensalista e de carro no pátio) → se o carro está em estadia: **continua cobrando** (a estadia sai normal depois) ou **cancelar a estadia** (PIN de gerente; motivo "Virou lavagem Nº X"; não cancela estadia com diária paga) → modelo e tamanho → serviço (com o preço do tamanho; serviço "até" pede o valor) → adicionais → celular (só avulso; para avisar quando ficar pronta) → **Na entrega** ou **Pagar agora** (forma, valor recebido, troco) → PIN → ticket próprio (número, serviço, QR).
+- **Entrega, em etapas:** resumo e A pagar fixos (serviços em aberto, estadia depois de pronta, convênio, já pago, já na conta) → convênio escolhido na hora (a parte dele vai para a conta do convênio, o excedente fica com quem usou) → **Pagar agora**, **Na conta de [cliente do veículo]**, **Na conta de outro cliente** (sempre pergunta, sem opção marcada) ou nada a pagar → forma → valor recebido → PIN → recibo com troco. A venda fica Entregue e o pagamento cai no caixa, em "Lavagens e serviços".
+- **Estadia depois de pronta** (Configurações › Etapas da lavagem): cobrar ou não e a tolerância em minutos. "Pronta" é a última etapa ativa antes de Entregue. Passada a tolerância, cobra todo o tempo desde que ficou pronta pela tabela de estadia do tamanho, na mesma entrega (o convênio vale pela regra de estadia dele). Não cobra se o carro continua com estadia aberta no pátio. Só na entrega pelo PDV.
+- Lavagem do PDV aparece no quadro da gestão (origem "pdv") e a da gestão pode ser entregue no PDV.
+
 ## 9. Riscos e cuidados
 
 - **Impressora:** é o ponto que mais pode atrasar. Testar a impressora escolhida logo no começo (um ticket de teste) antes de construir o resto em cima.

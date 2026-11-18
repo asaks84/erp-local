@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 18/11/2026 — PDV, parte 8.4: lavagem
+
+- **PDV › Lavagem:** nova lavagem em etapas (placa, modelo e tamanho, serviço com o preço do tamanho, adicionais, celular, na entrega ou pagar agora com troco, ticket próprio), lista das em andamento com a próxima etapa em um toque, e entrega em etapas (convênio escolhido na hora, pagar agora, na conta do cliente ou de outro, recibo com troco).
+- **Carro em estadia que pede lavagem:** ticket novo da lavagem e a pergunta do que fazer com a estadia: continuar cobrando ou cancelar (PIN de gerente).
+- **Estadia depois de pronta** (Configurações › Etapas da lavagem): cobrar ou não e a tolerância; cobrada na entrega pelo PDV.
+- Contas lançadas pelo PDV ficam com origem "pdv"; modelo do veículo avulso fica na venda. 3 testes novos (238).
+
 ## 18/11/2026 — Histórico de estadias
 
 - Estadias ganhou abas **Pátio | Histórico** (o histórico existia, mas só por um botão no canto).

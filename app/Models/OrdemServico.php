@@ -19,6 +19,16 @@ class OrdemServico extends Modelo
 
     protected $attributes = ['situacao' => 'aberta', 'origem' => 'gestao'];
 
+    protected static function booted(): void
+    {
+        // lançada pelo PDV (pedido com o token de um aparelho)
+        static::creating(function (OrdemServico $o) {
+            if (($o->origem ?? 'gestao') === 'gestao' && request()?->attributes->get('aparelho')) {
+                $o->origem = 'pdv';
+            }
+        });
+    }
+
     public const TIPOS = [
         'mensalidade' => 'Mensalidade',
         'servico' => 'Lavagem/serviço',

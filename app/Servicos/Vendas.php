@@ -12,6 +12,7 @@ use App\Models\Veiculo;
 use App\Support\Atividades;
 use App\Support\Formato;
 use App\Support\Placa;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -94,6 +95,7 @@ class Vendas
                 $base = [
                     'tipo' => 'servico', 'servico_id' => $s->id, 'principal_id' => $principalId, 'unidade_id' => $unidade,
                     'veiculo_id' => $veiculo?->id, 'placa' => $placa, 'tipo_veiculo_id' => $tipoId, 'celular' => $veiculo ? null : $celular,
+                    'veiculo_descricao' => mb_substr(trim((string) ($d['modelo'] ?? '')), 0, 60) ?: null,
                     'data' => $dia->toDateString(), 'vencimento' => $dia->toDateString(), 'etapa' => EtapasLavagem::PRIMEIRA,
                 ];
                 $desta = [];
@@ -140,7 +142,7 @@ class Vendas
     }
 
     /** ordens de uma venda (a principal e os adicionais ligados a ela) */
-    public static function grupo(OrdemServico $o): \Illuminate\Support\Collection
+    public static function grupo(OrdemServico $o): Collection
     {
         $principal = $o->principal_id ? OrdemServico::find($o->principal_id) : $o;
 

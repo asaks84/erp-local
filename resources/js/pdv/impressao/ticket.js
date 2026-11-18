@@ -129,3 +129,33 @@ export function montarFechamento(r, eu, opcoes = {}) {
 
     return tk.avancar(4).cortar().pronto()
 }
+
+/** ticket da lavagem (entrada) */
+export function ticketDaLavagem(r, eu) {
+    return {
+        empresa: eu.empresa, numero: String(r.numero).padStart(6, '0'), servico: r.servico || 'Lavagem', placa: r.placa, modelo: r.modelo,
+        tamanho: r.tipo, entrada: r.entrada, link: linkTicket(r.codigo),
+        rodape: r.pago ? `Pago: ${moeda(r.pago.valor)} (${r.pago.forma})` : 'Apresente este ticket na retirada.',
+    }
+}
+
+/** recibo da entrega da lavagem */
+export function montarReciboLavagem(r, eu, opcoes = {}) {
+    const tk = new Ticket(opcoes)
+    cabecalho(tk, eu, `RECIBO · Nº ${String(r.numero).padStart(6, '0')}`)
+    tk.par('Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : ''))
+    if (r.tipo) tk.par('Tamanho', r.tipo)
+    tk.par('Entrada', r.entrada)
+    if (r.saida) tk.par('Entrega', r.saida)
+    tk.traco()
+    r.itens.forEach((i) => tk.par(i.descricao.slice(0, 32), moeda(i.valor)))
+    tk.traco()
+    if (r.pago) {
+        tk.negrito().par(`Pago (${r.pago.forma})`, moeda(r.pago.valor)).negrito(false)
+        if (r.pago.observacao) tk.linha(r.pago.observacao)
+    }
+    r.itens.filter((i) => i.conta).forEach((i) => tk.linha(`Na conta de ${i.conta}`.slice(0, 48)))
+    tk.traco().alinhar('centro').linha('Obrigado pela preferência!').alinhar('esquerda')
+
+    return tk.avancar(4).cortar().pronto()
+}

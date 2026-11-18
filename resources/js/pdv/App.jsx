@@ -8,6 +8,7 @@ import Estadias from './telas/Estadias'
 import EstadiaEntrada from './telas/EstadiaEntrada'
 import EstadiaSaida from './telas/EstadiaSaida'
 import Caixa from './telas/Caixa'
+import Lavagens from './telas/Lavagens'
 import { PinProvider } from './Pin'
 
 /**
@@ -64,6 +65,7 @@ export default function App() {
                     {tela === 'estadia-entrada' && (opcoes ? <EstadiaEntrada eu={eu} opcoes={opcoes} onVoltar={() => setTela('estadias')} onFeito={feitoEstadia} /> : <div className="text-muted">Carregando…</div>)}
                     {tela === 'estadia-saida' && (opcoes ? <EstadiaSaida eu={eu} opcoes={opcoes} id={estadiaId} onVoltar={() => setTela('estadias')} onFeito={feitoEstadia} /> : <div className="text-muted">Carregando…</div>)}
                     {tela === 'caixa' && <Caixa eu={eu} onVoltar={voltar} />}
+                    {tela === 'lavagens' && <Lavagens eu={eu} onVoltar={voltar} />}
                     {tela === 'cadastrar-pin' && <CadastrarPin onVoltar={voltar} />}
                     {tela === 'impressao' && <TesteImpressao eu={eu} onVoltar={voltar} />}
                 </main>

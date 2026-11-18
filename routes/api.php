@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Pdv\CaixaPdvController;
 use App\Http\Controllers\Pdv\EstadiaPdvController;
+use App\Http\Controllers\Pdv\LavagemPdvController;
 use App\Http\Controllers\Pdv\PdvController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,7 +29,16 @@ Route::prefix('pdv')->middleware('publica')->group(function () {
         Route::get('/caixa', [CaixaPdvController::class, 'estado']);
         Route::get('/caixa/opcoes', [CaixaPdvController::class, 'opcoes']);
         Route::get('/clientes/{id}/contas', [CaixaPdvController::class, 'contas'])->whereNumber('id');
+        // lavagens (8.4)
+        Route::get('/lavagens/opcoes', [LavagemPdvController::class, 'opcoes']);
+        Route::get('/lavagens/andamento', [LavagemPdvController::class, 'andamento']);
+        Route::get('/lavagens/placa/{placa}', [LavagemPdvController::class, 'placa']);
+        Route::get('/lavagens/buscar', [LavagemPdvController::class, 'buscar']);
+        Route::get('/lavagens/{id}/calculo', [LavagemPdvController::class, 'calculo'])->whereNumber('id');
         Route::middleware('throttle:60,1,pdv-acao')->group(function () {
+            Route::post('/lavagens', [LavagemPdvController::class, 'vender']);
+            Route::post('/lavagens/{id}/etapa', [LavagemPdvController::class, 'etapa'])->whereNumber('id');
+            Route::post('/lavagens/{id}/entregar', [LavagemPdvController::class, 'entregar'])->whereNumber('id');
             Route::post('/caixa/resumo', [CaixaPdvController::class, 'resumo']);
             Route::post('/caixa/movimentos', [CaixaPdvController::class, 'movimentar']);
             Route::post('/caixa/fechar', [CaixaPdvController::class, 'fechar']);
