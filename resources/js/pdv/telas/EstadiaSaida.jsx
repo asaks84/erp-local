@@ -4,6 +4,7 @@ import { usePin } from '../Pin'
 import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda, PixQr, usaPixQr } from '../comum'
 import { montarRecibo } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
+import { TopoEtapa, passoDe, useErro } from '../visual'
 
 /**
  * Saída em etapas, uma decisão por tela, com o resumo e o "A pagar" fixos no alto:
@@ -25,7 +26,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
     const [achados, setAchados] = useState([])
     const [perdido, setPerdido] = useState(false)
     const [retirada, setRetirada] = useState({ nome: '', documento: '' })
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [cancelando, setCancelando] = useState(false)
     const [motivo, setMotivo] = useState('')
@@ -74,8 +75,8 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
     if (!dados) {
         return (
             <div>
-                <button type="button" className="btn btn-link px-0 mb-2" onClick={onVoltar}>‹ Estadias</button>
-                {erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted">Calculando…</div>}
+                <TopoEtapa titulo="Saída · estadia" onVoltar={onVoltar} />
+                {erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted text-center py-4">Calculando…</div>}
             </div>
         )
     }
@@ -113,9 +114,10 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
 
     return (
         <div className="pb-5">
+            <TopoEtapa titulo="Saída · estadia" onVoltar={etapa === 'como' ? onVoltar : voltarEtapa}
+                passo={passoDe(['como', 'forma', 'fim'], etapa, { dinheiro: 'fim', pix: 'fim', conta: 'forma' })} />
             {/* resumo fixo */}
             <div className="pdv-resumo-fixo">
-                <button type="button" className="btn btn-link px-0 mb-1" onClick={etapa === 'como' ? onVoltar : voltarEtapa}>‹ {etapa === 'como' ? 'Estadias' : 'Voltar'}</button>
                 <div className="d-flex justify-content-between align-items-baseline">
                     <span className="h4 mb-0">{e.rotulo}</span>
                     <span className="text-muted small">Nº {e.numero} · {c.tempo}</span>
@@ -154,7 +156,6 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                         </div>
                     )}
 
-                    {erro && <div className="alert alert-danger py-2 small">{erro}</div>}
                     {c.a_pagar > 0 ? (
                         <div className="d-grid gap-2 mt-3">
                             <button type="button" className="btn btn-primary btn-lg" disabled={!perdidoOk} onClick={() => { setDestino('pago'); setForma(null); setEtapa('forma') }}>Pagar agora</button>
@@ -176,7 +177,6 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                 <div className="mt-3">
                     <div className="fw-semibold mb-2">Forma de pagamento</div>
                     <Formas formas={opcoes.formas} value={forma} onChange={escolherForma} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => finalizar({ forma })}>
                             {enviando ? 'Finalizando…' : `Recebi ${moeda(aPagar)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
@@ -200,7 +200,6 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                             .map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(v)}>{moeda(v)}</button>)}
                     </div>
                     {valorRecebido > 0 && valorRecebido + 0.001 < aPagar && <div className="text-danger small mt-2">Menor que {moeda(aPagar)}.</div>}
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando || valorRecebido + 0.001 < aPagar} onClick={() => finalizar({ forma, recebido: valorRecebido })}>
                         {enviando ? 'Finalizando…' : valorRecebido >= aPagar ? `Confirmar ${moeda(valorRecebido)} recebidos` : 'Confirmar valor recebido'}
                     </button>
@@ -221,7 +220,6 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                             <div className="list-group mt-1">{achados.map((a) => <button key={a.id} type="button" className="list-group-item list-group-item-action py-3" onClick={() => { setContaDe(a); setBusca('') }}>{a.nome}</button>)}</div>
                         </>
                     )}
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={!contaDe || enviando} onClick={() => finalizar({ destino: 'conta' })}>
                         {enviando ? 'Finalizando…' : contaDe ? `Lançar ${moeda(aPagar)} na conta` : 'Escolha o cliente'}
                     </button>

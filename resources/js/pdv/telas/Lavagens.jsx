@@ -6,18 +6,25 @@ import { montarReciboLavagem, montarTicket, ticketDaLavagem } from '../impressao
 import { preferencia } from '../impressao/preferencia'
 import { cursorNoFim } from '../../Components/CampoValor'
 import LeitorQr from '../LeitorQr'
+import { Icone, PlacaMercosul, TopoEtapa, passoDe, useAvisos, useErro } from '../visual'
 
 const soPlaca = (v) => v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 7)
 const atalhos = (total) => [...new Set([Math.ceil(total / 10) * 10, Math.ceil(total / 50) * 50, 100, 200].filter((v) => v > total))].slice(0, 3)
 const nomeForma = (f) => f.nome.replace(/^Cartão de /i, '').toLowerCase()
 
-function Topo({ titulo, onVoltar, voltarRotulo = 'Voltar', direita = null, linha = null }) {
+/** topo de cada etapa (8.8): voltar, título, bolinhas e, se houver, o resumo fixo embaixo */
+function Topo({ titulo, onVoltar, direita = null, linha = null, extra = null, passo = null }) {
+    const lado = direita || extra
     return (
-        <div className="pdv-resumo-fixo">
-            <button type="button" className="btn btn-link px-0 mb-1" onClick={onVoltar}>‹ {voltarRotulo}</button>
-            <div className="d-flex justify-content-between align-items-baseline gap-2"><h1 className="h5 mb-0">{titulo}</h1>{direita}</div>
-            {linha && <div className="small text-muted text-end">{linha}</div>}
-        </div>
+        <>
+            <TopoEtapa titulo={titulo} onVoltar={onVoltar} passo={passo} />
+            {(lado || linha) && (
+                <div className="pdv-resumo-fixo">
+                    {lado && <div className={`d-flex align-items-baseline gap-2 ${extra ? 'justify-content-end' : 'justify-content-between'}`}>{lado}</div>}
+                    {linha && <div className="small text-muted">{linha}</div>}
+                </div>
+            )}
+        </>
     )
 }
 
@@ -32,7 +39,6 @@ function Recebido({ total, value, onChange, onConfirmar, enviando, erro, rotulo 
                 {atalhos(total).map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => onChange(v)}>{moeda(v)}</button>)}
             </div>
             {value > 0 && value + 0.001 < total && <div className="text-danger small mt-2">Menor que {moeda(total)}.</div>}
-            {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
             <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando || value + 0.001 < total} onClick={onConfirmar}>
                 {enviando ? 'Registrando…' : value >= total ? `${rotulo} ${moeda(value)} recebidos` : 'Confirmar valor recebido'}
             </button>
@@ -55,7 +61,7 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
     const [celular, setCelular] = useState('')
     const [forma, setForma] = useState(null)
     const [recebido, setRecebido] = useState(0)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [feito, setFeito] = useState(null)
 
@@ -127,16 +133,16 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
     const resumo = [modelo, tipoObj?.nome, sv?.nome].filter(Boolean).join(' · ')
     return (
         <div className="pb-5">
-            <Topo titulo="Nova lavagem" onVoltar={etapa === 'placa' ? onVoltar : voltar} voltarRotulo={etapa === 'placa' ? 'Lavagens' : 'Voltar'}
-                direita={etapa !== 'placa' && <span className="h4 mb-0">{placa}</span>}
+            <Topo titulo="Entrada · lavagem" onVoltar={etapa === 'placa' ? onVoltar : voltar}
+                passo={passoDe(['placa', 'veiculo', 'servico', 'adicionais', 'celular', 'pagamento', 'forma'], etapa, { estadia: 'placa', valor: 'servico', dinheiro: 'forma', pix: 'forma' })}
+                direita={etapa !== 'placa' && <span className="fs-4 fw-bold" style={{ letterSpacing: '.04em' }}>{placa}</span>}
                 linha={['servico', 'valor', 'adicionais', 'celular', 'pagamento', 'forma', 'dinheiro', 'pix'].includes(etapa) ? [resumo, total ? moeda(total) : null].filter(Boolean).join(' · ') : null} />
 
             {etapa === 'placa' && (
                 <div className="mt-2">
-                    <label className="form-label fw-semibold mb-1" htmlFor="placa">Placa</label>
-                    <input id="placa" className="form-control form-control-lg pdv-placa" value={placa} autoComplete="off" autoCapitalize="characters" autoFocus enterKeyHint="next"
-                        onChange={(e) => { setPlaca(soPlaca(e.target.value)); setModelo(''); setCelular('') }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && placa.length >= 7 && info && !info.em_andamento) ir(info.estadia ? 'estadia' : 'veiculo') }} />
+                    <h2 className="h4 fw-bold text-center mb-3">Placa do veículo</h2>
+                    <PlacaMercosul value={placa} onChange={(v) => { setPlaca(soPlaca(v)); setModelo(''); setCelular('') }}
+                        onEnter={() => { if (placa.length >= 7 && info && !info.em_andamento) ir(info.estadia ? 'estadia' : 'veiculo') }} />
                     {info?.em_andamento && <div className="alert alert-danger py-2 small mt-2">Já tem lavagem em andamento para esta placa: Nº {info.em_andamento.numero}.</div>}
                     {info?.estadia && <div className="alert alert-warning py-2 small mt-2">Está no pátio: estadia Nº {info.estadia.numero}, entrou {info.estadia.entrada}.</div>}
                     {info?.veiculo && (
@@ -144,7 +150,15 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
                             {info.veiculo.mensalista ? <><strong>Mensalista</strong> · {info.veiculo.cliente}</> : <>Cadastrado: {info.veiculo.cliente}</>}
                         </div>
                     )}
-                    {info && !info.veiculo && info.ultima && <div className="small text-muted mt-2">Já esteve aqui em {info.ultima.quando}.</div>}
+                    {info && !info.veiculo && info.ultima && (
+                        <div className="pdv-cartao mt-2">
+                            <span className="pdv-cartao-icone" style={{ width: 40, height: 40, borderRadius: 12 }}><Icone nome="relogio" tamanho={20} /></span>
+                            <span className="pdv-cartao-texto">
+                                <strong style={{ fontSize: '1rem' }}>{[info.ultima.modelo, opcoes.tipos.find((t) => t.id === info.ultima.tipo_id)?.nome].filter(Boolean).join(' · ') || 'Já esteve aqui'}</strong>
+                                <span>Já esteve aqui em {info.ultima.quando} · dados preenchidos</span>
+                            </span>
+                        </div>
+                    )}
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={placa.length < 7 || !info || !!info.em_andamento} onClick={() => ir(info.estadia ? 'estadia' : 'veiculo')}>Continuar</button>
                 </div>
             )}
@@ -230,7 +244,6 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
                         <button type="button" className="btn btn-primary btn-lg" disabled={enviando} onClick={() => registrar()}>Na entrega · registrar lavagem</button>
                         <button type="button" className="btn btn-outline-primary btn-lg" onClick={() => { setForma(null); ir('forma') }}>Pagar agora ({moeda(total)})</button>
                     </div>
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                 </div>
             )}
 
@@ -242,7 +255,6 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
                         const f = opcoes.formas.find((x) => x.id === fid)
                         if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
                     }} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => registrar({ agora: true })}>{enviando ? 'Registrando…' : `Recebi ${moeda(total)} no ${nomeForma(formaObj)}`}</button>
                     )}
@@ -269,7 +281,7 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
     const [achados, setAchados] = useState([])
     const [forma, setForma] = useState(null)
     const [recebido, setRecebido] = useState(0)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [feito, setFeito] = useState(null)
 
@@ -297,7 +309,7 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
                 onFim={() => onFeito(feito.mensagem)} />
         )
     }
-    if (!dados) return <div><button type="button" className="btn btn-link px-0 mb-2" onClick={onVoltar}>‹ Lavagens</button>{erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted">Calculando…</div>}</div>
+    if (!dados) return <div><TopoEtapa titulo="Entrega · lavagem" onVoltar={onVoltar} />{erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted text-center py-4">Calculando…</div>}</div>
 
     const { lavagem: l, calculo: c } = dados
     const formaObj = opcoes.formas.find((f) => f.id === forma)
@@ -311,9 +323,10 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
 
     return (
         <div className="pb-5">
+            <TopoEtapa titulo="Entrega · lavagem" onVoltar={etapa === 'como' ? onVoltar : voltar}
+                passo={passoDe(['como', 'forma', 'fim'], etapa, { dinheiro: 'fim', pix: 'fim', conta: 'forma' })} />
             <div className="pdv-resumo-fixo">
-                <button type="button" className="btn btn-link px-0 mb-1" onClick={etapa === 'como' ? onVoltar : voltar}>‹ {etapa === 'como' ? 'Lavagens' : 'Voltar'}</button>
-                <div className="d-flex justify-content-between align-items-baseline"><span className="h4 mb-0">{l.placa}</span><span className="text-muted small">Nº {l.numero} · {l.etapa_nome}</span></div>
+                <div className="d-flex justify-content-between align-items-baseline"><span className="fs-4 fw-bold" style={{ letterSpacing: '.04em' }}>{l.placa}</span><span className="text-muted small">Nº {l.numero} · {l.etapa_nome}</span></div>
                 <div className="small text-muted">{[l.modelo, l.tipo, l.cliente?.nome].filter(Boolean).join(' · ')}</div>
                 <div className="border rounded p-2 mt-2">
                     {c.itens.map((i) => <div key={i.id} className="d-flex justify-content-between small"><span>{i.descricao}</span><span>{moeda(i.valor)}</span></div>)}
@@ -337,7 +350,6 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
                             {c.regras_convenio?.length > 0 && <div className="small text-muted mt-1">{c.regras_convenio.join(' · ')}</div>}
                         </div>
                     )}
-                    {erro && <div className="alert alert-danger py-2 small">{erro}</div>}
                     {c.a_pagar > 0 ? (
                         <div className="d-grid gap-2">
                             <button type="button" className="btn btn-primary btn-lg" onClick={() => { setForma(null); setEtapa('forma') }}>Pagar agora</button>
@@ -358,7 +370,6 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
                         const f = opcoes.formas.find((x) => x.id === fid)
                         if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) { setPixFixo({ valor: c.a_pagar, em: c.calculado_em }); setEtapa('pix') }
                     }} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => entregar({ destino: 'pago', forma_pagamento_id: forma, calculado_em: c.calculado_em })}>{enviando ? 'Entregando…' : `Recebi ${moeda(c.a_pagar)} no ${nomeForma(formaObj)}`}</button>
                     )}
@@ -382,7 +393,6 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
                             <div className="list-group mt-1">{achados.map((a) => <button key={a.id} type="button" className="list-group-item list-group-item-action py-3" onClick={() => { setContaDe(a); setBusca('') }}>{a.nome}</button>)}</div>
                         </>
                     )}
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={!contaDe || enviando} onClick={() => entregar({ destino: 'conta', conta_cliente_id: contaDe.id })}>{contaDe ? `Lançar ${moeda(c.a_pagar)} na conta e entregar` : 'Escolha o cliente'}</button>
                 </div>
             )}
@@ -391,17 +401,19 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
 }
 
 /** PDV › Lavagem (8.4): andamento, nova, etapas e entrega */
-export default function Lavagens({ eu, onVoltar }) {
+/** lavagens: menu (em andamento), nova e entrega. inicio = 'nova' ou 'entrega' quando vem direto do Início */
+export default function Lavagens({ eu, onVoltar, onSair, inicio = null, entregaInicial = null }) {
+    const avisos = useAvisos()
     const { pedirPin } = usePin()
     const [opcoes, setOpcoes] = useState(null)
     const [lista, setLista] = useState(null)
-    const [tela, setTela] = useState('menu')
-    const [entregaId, setEntregaId] = useState(null)
+    const [tela, setTela] = useState(inicio || 'menu')
+    const [entregaId, setEntregaId] = useState(entregaInicial)
     const [busca, setBusca] = useState('')
     const [lendo, setLendo] = useState(false)
-    const [aviso, setAviso] = useState(null)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [avancando, setAvancando] = useState(null)
+    const setAviso = (m) => m && avisos.ok(m)
 
     const carregar = useCallback(() => api('GET', '/lavagens/andamento').then(setLista).catch((e) => setErro(e.message)), [])
     useEffect(() => {
@@ -410,7 +422,9 @@ export default function Lavagens({ eu, onVoltar }) {
         const t = setInterval(carregar, 60000)
         return () => clearInterval(t)
     }, [carregar])
-    const feito = (msg) => { setAviso(msg); setTela('menu'); carregar(); window.scrollTo(0, 0) }
+    // veio direto do Início: termina voltando para lá; senão, volta ao menu das lavagens
+    const feito = (msg) => { setAviso(msg); if (inicio) { onSair(); return } setTela('menu'); carregar(); window.scrollTo(0, 0) }
+    const voltarSub = () => (inicio ? onVoltar() : setTela('menu'))
     const procurar = useCallback((q) => {
         if (!q.trim()) return
         setErro(null)
@@ -422,25 +436,23 @@ export default function Lavagens({ eu, onVoltar }) {
         api('POST', `/lavagens/${l.id}/etapa`, { pin }).then(() => { setAviso(`${l.placa}: ${l.proxima.nome}.`); carregar() }).catch((e) => setErro(e.message)).finally(() => setAvancando(null))
     }).catch(() => {})
 
-    if (!opcoes) return <div><button type="button" className="btn btn-link px-0" onClick={onVoltar}>‹ Início</button>{erro ? <div className="alert alert-danger mt-2">{erro}</div> : <div className="text-muted mt-2">Carregando…</div>}</div>
-    if (tela === 'nova') return <Nova eu={eu} opcoes={opcoes} onVoltar={() => setTela('menu')} onFeito={feito} />
-    if (tela === 'entrega') return <Entrega eu={eu} opcoes={opcoes} id={entregaId} onVoltar={() => setTela('menu')} onFeito={feito} />
+    if (!opcoes) return <div><TopoEtapa titulo="Lavagem" onVoltar={inicio ? onVoltar : onSair} />{erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted text-center py-4">Carregando…</div>}</div>
+    if (tela === 'nova') return <Nova eu={eu} opcoes={opcoes} onVoltar={voltarSub} onFeito={feito} />
+    if (tela === 'entrega') return <Entrega eu={eu} opcoes={opcoes} id={entregaId} onVoltar={voltarSub} onFeito={feito} />
 
     const filtro = busca.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
     const visiveis = (lista || []).filter((l) => !filtro || (l.placa || '').replace('-', '').includes(filtro) || String(l.numero).includes(filtro))
     return (
         <div>
-            <button type="button" className="btn btn-link px-0 mb-2" onClick={onVoltar}>‹ Início</button>
-            {aviso && <div className="alert alert-success py-2" onClick={() => setAviso(null)}>{aviso}</div>}
+            <TopoEtapa titulo="Lavagem" onVoltar={onSair} />
             <div className="pdv-botoes-grandes mb-3">
-                <button type="button" className="pdv-grande" onClick={() => { setAviso(null); setTela('nova') }}><span className="pdv-grande-titulo">Nova</span><span className="small">lavagem</span></button>
-                <button type="button" className="pdv-grande" onClick={() => setLendo(true)}><span className="pdv-grande-titulo">Entregar</span><span className="small">ler o QR</span></button>
+                <button type="button" className="pdv-grande" onClick={() => setTela('nova')}><Icone nome="mais" tamanho={28} className="mb-auto" /><span className="pdv-grande-titulo">Nova</span><span className="small">lavagem</span></button>
+                <button type="button" className="pdv-grande" onClick={() => setLendo(true)}><Icone nome="qr" tamanho={28} className="mb-auto" /><span className="pdv-grande-titulo">Entregar</span><span className="small">ler o QR</span></button>
             </div>
             <form className="d-flex gap-2 mb-2" onSubmit={(e) => { e.preventDefault(); procurar(busca) }}>
                 <input className="form-control form-control-lg" placeholder="Nº do ticket ou placa" aria-label="Número do ticket ou placa" value={busca} autoComplete="off" onChange={(e) => { setBusca(e.target.value.toUpperCase()); setErro(null) }} />
-                <button type="submit" className="btn btn-primary btn-lg" disabled={!busca.trim()}>Buscar</button>
+                <button type="submit" className="btn btn-primary btn-lg px-3" aria-label="Buscar" disabled={!busca.trim()}><Icone nome="busca" tamanho={22} /></button>
             </form>
-            {erro && <div className="alert alert-warning py-2 small">{erro}</div>}
             <div className="d-flex align-items-baseline gap-2 mt-3 mb-2"><h2 className="h6 mb-0">Em andamento</h2><span className="small text-muted">{lista ? `${lista.length} lavagem(ns)` : 'carregando…'}</span></div>
             <div className="list-group">
                 {lista && visiveis.length === 0 && <div className="list-group-item text-muted small py-3">Nenhuma lavagem em andamento.</div>}

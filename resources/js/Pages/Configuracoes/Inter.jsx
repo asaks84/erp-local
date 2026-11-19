@@ -81,6 +81,8 @@ function PixPdv({ pix, ativo }) {
             <div className="card-header d-flex align-items-center gap-2">Pix com QR no PDV {pix.ligado ? <span className="selo selo-ok">Ligado</span> : <span className="selo">Desligado</span>}</div>
             <div className="card-body">
                 <p className="small text-muted">Quando o cliente escolhe Pix no balcão, o celular mostra o QR do valor exato e confirma sozinho quando o Pix cai (o recebimento já entra no caixa e fica de fora da conferência do extrato). A integração do Inter precisa também das permissões de Pix: <strong>emitir / alterar cobranças imediatas</strong> e <strong>consultar cobranças imediatas</strong>. Chave vazia desliga e o PDV volta ao "Recebi no Pix".</p>
+                {!pix.ligado && <div className="alert aviso-neutro py-2 small">{!ativo ? 'Desligado porque o Inter não está ligado: salve as credenciais e clique em "Testar conexão" lá em cima.' : 'Desligado porque falta a chave Pix.'}</div>}
+                {pix.ligado && <div className="small text-muted mb-2">No celular do PDV, volte ao Início (ou abra o app de novo) para ele passar a mostrar o QR.</div>}
                 <Campo rotulo="Chave Pix da conta do Inter" value={form.data.pix_chave} onChange={(e) => form.setData('pix_chave', e.target.value)} erro={form.errors.pix_chave} autoComplete="off"
                     ajuda="E-mail, CNPJ, celular (+55...) ou chave aleatória, cadastrada nesta conta do Inter." />
             </div>

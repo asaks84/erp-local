@@ -4,14 +4,21 @@ import { usePin } from '../Pin'
 import { CampoDinheiro, Formas, PerguntaImprimir, PixQr, Previa, moeda, usaPixQr } from '../comum'
 import { montarFechamento, montarReciboConta } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
+import { Icone, TopoEtapa, useAvisos, useErro } from '../visual'
 
-/** topo de cada etapa: voltar + título */
-function Topo({ titulo, onVoltar, voltarRotulo = 'Voltar', extra = null }) {
+/** topo de cada etapa (8.8): voltar, título, bolinhas e, se houver, o resumo fixo embaixo */
+function Topo({ titulo, onVoltar, direita = null, linha = null, extra = null, passo = null }) {
+    const lado = direita || extra
     return (
-        <div className="pdv-resumo-fixo">
-            <button type="button" className="btn btn-link px-0 mb-1" onClick={onVoltar}>‹ {voltarRotulo}</button>
-            <div className="d-flex justify-content-between align-items-baseline gap-2"><h1 className="h5 mb-0">{titulo}</h1>{extra}</div>
-        </div>
+        <>
+            <TopoEtapa titulo={titulo} onVoltar={onVoltar} passo={passo} />
+            {(lado || linha) && (
+                <div className="pdv-resumo-fixo">
+                    {lado && <div className={`d-flex align-items-baseline gap-2 ${extra ? 'justify-content-end' : 'justify-content-between'}`}>{lado}</div>}
+                    {linha && <div className="small text-muted">{linha}</div>}
+                </div>
+            )}
+        </>
     )
 }
 
@@ -28,7 +35,6 @@ function Recebido({ total, value, onChange, onConfirmar, enviando, erro }) {
                 {atalhos(total).map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => onChange(v)}>{moeda(v)}</button>)}
             </div>
             {value > 0 && value + 0.001 < total && <div className="text-danger small mt-2">Menor que {moeda(total)}.</div>}
-            {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
             <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando || value + 0.001 < total} onClick={onConfirmar}>
                 {enviando ? 'Registrando…' : value >= total ? `Confirmar ${moeda(value)} recebidos` : 'Confirmar valor recebido'}
             </button>
@@ -46,7 +52,7 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
     const [marcadas, setMarcadas] = useState([])
     const [forma, setForma] = useState(null)
     const [recebido, setRecebido] = useState(0)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [feito, setFeito] = useState(null)
 
@@ -98,7 +104,6 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
                     <label className="form-label fw-semibold mb-1" htmlFor="busca">Cliente</label>
                     <input id="busca" className="form-control form-control-lg" autoFocus autoComplete="off" placeholder="Nome, código ou placa" value={busca} onChange={(e) => setBusca(e.target.value)} />
                     <div className="list-group mt-2">{achados.map((a) => <button key={a.id} type="button" className="list-group-item list-group-item-action py-3" onClick={() => escolher(a)}>{a.nome}</button>)}</div>
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                 </div>
             )}
 
@@ -134,7 +139,6 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
                         const f = opcoes.formas.find((x) => x.id === fid)
                         if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
                     }} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => receber()}>
                             {enviando ? 'Registrando…' : `Recebi ${moeda(total)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
@@ -162,7 +166,7 @@ function Movimento({ opcoes, suprimento = false, onVoltar, onFeito }) {
     const [buscaCat, setBuscaCat] = useState('')
     const [valor, setValor] = useState(0)
     const [texto, setTexto] = useState('')
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
 
     const motivoObrigatorio = tipo === 'sangria' || tipo === 'suprimento'
@@ -235,7 +239,6 @@ function Movimento({ opcoes, suprimento = false, onVoltar, onFeito }) {
                     <label className="form-label mt-3 mb-1" htmlFor="texto">{tipo === 'pagamento' ? 'Descrição (opcional)' : motivoObrigatorio ? 'Motivo' : 'Observação (opcional)'}</label>
                     <input id="texto" className="form-control form-control-lg" maxLength={tipo === 'pagamento' ? 120 : 200} value={texto} onChange={(e) => setTexto(e.target.value)}
                         placeholder={tipo === 'pagamento' ? 'Ex.: almoço da semana' : tipo === 'suprimento' ? 'Ex.: troco do cofre' : tipo === 'sangria' ? 'Ex.: excesso de dinheiro' : ''} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando || valor <= 0 || (motivoObrigatorio && !texto.trim())} onClick={enviar}>
                         {enviando ? 'Registrando…' : `Registrar ${titulo.toLowerCase()} de ${moeda(valor)}`}
                     </button>
@@ -256,7 +259,7 @@ function Fechar({ eu, onVoltar, onFeito }) {
     const [contado, setContado] = useState(0)
     const [troco, setTroco] = useState(0)
     const [obs, setObs] = useState('')
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [feito, setFeito] = useState(null)
 
@@ -348,7 +351,6 @@ function Fechar({ eu, onVoltar, onFeito }) {
                     {troco <= contado && <div className="small text-muted mt-2">O resto ({moeda(Math.max(0, contado - troco))}) sai da gaveta com o gerente.</div>}
                     <label className="form-label mt-3 mb-1" htmlFor="obs">Observação (opcional)</label>
                     <input id="obs" className="form-control form-control-lg" maxLength={255} value={obs} onChange={(e) => setObs(e.target.value)} placeholder={Math.abs(dif) >= 0.005 ? 'Ex.: motivo da diferença' : ''} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     <button type="button" className="btn btn-danger btn-lg w-100 mt-3" disabled={enviando || troco > contado + 0.001} onClick={fechar}>{enviando ? 'Fechando…' : 'Fechar o caixa'}</button>
                 </div>
             )}
@@ -358,11 +360,12 @@ function Fechar({ eu, onVoltar, onFeito }) {
 
 /** PDV › Caixa (8.3): receber conta de cliente, retirada, suprimento e fechamento */
 export default function Caixa({ eu, onVoltar }) {
+    const avisos = useAvisos()
     const [estado, setEstado] = useState(null)
     const [opcoes, setOpcoes] = useState(null)
     const [tela, setTela] = useState('menu')
-    const [aviso, setAviso] = useState(null)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
+    const setAviso = (m) => m && avisos.ok(m)
 
     const carregar = () => api('GET', '/caixa').then(setEstado).catch((e) => setErro(e.message))
     useEffect(() => {
@@ -372,7 +375,7 @@ export default function Caixa({ eu, onVoltar }) {
     const feito = (msg) => { setAviso(msg); setTela('menu'); carregar(); window.scrollTo(0, 0) }
     const menu = () => setTela('menu')
 
-    if (!opcoes) return <div><button type="button" className="btn btn-link px-0" onClick={onVoltar}>‹ Início</button>{erro ? <div className="alert alert-danger mt-2">{erro}</div> : <div className="text-muted mt-2">Carregando…</div>}</div>
+    if (!opcoes) return <div><TopoEtapa titulo="Caixa" onVoltar={onVoltar} />{erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted text-center py-4">Carregando…</div>}</div>
     if (tela === 'receber') return <ReceberConta eu={eu} opcoes={opcoes} onVoltar={menu} onFeito={feito} />
     if (tela === 'retirada') return <Movimento opcoes={opcoes} onVoltar={menu} onFeito={feito} />
     if (tela === 'suprimento') return <Movimento opcoes={opcoes} suprimento onVoltar={menu} onFeito={feito} />
@@ -380,19 +383,14 @@ export default function Caixa({ eu, onVoltar }) {
 
     return (
         <div>
-            <button type="button" className="btn btn-link px-0 mb-2" onClick={onVoltar}>‹ Início</button>
-            {aviso && <div className="alert alert-success py-2" onClick={() => setAviso(null)}>{aviso}</div>}
-            <div className="d-flex justify-content-between align-items-baseline mb-3">
-                <h1 className="h5 mb-0">Caixa</h1>
-                {estado && <span className="small text-muted">aberto desde {estado.aberto_em}</span>}
-            </div>
+            <TopoEtapa titulo="Caixa" onVoltar={onVoltar} direita={estado && <span className="pdv-chip pdv-chip-ok"><span className="pdv-ponto" />desde {estado.aberto_em.slice(-5)}</span>} />
             <div className="pdv-botoes-grandes mb-3">
-                <button type="button" className="pdv-grande" onClick={() => setTela('receber')}><span className="pdv-grande-titulo">Receber</span><span className="small">conta de cliente</span></button>
-                <button type="button" className="pdv-grande" onClick={() => setTela('retirada')}><span className="pdv-grande-titulo">Retirada</span><span className="small">sangria ou pagamento</span></button>
+                <button type="button" className="pdv-grande" onClick={() => setTela('receber')}><Icone nome="conta" tamanho={28} className="mb-auto" /><span className="pdv-grande-titulo">Receber</span><span className="small">conta de cliente</span></button>
+                <button type="button" className="pdv-grande" onClick={() => setTela('retirada')}><Icone nome="dinheiro" tamanho={28} className="mb-auto" /><span className="pdv-grande-titulo">Retirada</span><span className="small">sangria ou pagamento</span></button>
             </div>
-            <div className="list-group">
-                <button type="button" className="list-group-item list-group-item-action py-3" onClick={() => setTela('suprimento')}>Suprimento (pôr dinheiro na gaveta)</button>
-                <button type="button" className="list-group-item list-group-item-action py-3 text-danger" onClick={() => setTela('fechar')}>Fechar o caixa</button>
+            <div className="pdv-lista">
+                <button type="button" onClick={() => setTela('suprimento')}><Icone nome="mais" tamanho={22} />Suprimento<span className="pdv-lista-extra">pôr dinheiro na gaveta</span></button>
+                <button type="button" className="text-danger" onClick={() => setTela('fechar')}><Icone nome="carteira" tamanho={22} />Fechar o caixa</button>
             </div>
             <p className="small text-muted mt-3">Retirada, suprimento e fechamento pedem o PIN de um gerente ou administrador.</p>
         </div>

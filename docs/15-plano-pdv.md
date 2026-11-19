@@ -232,6 +232,19 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - **Extrato do Inter:** o Pix do QR que virou recebimento fica de fora da conferência (já baixado). Pix pago no QR que não virou recebimento (o app fechou antes) aparece no fechamento do caixa e entra na conferência do extrato normalmente.
 - Webhook do Inter não é usado (a hospedagem não aceita a conexão com certificado): a confirmação vem da consulta.
 
+## 8h. Como ficou a parte 8.8, visual do app (19/11/2026)
+
+Desenho aprovado pelo Cauê no canvas "Visual do PDV Local" e aplicado com Bootstrap 5.3 e React.
+
+- **Início:** atalhos **Entrada** (estadia ou lavagem) e **Saída** (lê qualquer ticket), cartões Estadia, Lavagem e Caixa com os números do momento (no pátio, em andamento), Impressão e Este aparelho. No topo, o nome do aparelho e desde quando o caixa está aberto (o app compartilhado não tem usuário logado: cada ação pede PIN).
+- **Entrada:** tela "O que o carro vai fazer?" com Estadia e Lavagem.
+- **Saída:** lê o QR (ou número/placa) de estadia ou de lavagem e abre a saída ou a entrega; placa com as duas coisas abertas pergunta qual.
+- **Etapas:** topo com voltar, título e bolinhas da etapa; resumo e A pagar fixos embaixo dele; placa no estilo Mercosul; formas de pagamento em grade com ícone; "já esteve aqui" mostra modelo e tamanho trazidos.
+- **Avisos:** descem do topo da tela por cima de tudo. Sucesso (verde) some em 4 segundos; erro (laranja, para não confundir com o vermelho da marca) fica até tocar no X. Pix recebido vibra e toca um som.
+- **Fundo:** prédios de Santos e o monumento da Tomie Ohtake fixos no pé de todas as telas; o conteúdo rola por cima.
+- **Tema:** Automático (segue o celular), Claro ou Escuro, em Este aparelho; vale só para aquele celular. Logo com versão de texto claro para o escuro.
+- Falta da 8.8: o editor de impressão (Configurações do ERP › PDV), a seguir.
+
 ## 9. Riscos e cuidados
 
 - **Impressora:** é o ponto que mais pode atrasar. Testar a impressora escolhida logo no começo (um ticket de teste) antes de construir o resto em cima.

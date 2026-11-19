@@ -5,6 +5,7 @@ import { cursorNoFim } from '../../Components/CampoValor'
 import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasTicket, moeda, PixQr, usaPixQr } from '../comum'
 import { montarTicket, ticketDaEstadia } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
+import { Icone, PlacaMercosul, TopoEtapa, passoDe, useErro } from '../visual'
 
 const soPlaca = (v) => v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 7)
 
@@ -25,7 +26,7 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
     const [pacote, setPacote] = useState(null)
     const [forma, setForma] = useState(null)
     const [recebido, setRecebido] = useState(0)
-    const [erro, setErro] = useState(null)
+    const [erro, setErro] = useErro()
     const [enviando, setEnviando] = useState(false)
     const [confirmarMensalista, setConfirmarMensalista] = useState(null) // { pin, dados, texto }
     const [feito, setFeito] = useState(null)
@@ -88,32 +89,33 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
     const placaOk = semPlaca ? identificacao.trim().length > 0 : placa.length >= 7
     return (
         <div className="pb-5">
-            <div className="pdv-resumo-fixo">
-                <button type="button" className="btn btn-link px-0 mb-1" onClick={etapa === 'placa' ? onVoltar : voltar}>‹ {etapa === 'placa' ? 'Estadias' : 'Voltar'}</button>
-                <div className="d-flex justify-content-between align-items-baseline">
-                    <h1 className="h5 mb-0">Entrada</h1>
-                    {etapa !== 'placa' && <span className="h4 mb-0">{rotulo}</span>}
+            <TopoEtapa titulo="Entrada · estadia" onVoltar={etapa === 'placa' ? onVoltar : voltar}
+                passo={passoDe(['placa', 'veiculo', 'cobranca', 'diaria', 'forma'], etapa, { dinheiro: 'forma', pix: 'forma' })} />
+            {etapa !== 'placa' && (
+                <div className="pdv-resumo-fixo">
+                    <div className="d-flex justify-content-between align-items-baseline gap-2">
+                        <span className="fs-4 fw-bold" style={{ letterSpacing: '.04em' }}>{rotulo}</span>
+                        <span className="small text-muted text-end">{[modelo, tipoObj?.nome].filter(Boolean).join(' · ')}</span>
+                    </div>
+                    {diaria && ['diaria', 'forma', 'dinheiro', 'pix'].includes(etapa) && (
+                        <div className="d-flex justify-content-between align-items-baseline mt-1"><span className="fw-semibold">{diaria.nome}</span><span className="fs-4 fw-bold">{moeda(diaria.valor)}</span></div>
+                    )}
                 </div>
-                {['cobranca', 'diaria', 'forma', 'dinheiro', 'pix'].includes(etapa) && (
-                    <div className="small text-muted text-end">{[modelo, tipoObj?.nome, diaria && `${diaria.nome} ${moeda(diaria.valor)}`].filter(Boolean).join(' · ')}</div>
-                )}
-            </div>
+            )}
 
             {etapa === 'placa' && (
                 <div className="mt-2">
+                    <h2 className="h4 fw-bold text-center mb-3">{semPlaca ? 'Veículo sem placa' : 'Placa do veículo'}</h2>
                     {semPlaca ? (
                         <>
-                            <label className="form-label fw-semibold mb-1" htmlFor="ident">Identificação (sem placa)</label>
+                            <label className="form-label fw-semibold mb-1" htmlFor="ident">Identificação</label>
                             <input id="ident" enterKeyHint="next" onKeyDown={(e) => { if (e.key === 'Enter' && placaOk && !info?.no_patio) ir('veiculo') }} className="form-control form-control-lg" value={identificacao} maxLength={40} autoFocus onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: bicicleta azul" />
                         </>
                     ) : (
-                        <>
-                            <label className="form-label fw-semibold mb-1" htmlFor="placa">Placa</label>
-                            <input id="placa" enterKeyHint="next" onKeyDown={(e) => { if (e.key === 'Enter' && placaOk && !info?.no_patio) ir('veiculo') }} className="form-control form-control-lg pdv-placa" value={placa} autoComplete="off" autoCapitalize="characters" autoFocus
-                                onChange={(e) => { setPlaca(soPlaca(e.target.value)); setModelo('') }} />
-                        </>
+                        <PlacaMercosul value={placa} onChange={(v) => { setPlaca(soPlaca(v)); setModelo('') }}
+                            onEnter={() => { if (placaOk && !info?.no_patio) ir('veiculo') }} />
                     )}
-                    <button type="button" className="btn btn-sm btn-link px-0 mt-1" onClick={() => setSemPlaca(!semPlaca)}>{semPlaca ? 'Tem placa' : 'Veículo sem placa'}</button>
+                    <button type="button" className="btn btn-link px-0 mt-1 fw-semibold" onClick={() => setSemPlaca(!semPlaca)}>{semPlaca ? 'Tem placa' : 'Veículo sem placa'}</button>
 
                     {info?.no_patio && <div className="alert alert-danger py-2 small mt-2">Já está no pátio: Nº {info.no_patio.numero}, entrou {info.no_patio.entrada}.</div>}
                     {info?.veiculo && (
@@ -121,7 +123,15 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                             {info.veiculo.mensalista ? <><strong>Mensalista</strong> · {info.veiculo.cliente}. Mensalista não registra entrada.</> : <>Cadastrado: {info.veiculo.cliente}</>}
                         </div>
                     )}
-                    {info && !info.veiculo && info.ultima && <div className="small text-muted mt-2">Já esteve aqui em {info.ultima.quando}.</div>}
+                    {info && !info.veiculo && info.ultima && (
+                        <div className="pdv-cartao mt-2">
+                            <span className="pdv-cartao-icone" style={{ width: 40, height: 40, borderRadius: 12 }}><Icone nome="relogio" tamanho={20} /></span>
+                            <span className="pdv-cartao-texto">
+                                <strong style={{ fontSize: '1rem' }}>{[info.ultima.modelo, opcoes.tipos.find((t) => t.id === info.ultima.tipo_id)?.nome].filter(Boolean).join(' · ') || 'Já esteve aqui'}</strong>
+                                <span>Já esteve aqui em {info.ultima.quando} · dados preenchidos</span>
+                            </span>
+                        </div>
+                    )}
 
                     <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={!placaOk || !!info?.no_patio} onClick={() => ir('veiculo')}>Continuar</button>
                 </div>
@@ -135,7 +145,6 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                     <div className="pdv-opcoes">
                         {opcoes.tipos.map((t) => <button key={t.id} type="button" className={`btn btn-lg ${tipo === t.id ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { setTipo(t.id); setPacote(null) }}>{t.nome}</button>)}
                     </div>
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {diarias.length > 0 || !tipo
                         ? <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={!tipo} onClick={() => ir('cobranca')}>Continuar</button>
                         : <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => registrar()}>{enviando ? 'Registrando…' : 'Registrar entrada'}</button>}
@@ -152,7 +161,6 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                         ))}
                     </div>
                     <div className="small text-muted mt-2">Diária é preço fechado, mesmo saindo antes. Passou do tempo, paga a diferença na saída.</div>
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                 </div>
             )}
 
@@ -163,7 +171,6 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                         <button type="button" className="btn btn-primary btn-lg" onClick={() => { setForma(null); ir('forma') }}>Paga agora ({moeda(diaria?.valor)})</button>
                         <button type="button" className="btn btn-outline-primary btn-lg" disabled={enviando} onClick={() => registrar({ comPacote: pacote })}>Paga na saída · registrar entrada</button>
                     </div>
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                 </div>
             )}
 
@@ -176,7 +183,6 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                         const f = opcoes.formas.find((x) => x.id === fid)
                         if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
                     }} />
-                    {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                     {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => registrar({ comPacote: pacote, pagarAgora: true })}>
                             {enviando ? 'Registrando…' : `Recebi ${moeda(diaria?.valor)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
@@ -202,7 +208,6 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                                 .map((v) => <button key={v} type="button" className="btn btn-outline-secondary" onClick={() => setRecebido(v)}>{moeda(v)}</button>)}
                         </div>
                         {recebido > 0 && recebido + 0.001 < total && <div className="text-danger small mt-2">Menor que {moeda(total)}.</div>}
-                        {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando || recebido + 0.001 < total}
                             onClick={() => registrar({ comPacote: pacote, pagarAgora: true, valorRecebido: recebido })}>
                             {enviando ? 'Registrando…' : recebido >= total ? `Confirmar ${moeda(recebido)} recebidos` : 'Confirmar valor recebido'}

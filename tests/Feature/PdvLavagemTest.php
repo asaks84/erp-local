@@ -193,4 +193,22 @@ class PdvLavagemTest extends TestCase
         $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'VIS2T33', 'modelo' => 'HB20 azul', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])->assertOk();
         $this->pdv()->getJson('/api/pdv/lavagens/placa/VIS2T33')->assertJsonPath('ultima.modelo', 'HB20 azul')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
     }
+
+    /** 8.8: números do Início e a saída que aceita qualquer ticket */
+    public function test_inicio_e_saida_por_qualquer_ticket(): void
+    {
+        $this->pdv()->getJson('/api/pdv/inicio')->assertOk()->assertJson(['patio' => 0, 'lavagens' => 0, 'caixa' => null]);
+        $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'EST1A11', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])->assertOk();
+        $l = $this->vender('LAV2B22');
+        $this->pdv()->getJson('/api/pdv/inicio')->assertJson(['patio' => 1, 'lavagens' => 1]);
+
+        // pelo número da lavagem e pela placa da estadia: abre direto
+        $this->pdv()->getJson('/api/pdv/ticket?q=LAV2B22')->assertOk()->assertJsonCount(1, 'achados')->assertJsonPath('achados.0.tipo', 'lavagem');
+        $this->pdv()->getJson('/api/pdv/ticket?q=EST1A11')->assertOk()->assertJsonCount(1, 'achados')->assertJsonPath('achados.0.tipo', 'estadia');
+        // carro com estadia e lavagem abertas: pergunta qual
+        $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'LAV2B22', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])->assertOk();
+        $this->pdv()->getJson('/api/pdv/ticket?q=LAV2B22')->assertOk()->assertJsonCount(2, 'achados');
+        $this->pdv()->getJson('/api/pdv/ticket?q=ZZZ9Z99')->assertStatus(404)->assertJsonPath('erro', 'Nenhum ticket aberto com esse QR, número ou placa.');
+        $this->assertNotEmpty($l);
+    }
 }

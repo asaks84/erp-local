@@ -4,12 +4,22 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV, parte 8.8: visual novo e tema escuro
+
+- **Início novo:** atalhos Entrada (estadia ou lavagem) e Saída (lê o QR de qualquer ticket e abre a saída da estadia ou a entrega da lavagem), cartões com os números do momento (carros no pátio, lavagens em andamento), situação do caixa no topo, Impressão e Este aparelho.
+- **Todas as telas:** topo com voltar, título e bolinhas da etapa; resumo fixo em cartão; placa no estilo Mercosul; formas de pagamento com ícone; botões no vermelho da marca.
+- **Avisos** descem do topo da tela: sucesso em verde some sozinho; erro fica até tocar no X. Pix recebido vibra e toca um som.
+- **Fundo** com os prédios de Santos e o monumento da Tomie Ohtake, fixo no pé de todas as telas.
+- **Tema** Automático, Claro ou Escuro em Este aparelho (PIN e pareamento também foram para lá).
+- App do PDV 0.6.0. 1 teste novo (245).
+
 ## 18/11/2026 — PDV, parte 8.5: Pix com QR
 
 - **Configurações › Banco Inter:** novo quadro "Pix com QR no PDV" com a chave Pix e o botão "Testar Pix".
 - **PDV:** escolhendo Pix (estadia, lavagem, receber conta), aparece o QR do valor exato com o copia e cola; quando o Pix cai, a tela mostra "Pix recebido" com o nome de quem pagou, pede o PIN e registra. Desistiu: o QR sai do ar. "Cliente pagou sem o QR" continua possível (fica marcado para conferir no extrato).
 - O valor fica parado enquanto o QR está na tela; saída da estadia e entrega da lavagem cobram pela hora do cálculo mostrado (até 20 minutos).
 - O pagamento guarda o código do Pix (txid); o mesmo Pix não paga duas coisas nem valor diferente. O extrato do Inter deixa de fora o Pix do QR já registrado. Pix pago que não virou recebimento aparece no fechamento do caixa.
+- O app do PDV relê a configuração ao voltar ao Início (antes, ligar o Pix na gestão só valia depois de reabrir o app); o quadro do Pix em Configurações diz por que está desligado (Inter desligado ou falta a chave).
 - Migração `2026_11_29_000001_pix_pdv` (tabela `pix_cobrancas`, coluna `pagamentos.pix_txid`). App do PDV 0.5.0. 5 testes novos (244).
 
 ## 18/11/2026 — Plano do PDV: parte 8.8 (visual do app)

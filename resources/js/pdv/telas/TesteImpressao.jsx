@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { montarTicket, ticketExemplo } from '../impressao/ticket'
 import { imprimirBluetooth, imprimirRawbt, temBluetooth } from '../impressao/transporte'
 import { NOMES_VIA, preferencia } from '../impressao/preferencia'
+import { TopoEtapa, useAvisos } from '../visual'
 
 /**
  * Teste de impressão (antes de comprar a impressora): imprime um ticket de exemplo por três caminhos.
@@ -14,7 +15,8 @@ export default function TesteImpressao({ eu, onVoltar }) {
     const [via, setVia] = useState(salvo.via)
     // o caminho que deu certo vira o do PDV (entrada e saída imprimem por ele)
     const usar = (v) => { preferencia.set({ via: v, ...op }); setVia(v) }
-    const [msg, setMsg] = useState(null)
+    const avisos = useAvisos()
+    const setMsg = (m) => m && (m.tipo === 'success' ? avisos.ok(m.texto) : avisos.erro(m.texto))
     const [ocupado, setOcupado] = useState(false)
     const [qr, setQr] = useState(null)
     const t = ticketExemplo(eu)
@@ -32,8 +34,7 @@ export default function TesteImpressao({ eu, onVoltar }) {
 
     return (
         <div>
-            <button type="button" className="btn btn-link px-0 mb-2" onClick={onVoltar}>‹ Voltar</button>
-            <h1 className="h5">Teste de impressão</h1>
+            <TopoEtapa titulo="Impressão" onVoltar={onVoltar} />
             <p className="small text-muted">Ligue a impressora e emparelhe com o celular (no Bluetooth do Android, se ela pedir). Depois tente os caminhos abaixo, na ordem.</p>
 
             <div className="d-flex flex-wrap gap-3 small mb-3">
@@ -48,7 +49,6 @@ export default function TesteImpressao({ eu, onVoltar }) {
             </div>
             <p className="small text-muted">Acentos saindo errados: desmarque "Acentos". QR não saiu: marque "QR como imagem".</p>
 
-            {msg && <div className={`alert alert-${msg.tipo} py-2 small`}>{msg.texto}</div>}
             <div className="alert aviso-neutro py-2 small">{via ? <>O PDV imprime pelo <strong>{NOMES_VIA[via]}</strong> (o último caminho testado aqui), com as opções acima.</> : 'O PDV vai imprimir pelo último caminho que você testar aqui.'}</div>
 
             <div className="d-grid gap-2 mb-4">

@@ -4,6 +4,7 @@ import { moeda } from './impressao/ticket'
 import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
 import { api } from './api'
+import { Icone, iconeForma, sinal } from './visual'
 
 export { moeda }
 
@@ -14,9 +15,12 @@ const rotuloForma = (n) => { const t = n.replace(/^Cartão de /i, ''); return t.
 /** formas de pagamento do balcão: botões grandes (boleto fica de fora) */
 export function Formas({ formas, value, onChange }) {
     return (
-        <div className="pdv-opcoes">
+        <div className="pdv-formas">
             {formas.filter((f) => f.tipo !== 'boleto').map((f) => (
-                <button key={f.id} type="button" className={`btn ${Number(value) === f.id ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => onChange(f.id)}>{rotuloForma(f.nome)}</button>
+                <button key={f.id} type="button" aria-pressed={Number(value) === f.id} className={`pdv-forma${Number(value) === f.id ? ' escolhida' : ''}`} onClick={() => onChange(f.id)}>
+                    <Icone nome={iconeForma(f.tipo)} tamanho={30} className={`pdv-forma-${iconeForma(f.tipo)}`} />
+                    <span>{rotuloForma(f.nome)}</span>
+                </button>
             ))}
         </div>
     )
@@ -97,7 +101,7 @@ export function PixQr({ valor, descricao, onPago, onManual, enviando, erro }) {
     }, [pix?.id, pix?.situacao])
 
     useEffect(() => {
-        if (pix?.situacao === 'paga' && !avisou.current) { avisou.current = true; onPago(pix.id) }
+        if (pix?.situacao === 'paga' && !avisou.current) { avisou.current = true; sinal('ok'); onPago(pix.id) }
     }, [pix?.situacao])
 
     const copiar = () => {
@@ -118,8 +122,7 @@ export function PixQr({ valor, descricao, onPago, onManual, enviando, erro }) {
     if (pix.situacao === 'paga') {
         return (
             <div className="mt-3">
-                <div className="pdv-troco-final"><div>Pix recebido <strong>{moeda(pix.valor)}</strong></div>{pix.pagador && <div className="small">{pix.pagador}</div>}</div>
-                {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
+                <div className="pdv-troco-final"><Icone nome="check" tamanho={40} espessura={3} /><div>Pix recebido <strong>{moeda(pix.valor)}</strong></div>{pix.pagador && <div className="small">{pix.pagador}</div>}</div>
                 <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => onPago(pix.id)}>{enviando ? 'Registrando…' : 'Concluir'}</button>
             </div>
         )
@@ -139,10 +142,10 @@ export function PixQr({ valor, descricao, onPago, onManual, enviando, erro }) {
             <div className="pdv-pix-qr my-2">{img ? <img src={img} alt="QR do Pix" width="260" height="260" /> : <div className="text-muted">…</div>}</div>
             <div className="fs-4 fw-bold">{moeda(pix.valor)}</div>
             <div className="small text-muted mb-2">
-                <span className="spinner-grow spinner-grow-sm text-success me-1" aria-hidden="true" />
+                <span className="pdv-pulso me-1" aria-hidden="true" />
                 Aguardando o pagamento{resta !== null && ` · vence em ${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, '0')}`}
             </div>
-            <button type="button" className="btn btn-outline-secondary w-100" onClick={copiar}>{copiado ? 'Copiado!' : 'Copiar código Pix (copia e cola)'}</button>
+            <button type="button" className="btn btn-outline-secondary btn-lg w-100 d-flex align-items-center justify-content-center gap-2" onClick={copiar}><Icone nome="copiar" tamanho={20} />{copiado ? 'Copiado!' : 'Copiar código Pix'}</button>
             {semQr}
         </div>
     )
@@ -191,7 +194,7 @@ export function PerguntaImprimir({ titulo, montar, previa, onFim, destaque = nul
         <Folha titulo={titulo}>
             {destaque}
             <div className="pdv-previa-rolagem">{previa}</div>
-            {!via && <div className="small text-muted mb-2">Este celular ainda não tem impressora testada: vai pela impressão do Android. Configure em Início › Teste de impressão.</div>}
+            {!via && <div className="small text-muted mb-2">Este celular ainda não tem impressora testada: vai pela impressão do Android. Configure em Início › Impressão.</div>}
             {via && <div className="small text-muted mb-2">Pelo {NOMES_VIA[via]}.</div>}
             {msg && <div className="alert alert-danger py-2 small">{msg}</div>}
             <div className="d-grid gap-2">

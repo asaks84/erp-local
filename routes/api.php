@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Pdv\CaixaPdvController;
 use App\Http\Controllers\Pdv\EstadiaPdvController;
+use App\Http\Controllers\Pdv\InicioPdvController;
 use App\Http\Controllers\Pdv\LavagemPdvController;
 use App\Http\Controllers\Pdv\PdvController;
 use App\Http\Controllers\Pdv\PixPdvController;
@@ -16,6 +17,8 @@ Route::prefix('pdv')->middleware('publica')->group(function () {
 
     Route::middleware(['aparelho', 'throttle:120,1,pdv'])->group(function () {
         Route::get('/eu', [PdvController::class, 'eu']);
+        Route::get('/inicio', [InicioPdvController::class, 'resumo']);
+        Route::get('/ticket', [InicioPdvController::class, 'ticket']);
         Route::post('/pin/conferir', [PdvController::class, 'conferirPin'])->middleware('throttle:30,1,pdv-pin');
         Route::post('/pin/cadastrar', [PdvController::class, 'cadastrarPin'])->middleware('throttle:20,1,pdv-cadastro');
 
