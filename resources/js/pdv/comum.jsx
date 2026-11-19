@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { moeda } from './impressao/ticket'
+import { moeda } from './impressao/modelo'
 import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
 import { api } from './api'
 import { Icone, iconeForma, sinal } from './visual'
+import Papel from './impressao/Papel'
+import { blocos, modeloDe, montarPapel } from './impressao/modelo'
 
 export { moeda }
 
@@ -151,6 +153,18 @@ export function PixQr({ valor, descricao, onPago, onManual, enviando, erro }) {
     )
 }
 
+/**
+ * um papel do PDV pelo modelo do ERP (8.8): os bytes da impressora e a prévia na tela, dos mesmos blocos.
+ * chave: ticket (estadia e lavagem), recibo (todo pagamento) ou fechamento.
+ */
+export function papel(eu, chave, dados) {
+    const cfg = eu?.impressao
+    return {
+        montar: (op) => montarPapel(cfg, chave, dados, op),
+        previa: <Papel lista={blocos(modeloDe(cfg, chave), dados, { logo: cfg?.logo })} colunas={preferencia.get().colunas} logo={cfg?.logo} />,
+    }
+}
+
 /** janela de baixo (confirmações, perguntas) */
 export function Folha({ titulo, children, onFechar }) {
     return (
@@ -203,19 +217,4 @@ export function PerguntaImprimir({ titulo, montar, previa, onFim, destaque = nul
             </div>
         </Folha>
     )
-}
-
-/** linhas da prévia do ticket de entrada e do recibo (o mesmo conteúdo do papel) */
-export function linhasTicket(r, eu) {
-    return [eu.empresa.nome, '-', `#Nº ${String(r.numero).padStart(6, '0')}`, r.servico.toUpperCase(), ['Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : '')], ['Tamanho', r.tipo], ['Entrada', r.entrada],
-        ...(r.pago ? [['Pago', `${moeda(r.pago.valor)} (${r.pago.forma})`]] : [])]
-}
-
-export function linhasRecibo(r, eu) {
-    return [eu.empresa.nome, '-', `#RECIBO · Nº ${String(r.numero).padStart(6, '0')}`, ['Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : '')], ['Entrada', r.entrada],
-        ...(r.saida ? [['Saída', r.saida], ['Tempo', r.tempo]] : []), '-',
-        ...(r.valor !== null && r.valor !== undefined ? [[r.servico, moeda(r.valor)]] : []),
-        ...(r.convenio ? [[`Convênio ${r.convenio.nome || ''}`, `-${moeda(r.convenio.valor)}`]] : []),
-        ...(r.pago_entrada > 0 && r.saida ? [['Pago na entrada', `-${moeda(r.pago_entrada)}`]] : []),
-        ...(r.pago ? [[`Pago (${r.pago.forma})`, moeda(r.pago.valor)], ...(r.pago.observacao ? [r.pago.observacao] : [])] : r.destino ? [['Situação', r.destino]] : [])]
 }

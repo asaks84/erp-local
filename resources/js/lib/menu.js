@@ -63,6 +63,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Banco Inter', href: '/configuracoes/inter', permissao: 'configuracoes', acende: ['/configuracoes/inter'] },
     { rotulo: 'WhatsApp', href: '/configuracoes/whatsapp', permissao: 'configuracoes', acende: ['/configuracoes/whatsapp'] },
     { rotulo: 'Aparelhos (PDV)', href: '/configuracoes/aparelhos', permissao: 'configuracoes', acende: ['/configuracoes/aparelhos'] },
+    { rotulo: 'Impressão (PDV)', href: '/configuracoes/impressao', permissao: 'configuracoes', acende: ['/configuracoes/impressao'] },
 ]
 
 /** item aceso: o endereço que mais combina com a página atual */

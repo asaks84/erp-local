@@ -14,6 +14,7 @@ import Caixa from './telas/Caixa'
 import Lavagens from './telas/Lavagens'
 import { PinProvider } from './Pin'
 import { AvisosProvider, Cidade, Logo, useAvisos, useTema } from './visual'
+import { carregarLogo } from './impressao/modelo'
 
 /**
  * PDV: pareamento, PIN de cada pessoa, impressão (8.1), estadias (8.2), caixa (8.3), lavagens (8.4),
@@ -49,6 +50,9 @@ function Pdv() {
         api('GET', '/eu').then(setEu).catch(() => { /* mantém o que tinha */ })
     }, [tela])
     useEffect(() => { window.scrollTo(0, 0) }, [tela])
+    // logo da impressão (vem do ERP) já convertido em pontos para a impressora
+    const logoUrl = eu?.impressao?.logo
+    useEffect(() => { carregarLogo(logoUrl) }, [logoUrl])
 
     if (carregando) return <div className="pdv-centro text-muted"><Logo altura={48} />Carregando…</div>
     if (!eu) {

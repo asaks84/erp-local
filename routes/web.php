@@ -26,6 +26,7 @@ use App\Http\Controllers\ExtratoController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\FuncionarioController;
+use App\Http\Controllers\ImpressaoController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\InterController;
 use App\Http\Controllers\LavagemController;
@@ -286,6 +287,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/whatsapp/credenciais', [WhatsAppController::class, 'credenciais']);
         Route::post('/configuracoes/whatsapp/testar', [WhatsAppController::class, 'testar']);
         Route::post('/configuracoes/whatsapp/desligar', [WhatsAppController::class, 'desligar']);
+        Route::get('/configuracoes/impressao', [ImpressaoController::class, 'index']);
+        Route::put('/configuracoes/impressao', [ImpressaoController::class, 'salvar']);
+        Route::post('/configuracoes/impressao/logo', [ImpressaoController::class, 'logo']);
+        Route::delete('/configuracoes/impressao/logo', [ImpressaoController::class, 'tirarLogo']);
         Route::get('/configuracoes/aparelhos', [AparelhoController::class, 'index']);
         Route::post('/configuracoes/aparelhos', [AparelhoController::class, 'store']);
         Route::put('/configuracoes/aparelhos/config', [AparelhoController::class, 'config']);

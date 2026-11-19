@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import QRCode from 'qrcode'
-import { montarTicket, ticketExemplo } from '../impressao/ticket'
+import { useState } from 'react'
+import Papel from '../impressao/Papel'
+import { blocos, exemplo, modeloDe, paraEscPos } from '../impressao/modelo'
 import { imprimirBluetooth, imprimirRawbt, temBluetooth } from '../impressao/transporte'
 import { NOMES_VIA, preferencia } from '../impressao/preferencia'
 import { TopoEtapa, useAvisos } from '../visual'
@@ -18,11 +18,11 @@ export default function TesteImpressao({ eu, onVoltar }) {
     const avisos = useAvisos()
     const setMsg = (m) => m && (m.tipo === 'success' ? avisos.ok(m.texto) : avisos.erro(m.texto))
     const [ocupado, setOcupado] = useState(false)
-    const [qr, setQr] = useState(null)
-    const t = ticketExemplo(eu)
-    useEffect(() => { QRCode.toDataURL(t.link, { margin: 1, width: 220 }).then(setQr).catch(() => {}) }, [t.link])
-
-    const bytes = () => montarTicket(t, op)
+    // o ticket de entrada como está no modelo do ERP (Configurações › Impressão), com dados de exemplo e o teste de acentos
+    const cfg = eu.impressao
+    const dados = { ...exemplo('ticket', eu.empresa), link: `${window.location.origin}/t/exemplo` }
+    const lista = [...blocos(modeloDe(cfg, 'ticket'), dados, { logo: cfg?.logo }), { idx: -1, linha: { k: 'texto' }, saida: [{ tipo: 'texto', a: 'Acentos: ÇÃÕÉ çãõé', al: 'c' }] }]
+    const bytes = () => paraEscPos(lista, op)
     const viaBluetooth = (escolherOutra = false) => {
         setOcupado(true)
         setMsg(null)
@@ -63,22 +63,8 @@ export default function TesteImpressao({ eu, onVoltar }) {
                 <div className="small text-muted">Usa o serviço de impressão do Android (precisa do plugin da marca da impressora). É o caminho mais lento; serve de reserva.</div>
             </div>
 
-            <div className="small fw-semibold mb-1">Como fica o ticket</div>
-            <div className="pdv-ticket" style={{ width: op.colunas === 48 ? '80mm' : '58mm' }}>
-                <div className="text-center fw-bold fs-6">{t.empresa.nome}</div>
-                {t.empresa.endereco && <div className="text-center">{t.empresa.endereco}</div>}
-                <hr />
-                <div className="text-center fw-bold fs-4">Nº {t.numero}</div>
-                <div className="text-center fw-bold">{t.servico.toUpperCase()}</div>
-                <div className="d-flex justify-content-between mt-2 fw-bold"><span>Placa</span><span>{t.placa} - {t.modelo}</span></div>
-                <div className="d-flex justify-content-between"><span>Tamanho</span><span>{t.tamanho}</span></div>
-                <div className="d-flex justify-content-between"><span>Entrada</span><span>{t.entrada}</span></div>
-                <div className="text-center my-2">{qr && <img src={qr} alt="QR do ticket" width="130" height="130" />}</div>
-                <div className="text-center small">{t.link.replace(/^https?:\/\//, '')}</div>
-                <hr />
-                <div>Carimbo do convênio:</div>
-                <div className="pdv-carimbo" />
-            </div>
+            <div className="small fw-semibold mb-1">Como fica o ticket (muda em Configurações › Impressão, no ERP)</div>
+            <Papel lista={lista} colunas={op.colunas} logo={cfg?.logo} />
         </div>
     )
 }

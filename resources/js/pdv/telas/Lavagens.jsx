@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, PixQr, Previa, moeda, usaPixQr } from '../comum'
-import { montarReciboLavagem, montarTicket, ticketDaLavagem } from '../impressao/ticket'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, PixQr, moeda, papel, usaPixQr } from '../comum'
+import { dadosReciboLavagem, dadosTicketLavagem } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
 import { cursorNoFim } from '../../Components/CampoValor'
 import LeitorQr from '../LeitorQr'
@@ -119,13 +119,10 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
 
     if (feito) {
         const r = feito.recibo
-        const tk = ticketDaLavagem(r, eu)
-        const linhas = [eu.empresa.nome, '-', `#Nº ${String(r.numero).padStart(6, '0')}`, r.servico.toUpperCase(), ['Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : '')], ['Tamanho', r.tipo], ['Entrada', r.entrada],
-            ...(r.pago ? [['Pago', `${moeda(r.pago.valor)} (${r.pago.forma})`]] : [])]
         return (
             <PerguntaImprimir titulo={feito.troco > 0 ? 'Entregue o troco. Imprimir o ticket?' : `Lavagem de ${r.placa} registrada. Imprimir o ticket?`}
                 destaque={feito.troco > 0 && <div className="pdv-troco-final"><div>Troco <strong>{moeda(feito.troco)}</strong></div></div>}
-                montar={(op) => montarTicket(tk, op)} previa={<Previa linhas={linhas} qr={tk.link} colunas={preferencia.get().colunas} />}
+                {...papel(eu, 'ticket', dadosTicketLavagem(r, eu))}
                 onFim={() => onFeito(feito.mensagem)} />
         )
     }
@@ -299,13 +296,10 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
 
     if (feito) {
         const r = feito.recibo
-        const linhas = [eu.empresa.nome, '-', `#RECIBO · Nº ${String(r.numero).padStart(6, '0')}`, ['Placa', r.placa + (r.modelo ? ` - ${r.modelo}` : '')], ['Entrada', r.entrada], ...(r.saida ? [['Entrega', r.saida]] : []), '-',
-            ...r.itens.map((i) => [i.descricao, moeda(i.valor)]), '-', ...(r.pago ? [[`Pago (${r.pago.forma})`, moeda(r.pago.valor)], ...(r.pago.observacao ? [r.pago.observacao] : [])] : []),
-            ...r.itens.filter((i) => i.conta).map((i) => `Na conta de ${i.conta}`)]
         return (
             <PerguntaImprimir titulo={feito.troco > 0 ? 'Entregue o troco. Imprimir o recibo?' : `${feito.mensagem} Imprimir o recibo?`}
                 destaque={feito.troco > 0 && <div className="pdv-troco-final"><div>Troco <strong>{moeda(feito.troco)}</strong></div></div>}
-                montar={(op) => montarReciboLavagem(r, eu, op)} previa={<Previa linhas={linhas} colunas={preferencia.get().colunas} />}
+                {...papel(eu, 'recibo', dadosReciboLavagem(r, eu))}
                 onFim={() => onFeito(feito.mensagem)} />
         )
     }

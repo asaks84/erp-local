@@ -243,7 +243,8 @@ Desenho aprovado pelo Cauê no canvas "Visual do PDV Local" e aplicado com Boots
 - **Avisos:** descem do topo da tela por cima de tudo. Sucesso (verde) some em 4 segundos; erro (laranja, para não confundir com o vermelho da marca) fica até tocar no X. Pix recebido vibra e toca um som.
 - **Fundo:** prédios de Santos e o monumento da Tomie Ohtake fixos no pé de todas as telas; o conteúdo rola por cima.
 - **Tema:** Automático (segue o celular), Claro ou Escuro, em Este aparelho; vale só para aquele celular. Logo com versão de texto claro para o escuro.
-- Falta da 8.8: o editor de impressão (Configurações do ERP › PDV), a seguir.
+- **Editor de impressão** (ERP › Configurações › Impressão (PDV)): três papéis: **ticket de entrada** (estadia e lavagem), **recibo de pagamento** (todo pagamento: estadia, lavagem, contas de cliente; cada um mostra só as linhas que tem) e **fechamento do caixa**. Edita direto no papel: clica na linha, formata (alinhamento, negrito, letra grande), sobe/desce, esconde; insere espaço (1 a 6 linhas), linha tracejada ou texto livre. Dados do veículo mudam de lugar e formato, mas o texto não se edita. Logo enviado uma vez e convertido para preto e branco (até 384 pontos, cabe na bobina de 58 e de 80 mm).
+- O modelo fica na configuração da empresa; papel nunca editado sai no padrão (igual ao de antes). O PDV recebe os modelos e o logo junto com os dados do aparelho e monta a prévia e os comandos da impressora da mesma lista (resources/js/pdv/impressao/modelo.js). O Teste de impressão usa o modelo do ticket de entrada.
 
 ## 9. Riscos e cuidados
 

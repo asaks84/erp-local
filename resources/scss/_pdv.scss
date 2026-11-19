@@ -218,3 +218,28 @@ body.pdv {
     .pdv-ticket { margin-bottom: 0; }
 }
 .pdv-rodape-acao { position: sticky; bottom: 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); margin-top: 8px; }
+
+// ---------- editor de impressão (ERP › Configurações › Impressão do PDV) ----------
+.papel-mesa { background: var(--bs-secondary-bg); border-radius: 14px; padding: 40px 16px 40px; display: flex; justify-content: center; overflow-x: auto; min-height: 400px;
+    @media (max-width: 991.98px) { padding-top: 64px; }
+    .pdv-ticket { margin: 0; flex-shrink: 0; }
+}
+.papel-editor { padding: 14px 10px 20px; }
+.papel-bloco-caixa { position: relative; }
+.papel-bloco { display: block; width: 100%; padding: 1px 3px; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; border-radius: 4px; outline: 1px dashed transparent; cursor: pointer;
+    &:hover { outline-color: rgba(192, 40, 27, .4); }
+    &.sel { outline: 2px solid #c0281b; background: rgba(192, 40, 27, .06); }
+    hr { margin: 4px 0; }
+}
+.papel-vazio { font-family: var(--bs-font-sans-serif); font-size: 11px; color: #8a9099; text-align: center; padding: 2px 0; }
+// barra da linha selecionada: ao lado do papel (em tela larga), para não cobrir a linha de cima
+.papel-barra { position: absolute; top: -4px; left: calc(100% + 18px); z-index: 5; flex-direction: column;
+    @media (max-width: 991.98px) { top: auto; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); flex-direction: row; } display: flex; gap: 2px; padding: 4px; background: #1a1d21; border-radius: 10px; box-shadow: 0 6px 16px rgba(0, 0, 0, .25); white-space: nowrap; font-family: var(--bs-font-sans-serif);
+    button { min-width: 30px; height: 30px; padding: 0 7px; border: 0; border-radius: 7px; background: transparent; color: #fff; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+    button.ativo { background: #c0281b; }
+    button:hover:not(.ativo) { background: rgba(255, 255, 255, .12); }
+    button:disabled { opacity: .35; }
+}
+.papel-inserir { display: flex; justify-content: center; gap: 4px; padding: 4px 0 6px; font-family: var(--bs-font-sans-serif);
+    button { padding: 3px 8px; border-radius: 6px; border: 1px dashed #c0281b; background: #fff; color: #a8231a; font-size: 11px; font-weight: 700; }
+}

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
 import { cursorNoFim } from '../../Components/CampoValor'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasTicket, moeda, PixQr, usaPixQr } from '../comum'
-import { montarTicket, ticketDaEstadia } from '../impressao/ticket'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, moeda, papel, PixQr, usaPixQr } from '../comum'
+import { dadosTicket } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
 import { Icone, PlacaMercosul, TopoEtapa, passoDe, useErro } from '../visual'
 
@@ -75,13 +75,11 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
 
     if (feito) {
         const r = feito.recibo
-        const tk = ticketDaEstadia(r, eu)
         const troco = r.pago && feito.recebido ? Math.round((feito.recebido - r.pago.valor) * 100) / 100 : 0
         return (
             <PerguntaImprimir titulo={troco > 0 ? 'Entregue o troco. Imprimir o ticket?' : `Entrada de ${r.placa} registrada. Imprimir o ticket?`}
                 destaque={troco > 0 && <div className="pdv-troco-final"><div>Troco <strong>{moeda(troco)}</strong></div></div>}
-                montar={(op) => montarTicket(tk, op)}
-                previa={<Previa linhas={linhasTicket(r, eu)} qr={tk.link} colunas={preferencia.get().colunas} />}
+                {...papel(eu, 'ticket', dadosTicket(r, eu))}
                 onFim={() => onFeito(`Entrada de ${r.placa} · Nº ${r.numero}${r.pago ? ` · ${r.servico} paga (${moeda(r.pago.valor)})` : ''}.`)} />
         )
     }

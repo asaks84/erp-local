@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Formas, PerguntaImprimir, PixQr, Previa, moeda, usaPixQr } from '../comum'
-import { montarFechamento, montarReciboConta } from '../impressao/ticket'
+import { CampoDinheiro, Formas, PerguntaImprimir, PixQr, moeda, papel, usaPixQr } from '../comum'
+import { dadosFechamento, dadosReciboConta } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
 import { Icone, TopoEtapa, useAvisos, useErro } from '../visual'
 
@@ -84,11 +84,10 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
 
     if (feito) {
         const r = feito.recibo
-        const linhas = [eu.empresa.nome, '-', '#RECIBO', ['Cliente', r.cliente], ['Data', r.data], '-', ...r.itens.map((i) => [i.descricao, moeda(i.valor)]), '-', [`Pago (${r.forma})`, moeda(r.total)], ...(r.observacao ? [r.observacao] : [])]
         return (
             <PerguntaImprimir titulo={feito.troco > 0 ? 'Entregue o troco. Imprimir o recibo?' : `${feito.mensagem} Imprimir o recibo?`}
                 destaque={feito.troco > 0 && <div className="pdv-troco-final"><div>Troco <strong>{moeda(feito.troco)}</strong></div></div>}
-                montar={(op) => montarReciboConta(r, eu, op)} previa={<Previa linhas={linhas} colunas={preferencia.get().colunas} />}
+                {...papel(eu, 'recibo', dadosReciboConta(r, eu))}
                 onFim={() => onFeito(feito.mensagem)} />
         )
     }
@@ -272,10 +271,8 @@ function Fechar({ eu, onVoltar, onFeito }) {
 
     if (feito) {
         const f = feito
-        const linhas = [eu.empresa.nome, '-', '#FECHAMENTO', ...f.por_servico.map((l) => [`${l.servico} (${l.qtd})`, moeda(l.total)]), ['Total recebido', moeda(f.total_recebido)], '-',
-            ...f.por_forma.map((l) => [l.forma, moeda(l.total)]), '-', ['Deveria ter', moeda(f.dinheiro_esperado)], ['Contado', moeda(f.dinheiro_contado)], ['Diferença', moeda(f.diferenca)], ['Fica de troco', moeda(f.troco_deixado)]]
         return (
-            <PerguntaImprimir titulo="Caixa fechado. Imprimir o resumo?" montar={(op) => montarFechamento(f, eu, op)} previa={<Previa linhas={linhas} colunas={preferencia.get().colunas} />}
+            <PerguntaImprimir titulo="Caixa fechado. Imprimir o resumo?" {...papel(eu, 'fechamento', dadosFechamento(f, eu))}
                 onFim={() => onFeito(`Caixa fechado. Ficaram ${moeda(f.troco_deixado)} de troco para o próximo.`)} />
         )
     }

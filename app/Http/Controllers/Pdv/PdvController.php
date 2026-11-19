@@ -8,6 +8,7 @@ use App\Models\Empresa;
 use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Servicos\Pdv\Aparelhos;
+use App\Servicos\Pdv\ImpressaoModelos;
 use App\Servicos\Pdv\Pins;
 use App\Servicos\Pdv\PixPdv;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,8 @@ class PdvController extends Controller
             'servidor_hora' => now()->toIso8601String(),
             // Pix com QR do Inter no lugar do "Recebi no Pix" (8.5)
             'pix_qr' => PixPdv::ligado(),
+            // modelos de impressão editados no ERP (8.8); papel sem modelo sai no padrão do app
+            'impressao' => ImpressaoModelos::config(),
         ]);
     }
 

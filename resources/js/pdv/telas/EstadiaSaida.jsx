@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda, PixQr, usaPixQr } from '../comum'
-import { montarRecibo } from '../impressao/ticket'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, moeda, papel, PixQr, usaPixQr } from '../comum'
+import { dadosReciboEstadia } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
 import { TopoEtapa, passoDe, useErro } from '../visual'
 
@@ -67,8 +67,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                         <div>Troco <strong>{moeda(troco)}</strong></div>
                     </div>
                 )}
-                montar={(op) => montarRecibo(r, eu, op)}
-                previa={<Previa linhas={linhasRecibo(r, eu)} colunas={preferencia.get().colunas} />}
+                {...papel(eu, 'recibo', dadosReciboEstadia(r, eu))}
                 onFim={() => onFeito(feito.mensagem)} />
         )
     }

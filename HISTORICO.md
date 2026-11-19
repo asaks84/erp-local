@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — Editor de impressão do PDV
+
+- **Configurações › Impressão (PDV):** editor visual de três papéis: ticket de entrada (estadia e lavagem), recibo de pagamento (estadia, lavagem, contas de cliente: todo pagamento) e fechamento do caixa. Clique numa linha do papel para alinhar, pôr em negrito ou letra grande, subir, descer ou esconder; insira espaço, linha tracejada ou texto livre. "Voltar ao padrão" por papel.
+- **Logo da impressão:** enviado no editor e convertido para preto e branco, do tamanho da bobina.
+- O PDV imprime e mostra a prévia pelo modelo salvo (o Teste de impressão também). Papel não editado sai como antes.
+- 2 testes novos (247).
+
 ## 19/11/2026 — PDV, parte 8.8: visual novo e tema escuro
 
 - **Início novo:** atalhos Entrada (estadia ou lavagem) e Saída (lê o QR de qualquer ticket e abre a saída da estadia ou a entrega da lavagem), cartões com os números do momento (carros no pátio, lavagens em andamento), situação do caixa no topo, Impressão e Este aparelho.
