@@ -178,30 +178,6 @@ body.pdv {
     .pdv-tecla-texto { font-size: 1rem; font-weight: 500; }
 }
 
-// ---------- avisos (descem do topo, por cima de tudo) ----------
-.pdv-avisos { position: fixed; top: 0; left: 0; right: 0; z-index: 1100; max-width: 560px; margin: 0 auto; padding: calc(10px + env(safe-area-inset-top)) 12px 0; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.pdv-aviso { position: relative; pointer-events: auto; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 16px; box-shadow: 0 12px 30px rgba(16, 24, 40, .28); overflow: hidden; animation: pdv-desce .28s ease-out;
-    &.saindo { animation: pdv-sobe .25s ease-in forwards; }
-}
-.pdv-aviso-icone { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.pdv-aviso-texto { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; padding-top: 6px; font-size: .9375rem; line-height: 1.35; min-width: 0;
-    strong { font-size: .9375rem; }
-}
-.pdv-aviso-ok { background: var(--pdv-ok); color: #fff;
-    .pdv-aviso-icone { background: rgba(255, 255, 255, .18); }
-}
-.pdv-aviso-tempo { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--pdv-ok-claro); transform-origin: left; animation: pdv-tempo linear forwards; }
-.pdv-aviso-erro { background: var(--pdv-cartao); color: var(--bs-body-color); border: 2px solid var(--pdv-aviso); padding-right: 6px;
-    .pdv-aviso-icone { background: var(--pdv-aviso-suave); color: var(--pdv-aviso-texto); }
-}
-.pdv-aviso-fechar { flex-shrink: 0; width: 44px; height: 44px; margin: -6px 0; border: 0; background: none; color: var(--bs-body-color); display: flex; align-items: center; justify-content: center; border-radius: 12px; padding: 0;
-    &:active { background: var(--bs-tertiary-bg); }
-}
-@keyframes pdv-desce { from { transform: translateY(-130%); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes pdv-sobe { to { transform: translateY(-130%); opacity: 0; } }
-@keyframes pdv-tempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-@media (prefers-reduced-motion: reduce) { .pdv-aviso, .pdv-aviso.saindo { animation: none; } }
-
 // ---------- tema (Este aparelho) ----------
 .pdv-tema { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
     button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 76px; justify-content: center; border-radius: 14px; border: 2px solid var(--pdv-borda); background: var(--pdv-cartao); color: var(--bs-body-color); font: inherit; font-weight: 600; font-size: .875rem; }

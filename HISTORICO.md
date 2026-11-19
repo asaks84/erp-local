@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — Avisos do ERP no popup do PDV
+
+- As mensagens depois de salvar (sucesso, erro, aviso) agora descem do topo da tela, por cima de tudo, no mesmo modelo do PDV: verde some sozinha em 4 s com a barrinha de tempo; erro (laranja) e aviso (amarelo) ficam até clicar no X. Aparecem de novo mesmo se a mensagem se repetir; a atualização automática do Pátio não repete a anterior.
+- ERP e PDV usam o mesmo componente (`Components/AvisosTopo.jsx`) e o mesmo estilo (`scss/_avisos-topo.scss`); os estilos de aviso saíram do `_pdv.scss`.
+
 ## 19/11/2026 — Pátio unificado na gestão
 
 - **Operação › Pátio** substitui Estadias e Lavagens no menu. Aba **Agora**: estadias e lavagens em andamento numa lista só (estadia com o valor se saísse agora; lavagem com a etapa e "Estadia R$ x" pela regra de Configurações › Etapas, R$ 0 quando não cobra). Aba **Histórico**: as duas juntas por data, com filtro de tipo e situação e os totais.

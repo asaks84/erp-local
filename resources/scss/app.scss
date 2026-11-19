@@ -178,6 +178,7 @@ body { -webkit-font-smoothing: antialiased; }
 .texto-oculto::placeholder { -webkit-text-security: none; }
 
 // ---------- PDV (app do balcão, /pdv): resources/scss/_pdv.scss ----------
+@import "avisos-topo";
 @import "pdv";
 @media print {
     body.pdv * { visibility: hidden; }

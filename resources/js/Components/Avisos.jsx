@@ -1,25 +1,26 @@
-import { usePage } from '@inertiajs/react'
-import { useEffect, useState } from 'react'
+import { router, usePage } from '@inertiajs/react'
+import { useEffect, useRef } from 'react'
+import AvisosTopo, { useFilaAvisos } from './AvisosTopo'
 
-/** Mensagens de sucesso/erro/aviso que o servidor manda depois de salvar. */
+const TIPOS = [['erro', 'erro'], ['aviso', 'aviso'], ['sucesso', 'ok']]
+
+/**
+ * Mensagens que o servidor manda depois de salvar (flash), no mesmo popup do PDV: descem do topo,
+ * a verde some sozinha, erro e aviso ficam até fechar. Mostra a cada visita, mesmo se a mensagem se repetir.
+ */
 export default function Avisos() {
     const { flash } = usePage().props
-    const [fechados, setFechados] = useState({})
-    useEffect(() => setFechados({}), [flash?.sucesso, flash?.erro, flash?.aviso])
-    const lista = [
-        ['erro', 'alert-danger'],
-        ['sucesso', 'alert-success'],
-        ['aviso', 'alert-warning'],
-    ].filter(([k]) => flash?.[k] && !fechados[k])
-    if (!lista.length) return null
-    return (
-        <>
-            {lista.map(([k, classe]) => (
-                <div key={k} className={`alert ${classe} d-flex align-items-start gap-2 mt-3`} role="status">
-                    <div className="flex-grow-1">{flash[k]}</div>
-                    <button type="button" className="btn-close" aria-label="Fechar" onClick={() => setFechados((f) => ({ ...f, [k]: true }))} />
-                </div>
-            ))}
-        </>
-    )
+    const { lista, mostrar, fechar } = useFilaAvisos()
+    const parcial = useRef(false)
+
+    useEffect(() => {
+        const exibir = (f) => TIPOS.forEach(([chave, tipo]) => f?.[chave] && mostrar(tipo, f[chave]))
+        exibir(flash) // a página que abriu já com mensagem
+        // recarga parcial (ex.: o pátio se atualiza a cada minuto) não traz flash novo: não repete o antigo
+        const tirarInicio = router.on('start', (e) => { parcial.current = (e.detail.visit.only?.length ?? 0) > 0 })
+        const tirarSucesso = router.on('success', (e) => { if (!parcial.current) exibir(e.detail.page.props.flash) })
+        return () => { tirarInicio(); tirarSucesso() }
+    }, [mostrar])
+
+    return <AvisosTopo lista={lista} fechar={fechar} />
 }

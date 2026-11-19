@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import AvisosTopo, { useFilaAvisos } from '../Components/AvisosTopo'
 
 /*
  * Visual do PDV (8.8): ícones, topos, cidade do rodapé, avisos que descem do topo e o tema claro/escuro.
@@ -180,46 +181,20 @@ export function sinal(tipo = 'ok') {
     } catch { /* sem som */ }
 }
 
-// ---------- avisos (descem do topo da tela) ----------
+// ---------- avisos (descem do topo da tela; mesmo componente do ERP) ----------
 const AvisosCtx = createContext({ ok: () => {}, erro: () => {} })
 export const useAvisos = () => useContext(AvisosCtx)
-const DURACAO_OK = 4000
+const bipeNoErro = (tipo) => { if (tipo === 'erro') sinal('erro') }
 
 export function AvisosProvider({ children }) {
-    const [lista, setLista] = useState([])
-    const seq = useRef(0)
-    const fechar = useCallback((id) => {
-        setLista((l) => l.map((a) => (a.id === id ? { ...a, saindo: true } : a)))
-        setTimeout(() => setLista((l) => l.filter((a) => a.id !== id)), 250)
-    }, [])
-    const mostrar = useCallback((tipo, texto, titulo) => {
-        if (!texto) return
-        const id = ++seq.current
-        setLista((l) => [...l.filter((a) => !(a.texto === texto && !a.saindo)).slice(-2), { id, tipo, texto, titulo }])
-        if (tipo === 'ok') setTimeout(() => fechar(id), DURACAO_OK)
-        else sinal('erro')
-    }, [fechar])
-    const api = useRef({ ok: (t, titulo) => mostrar('ok', t, titulo), erro: (t, titulo) => mostrar('erro', t, titulo) })
-    api.current.ok = (t, titulo) => mostrar('ok', t, titulo)
-    api.current.erro = (t, titulo) => mostrar('erro', t, titulo)
-    const [valor] = useState(() => ({ ok: (...a) => api.current.ok(...a), erro: (...a) => api.current.erro(...a) }))
-
+    const { lista, mostrar, fechar } = useFilaAvisos(bipeNoErro)
+    const api = useRef(mostrar)
+    api.current = mostrar
+    const [valor] = useState(() => ({ ok: (t, titulo) => api.current('ok', t, titulo), erro: (t, titulo) => api.current('erro', t, titulo) }))
     return (
         <AvisosCtx.Provider value={valor}>
             {children}
-            <div className="pdv-avisos" aria-live="polite">
-                {lista.map((a) => (
-                    <div key={a.id} role={a.tipo === 'erro' ? 'alert' : 'status'} className={`pdv-aviso pdv-aviso-${a.tipo}${a.saindo ? ' saindo' : ''}`}>
-                        <span className="pdv-aviso-icone"><Icone nome={a.tipo === 'ok' ? 'check' : 'alerta'} tamanho={20} espessura={a.tipo === 'ok' ? 3 : 2.4} /></span>
-                        <span className="pdv-aviso-texto">
-                            {a.titulo && <strong>{a.titulo}</strong>}
-                            <span>{a.texto}</span>
-                        </span>
-                        {a.tipo === 'erro' && <button type="button" className="pdv-aviso-fechar" aria-label="Fechar aviso" onClick={() => fechar(a.id)}><Icone nome="x" tamanho={22} espessura={2.6} /></button>}
-                        {a.tipo === 'ok' && <span className="pdv-aviso-tempo" style={{ animationDuration: `${DURACAO_OK}ms` }} />}
-                    </div>
-                ))}
-            </div>
+            <AvisosTopo lista={lista} fechar={fechar} />
         </AvisosCtx.Provider>
     )
 }
