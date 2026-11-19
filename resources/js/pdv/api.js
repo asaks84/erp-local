@@ -1,5 +1,5 @@
 // Conversa com a API do PDV (/api/pdv). O token do aparelho fica guardado no próprio celular.
-export const VERSAO = '0.6.0'
+export const VERSAO = '0.6.1'
 
 const CHAVE = 'pdv-token'
 

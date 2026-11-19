@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import AvisosTopo, { useFilaAvisos } from '../Components/AvisosTopo'
+import { useVoltar } from './voltar'
 
 /*
  * Visual do PDV (8.8): ícones, topos, cidade do rodapé, avisos que descem do topo e o tema claro/escuro.
@@ -20,6 +21,7 @@ const PATHS = {
     check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
     alerta: <><path d="M12 3l10 18H2z" /><path d="M12 10v5M12 18h.01" /></>,
     x: <path d="M6 6l12 12M18 6L6 18" />,
+    tela: <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />,
     dinheiro: <><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01M18 12h.01" /></>,
     pix: <><path d="M12 3l9 9-9 9-9-9z" /><path d="M8.5 12l3.5 3.5 3.5-3.5L12 8.5z" /></>,
     debito: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
@@ -107,6 +109,7 @@ export function TopoInicio({ eu, caixa }) {
 
 /** topo das telas: voltar, título e as bolinhas da etapa ([atual, total], contando de 1) */
 export function TopoEtapa({ titulo, onVoltar, passo = null, direita = null }) {
+    useVoltar(onVoltar) // o voltar do celular faz o mesmo que a setinha
     return (
         <header className="pdv-topo-etapa">
             {onVoltar

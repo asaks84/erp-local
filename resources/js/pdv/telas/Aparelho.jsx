@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePin } from '../Pin'
 import { VERSAO } from '../api'
 import { Icone, TopoEtapa, useAvisos } from '../visual'
+
+// instalado como app já abre em tela cheia (pdv.webmanifest); no navegador, só com um toque
+const instalado = () => ['fullscreen', 'standalone'].some((m) => window.matchMedia?.(`(display-mode: ${m})`).matches)
+const podeTelaCheia = () => !!document.fullscreenEnabled && !instalado()
 
 const TEMAS = [['auto', 'Automático', 'auto'], ['claro', 'Claro', 'sol'], ['escuro', 'Escuro', 'lua']]
 
@@ -10,6 +14,16 @@ export default function Aparelho({ eu, tema, setTema, onVoltar, irPara, onDespar
     const { pedirPin } = usePin()
     const avisos = useAvisos()
     const [sair, setSair] = useState(false)
+    const [cheia, setCheia] = useState(() => !!document.fullscreenElement)
+    useEffect(() => {
+        const mudou = () => setCheia(!!document.fullscreenElement)
+        document.addEventListener('fullscreenchange', mudou)
+        return () => document.removeEventListener('fullscreenchange', mudou)
+    }, [])
+    const telaCheia = () => (cheia
+        ? document.exitFullscreen()
+        : document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+    ).catch(() => avisos.erro('O navegador não deixou entrar em tela cheia.'))
     const testarPin = () => pedirPin('Testar meu PIN')
         .then(({ usuario }) => avisos.ok(`PIN de ${usuario.nome}${usuario.nivel ? ` (${usuario.nivel})` : ''}. Tudo certo.`))
         .catch(() => {})
@@ -29,6 +43,14 @@ export default function Aparelho({ eu, tema, setTema, onVoltar, irPara, onDespar
                 ))}
             </div>
             <p className="small text-muted mb-4">Automático segue o modo claro ou escuro do celular. Vale só para este aparelho.</p>
+            {podeTelaCheia() && (
+                <>
+                    <div className="pdv-lista mb-1">
+                        <button type="button" onClick={telaCheia}><Icone nome={cheia ? 'x' : 'tela'} tamanho={22} />{cheia ? 'Sair da tela cheia' : 'Tela cheia'}</button>
+                    </div>
+                    <p className="small text-muted mb-4">Esconde as barras do celular. Instalado como app (menu do Chrome › Instalar app), o PDV já abre em tela cheia.</p>
+                </>
+            )}
 
             <h2 className="h6 fw-bold">PIN</h2>
             <div className="pdv-lista mb-4">

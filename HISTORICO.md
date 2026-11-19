@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV: voltar do celular e tela cheia (modo quiosque)
+
+- **Voltar do celular** agora fica dentro do app: faz o mesmo que a setinha do topo (volta uma etapa, ou ao Início) e fecha o PIN e as confirmações. No Início não faz nada; o app nunca fecha pelo voltar. Com a tela fixada (fixar app do Android), o app não trava mais.
+- **Tela cheia:** instalado como app, o PDV abre em tela cheia, sem as barras do celular. No navegador, botão "Tela cheia" em Este aparelho (some quando instalado). Topo e resumo descem o espaço do entalhe da câmera.
+- Ícones 192 e 512 px no manifesto (o Chrome exige para instalar como app de verdade).
+- App do PDV 0.6.1. Para valer a tela cheia num celular que já tinha o PDV instalado: desinstalar e instalar de novo.
+- Arquivos: `resources/js/pdv/voltar.js` (novo), `App.jsx`, `visual.jsx`, `comum.jsx`, `Pin.jsx`, `telas/Aparelho.jsx`, `api.js`, `scss/_pdv.scss`, `public/pdv.webmanifest`, `public/imagens/pdv-192.png`, `pdv-512.png`, `pdv-maskable-512.png`.
+
 ## 19/11/2026 — Avisos do ERP no popup do PDV
 
 - As mensagens depois de salvar (sucesso, erro, aviso) agora descem do topo da tela, por cima de tudo, no mesmo modelo do PDV: verde some sozinha em 4 s com a barrinha de tempo; erro (laranja) e aviso (amarelo) ficam até clicar no X. Aparecem de novo mesmo se a mensagem se repetir; a atualização automática do Pátio não repete a anterior.

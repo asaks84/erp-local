@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api } from './api'
+import { useVoltar } from './voltar'
 
 /**
  * PIN de quem está atendendo. Toda ação pede o PIN (no Local, "a cada ação"); com memória ligada na
@@ -48,6 +49,7 @@ export function TecladoPin({ titulo, onCancelar, onConferido }) {
     const [erro, setErro] = useState(null)
     const [conferindo, setConferindo] = useState(false)
     const campo = useRef(null)
+    useVoltar(onCancelar) // voltar do celular = Cancelar
     // PIN errado: o campo volta a ficar selecionado, com o teclado aberto
     useEffect(() => { if (!conferindo) campo.current?.focus() }, [conferindo])
 

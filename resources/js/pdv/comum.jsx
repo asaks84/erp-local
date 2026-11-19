@@ -4,6 +4,7 @@ import { moeda } from './impressao/modelo'
 import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
 import { api } from './api'
+import { useVoltar } from './voltar'
 import { Icone, iconeForma, sinal } from './visual'
 import Papel from './impressao/Papel'
 import { blocos, modeloDe, montarPapel } from './impressao/modelo'
@@ -167,6 +168,7 @@ export function papel(eu, chave, dados) {
 
 /** janela de baixo (confirmações, perguntas) */
 export function Folha({ titulo, children, onFechar }) {
+    useVoltar(onFechar) // voltar do celular fecha a janela
     return (
         <div className="pdv-pin" role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => { if (e.target === e.currentTarget && onFechar) onFechar() }}>
             <div className="pdv-pin-caixa">

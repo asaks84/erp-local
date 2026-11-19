@@ -15,10 +15,11 @@ import Lavagens from './telas/Lavagens'
 import { PinProvider } from './Pin'
 import { AvisosProvider, Cidade, Logo, useAvisos, useTema } from './visual'
 import { carregarLogo } from './impressao/modelo'
+import { instalarVoltar } from './voltar'
 
 /**
  * PDV: pareamento, PIN de cada pessoa, impressão (8.1), estadias (8.2), caixa (8.3), lavagens (8.4),
- * Pix com QR (8.5) e o visual novo com tema claro/escuro (8.8). Roteiro: docs/15-plano-pdv.md.
+ * Pix com QR (8.5), o visual novo com tema claro/escuro (8.8) e o voltar do celular dentro do app. Roteiro: docs/15-plano-pdv.md.
  */
 export default function App() {
     return <AvisosProvider><Pdv /></AvisosProvider>
@@ -44,6 +45,7 @@ function Pdv() {
         }).finally(() => setCarregando(false))
     }, [])
     useEffect(() => { carregar() }, [carregar])
+    useEffect(() => { instalarVoltar() }, []) // voltar do celular volta uma etapa, nunca fecha o app
     // volta ao Início: relê os dados do aparelho em silêncio (ex.: o Pix com QR foi ligado na gestão depois de o app abrir)
     useEffect(() => {
         if (tela !== 'inicio' || !token.get()) return
