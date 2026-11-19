@@ -2,7 +2,7 @@
 // - a página /pdv: tenta a internet primeiro (versão nova); sem internet, abre a guardada;
 // - os arquivos do app (/build, imagens, manifesto): guardados ao instalar, pela lista do Vite, e servidos daqui;
 // - a API (/api) nunca é guardada: sem internet quem responde é o próprio app (fila e cópia do servidor).
-const CAIXA = 'pdv-app-v2'
+const CAIXA = 'pdv-app-v3'
 const PAGINA = '/pdv'
 const FIXOS = [PAGINA, '/pdv.webmanifest', '/imagens/logo-local.png', '/imagens/logo-local-escuro.png', '/imagens/favicon-96.png', '/imagens/pdv-192.png']
 
@@ -24,10 +24,12 @@ async function listaDoApp() {
     return [...urls]
 }
 
+let ultimoErro = null
+
 async function guardar() {
     const caixa = await caches.open(CAIXA)
     // a página e as imagens primeiro, cada uma por conta própria (uma falha não impede as outras)
-    await Promise.all(FIXOS.map((u) => caixa.add(new Request(u, { cache: 'reload' })).catch(() => {})))
+    await Promise.all(FIXOS.map((u) => caixa.add(new Request(u, { cache: 'reload' })).catch((x) => { ultimoErro = `${u}: ${x?.message || x}` })))
     let app = []
     try {
         app = await listaDoApp()
@@ -58,19 +60,19 @@ self.addEventListener('message', (e) => {
     if (e.data === 'guardar') e.waitUntil(guardar().catch(() => {}))
 })
 
-// o app pergunta se já dá para abrir sem internet (página e arquivos guardados)
+// o app pergunta se já dá para abrir sem internet: responde o que está guardado e o que falta
 self.addEventListener('message', (e) => {
     if (e.data !== 'pronto?' || !e.ports?.[0]) return
     e.waitUntil((async () => {
-        const pagina = await caches.match(PAGINA)
-        let ok = !!pagina
-        if (ok) {
-            try {
-                const app = await listaDoApp()
-                for (const u of app.filter((x) => /\.(js|css)$/.test(x))) if (!(await caches.match(u))) { ok = false; break }
-            } catch { /* sem internet: confia no que já está guardado */ }
+        const r = { versao: CAIXA, pagina: !!(await caches.match(PAGINA)), arquivos: null, faltando: [], erro: ultimoErro }
+        try {
+            const app = (await listaDoApp()).filter((x) => /\.(js|css)$/.test(x))
+            r.arquivos = app.length
+            for (const u of app) if (!(await caches.match(u))) r.faltando.push(u)
+        } catch (x) {
+            r.erro = `lista do app: ${x?.message || x}`
         }
-        e.ports[0].postMessage(ok)
+        e.ports[0].postMessage(r)
     })())
 })
 

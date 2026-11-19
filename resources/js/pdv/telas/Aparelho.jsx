@@ -19,7 +19,7 @@ function SemInternet() {
         setPreparando(true)
         await prepararAgora().catch(() => {})
         await atualizarPacote()
-        setTimeout(() => { conferir(); setPreparando(false) }, 4000)
+        setTimeout(() => { conferir(); setPreparando(false) }, 6000)
     }
     if (!p) return null
     const tudo = p.app && p.pacote && p.pins.length > 0
@@ -30,7 +30,7 @@ function SemInternet() {
             <div className={`p-3 mb-1${tudo ? '' : ' border border-warning'}`} style={{ background: 'var(--pdv-cartao)', borderRadius: 16 }}>
                 <div className="fw-semibold mb-1">{tudo ? 'Pronto para funcionar sem internet' : 'Ainda não funciona sem internet'}</div>
                 <ul className="list-unstyled small mb-2 d-flex flex-column gap-1">
-                    {item(p.app, p.app ? 'App guardado no celular' : 'App ainda não guardado: abra o PDV com internet e espere uns segundos')}
+                    {item(p.app, p.app ? 'App guardado no celular' : `App ainda não guardado${p.motivo ? `: ${p.motivo}` : ''}`)}
                     {item(!!p.pacote, p.pacote ? `Cópia do sistema de ${p.pacote.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Sem cópia do sistema ainda')}
                     {item(p.pins.length > 0, p.pins.length ? `PIN guardado de: ${p.pins.join(', ')}` : 'Nenhum PIN guardado: cada pessoa usa o PIN uma vez com internet')}
                 </ul>
