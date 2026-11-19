@@ -1,8 +1,9 @@
-// PDV: service worker. Guarda o app no celular para ele abrir e funcionar sem internet (etapa 8.7).
+// PDV: service worker. É registrado como /pdv-sw.js?v=<CAIXA> (offline/prontidao.js): mudou aqui, suba a versão nos dois.
+// Guarda o app no celular para ele abrir e funcionar sem internet (etapa 8.7).
 // - a página /pdv: tenta a internet primeiro (versão nova); sem internet, abre a guardada;
 // - os arquivos do app (/build, imagens, manifesto): guardados ao instalar, pela lista do Vite, e servidos daqui;
 // - a API (/api) nunca é guardada: sem internet quem responde é o próprio app (fila e cópia do servidor).
-const CAIXA = 'pdv-app-v3'
+const CAIXA = 'pdv-app-v4'
 const PAGINA = '/pdv'
 const FIXOS = [PAGINA, '/pdv.webmanifest', '/imagens/logo-local.png', '/imagens/logo-local-escuro.png', '/imagens/favicon-96.png', '/imagens/pdv-192.png']
 
@@ -84,12 +85,14 @@ self.addEventListener('fetch', (e) => {
 
     if (r.mode === 'navigate') {
         if (!u.pathname.startsWith('/pdv')) return
-        e.respondWith(fetch(r).then((resp) => {
+        e.respondWith(fetch(r).then(async (resp) => {
             if (resp.ok) {
                 const copia = resp.clone()
                 caches.open(CAIXA).then((c) => c.put(PAGINA, copia))
+                return resp
             }
-            return resp
+            // servidor fora do ar (erro 5xx): abre a página guardada, como sem internet
+            return resp.status >= 500 ? (await caches.match(PAGINA)) || resp : resp
         }).catch(async () => (await caches.match(PAGINA)) || Response.error()))
         return
     }

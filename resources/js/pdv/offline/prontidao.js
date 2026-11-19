@@ -46,9 +46,20 @@ export async function prontidao() {
     return { app, motivo, pacote: p?.gerado_em ? new Date(p.gerado_em) : null, pins }
 }
 
+/*
+ * Endereço do service worker com a versão: a hospedagem pode guardar o pdv-sw.js num cache próprio e entregar o
+ * antigo para sempre (o celular nunca via a versão nova). Com a versão no endereço, cada versão é um arquivo novo.
+ * Mudou o pdv-sw.js? Suba a versão aqui (igual à constante CAIXA de lá).
+ */
+export const SW_URL = '/pdv-sw.js?v=pdv-app-v4'
+
+export function registrarSw() {
+    return navigator.serviceWorker.register(SW_URL, { scope: '/pdv', updateViaCache: 'none' })
+}
+
 /** pede para o service worker guardar o app de novo (com internet) e espera terminar um pouco */
 export async function prepararAgora() {
-    const reg = await navigator.serviceWorker?.register('/pdv-sw.js', { scope: '/pdv' })
+    const reg = await registrarSw()
     await reg?.update().catch(() => {})
     const sw = reg?.active || reg?.waiting || reg?.installing || navigator.serviceWorker?.controller
     sw?.postMessage('guardar')

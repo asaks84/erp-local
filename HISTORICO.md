@@ -9,6 +9,7 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 - Em **Este aparelho**, novo bloco "Sem internet": mostra se o app está guardado no celular, de quando é a cópia do sistema e de quem é o PIN guardado, com o botão "Preparar agora". Se faltar algo, diz o que fazer.
 - O service worker guarda a página primeiro e cada arquivo por conta própria (antes, uma falha ao ler a lista do Vite impedia guardar a página, e o app não abria sem internet).
 - Sem "puxar para atualizar" no PDV (recarregar sem internet é o que levava à tela "You're offline" do Chrome quando o app não estava guardado).
+- O service worker passa a ser registrado com a versão no endereço (`/pdv-sw.js?v=...`): a hospedagem pode entregar um `pdv-sw.js` antigo guardado em cache, e o celular nunca pegava a versão nova (era o "não respondeu" de Este aparelho). Com servidor fora do ar (erro 5xx), o PDV abre a página guardada.
 - Quando o app não está guardado, o bloco diz o motivo (guardador não instalado, página não guardada com o erro, arquivos faltando, versão do guardador).
 - Arquivos: `public/pdv-sw.js`, `resources/js/pdv/offline/prontidao.js` (novo), `resources/js/pdv/telas/Aparelho.jsx`, `resources/js/pdv/main.jsx`, `resources/scss/_pdv.scss`.
 
