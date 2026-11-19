@@ -4,6 +4,11 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV: tela não pula quando as barras do celular aparecem; topo do Início fixo
+
+- Em tela cheia, ao puxar as barras do Android, a tela inteira se deslocava (o espaço do entalhe da câmera mudava). O PDV não ocupa mais a área do entalhe, então nada se mexe. Arquivo: `resources/views/pdv.blade.php` (tirado `viewport-fit=cover`).
+- O topo do Início (logo, aparelho e caixa) fica fixo ao rolar, como o das outras telas. Arquivo: `resources/scss/_pdv.scss`.
+
 ## 19/11/2026 — Menu do celular não arrasta a página
 
 - Com o menu lateral aberto no celular, rolar o menu (ou o fundo escuro) não rola mais a página de trás. Arquivo: `resources/scss/_layout.scss`.

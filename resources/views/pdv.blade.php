@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-bs-theme="light">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+        <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
         <meta name="theme-color" content="#c0281b">
         <title>PDV · {{ config('app.name') }}</title>
         <link rel="manifest" href="/pdv.webmanifest">

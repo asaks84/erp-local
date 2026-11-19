@@ -31,7 +31,7 @@ body.pdv .text-muted { color: var(--pdv-texto2) !important; }
     .pdv-onda-fundo { fill: var(--pdv-fundo); }
     .pdv-onda-linha { fill: none; stroke: var(--pdv-marca); }
 }
-.pdv-topo-inicio { position: relative; background: var(--pdv-cartao); padding: calc(18px + env(safe-area-inset-top)) 20px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.pdv-topo-inicio { position: sticky; top: 0; z-index: 20; background: var(--pdv-cartao); padding: calc(18px + env(safe-area-inset-top)) 20px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
     .pdv-onda { height: 26px; }
 }
 .pdv-topo-etapa { position: sticky; top: 0; z-index: 20; height: calc(var(--pdv-topo-h) + env(safe-area-inset-top)); margin: 0 -16px 12px; background: var(--pdv-cartao); padding: env(safe-area-inset-top) 12px 10px 6px; display: flex; align-items: center; gap: 4px;
