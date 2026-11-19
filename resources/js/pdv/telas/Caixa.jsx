@@ -4,7 +4,7 @@ import { usePin } from '../Pin'
 import { CampoDinheiro, Formas, PerguntaImprimir, PixQr, moeda, papel, usaPixQr } from '../comum'
 import { dadosFechamento, dadosReciboConta } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
-import { Icone, TopoEtapa, useAvisos, useErro } from '../visual'
+import { Icone, TopoEtapa, rolarAoTopo, useAvisos, useErro } from '../visual'
 
 /** topo de cada etapa (8.8): voltar, título, bolinhas e, se houver, o resumo fixo embaixo */
 function Topo({ titulo, onVoltar, direita = null, linha = null, extra = null, passo = null }) {
@@ -369,7 +369,7 @@ export default function Caixa({ eu, onVoltar }) {
         carregar()
         api('GET', '/caixa/opcoes').then(setOpcoes).catch((e) => setErro(e.message))
     }, [])
-    const feito = (msg) => { setAviso(msg); setTela('menu'); carregar(); window.scrollTo(0, 0) }
+    const feito = (msg) => { setAviso(msg); setTela('menu'); carregar(); rolarAoTopo() }
     const menu = () => setTela('menu')
 
     if (!opcoes) return <div><TopoEtapa titulo="Caixa" onVoltar={onVoltar} />{erro ? <div className="alert alert-danger">{erro}</div> : <div className="text-muted text-center py-4">Carregando…</div>}</div>

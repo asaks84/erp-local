@@ -165,6 +165,9 @@ export function PlacaMercosul({ value, onChange, onEnter, id = 'placa' }) {
     )
 }
 
+/** volta a rolagem do app para o topo (o app rola dentro de .pdv-app, não a página) */
+export const rolarAoTopo = () => document.querySelector('.pdv-app')?.scrollTo(0, 0)
+
 // ---------- vibração e som ----------
 let audio = null
 /** "deu certo" (dois bipes) ou "erro" (um bipe grave), com vibração */

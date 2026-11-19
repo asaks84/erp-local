@@ -4,6 +4,12 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV: conteúdo não sobe quando as barras do celular aparecem
+
+- O app passa a rolar dentro da própria caixa (`.pdv-app`), não a página. Quando as barras do Android aparecem e a tela muda de tamanho, o conteúdo fica no lugar.
+- Na prévia do papel, texto comprido sem espaço (como o link do QR) quebra dentro da bobina em vez de vazar.
+- Arquivos: `resources/scss/_pdv.scss`, `resources/js/pdv/visual.jsx` (rolarAoTopo), `App.jsx`, `telas/Lavagens.jsx`, `telas/Caixa.jsx`, `impressao/Papel.jsx`.
+
 ## 19/11/2026 — PDV: tela não pula quando as barras do celular aparecem; topo do Início fixo
 
 - Em tela cheia, ao puxar as barras do Android, a tela inteira se deslocava (o espaço do entalhe da câmera mudava). O PDV não ocupa mais a área do entalhe, então nada se mexe. Arquivo: `resources/views/pdv.blade.php` (tirado `viewport-fit=cover`).

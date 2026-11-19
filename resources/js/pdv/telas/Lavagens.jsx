@@ -6,7 +6,7 @@ import { dadosReciboLavagem, dadosTicketLavagem } from '../impressao/modelo'
 import { preferencia } from '../impressao/preferencia'
 import { cursorNoFim } from '../../Components/CampoValor'
 import LeitorQr from '../LeitorQr'
-import { Icone, PlacaMercosul, TopoEtapa, passoDe, useAvisos, useErro } from '../visual'
+import { Icone, PlacaMercosul, TopoEtapa, passoDe, rolarAoTopo, useAvisos, useErro } from '../visual'
 
 const soPlaca = (v) => v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 7)
 const atalhos = (total) => [...new Set([Math.ceil(total / 10) * 10, Math.ceil(total / 50) * 50, 100, 200].filter((v) => v > total))].slice(0, 3)
@@ -417,7 +417,7 @@ export default function Lavagens({ eu, onVoltar, onSair, inicio = null, entregaI
         return () => clearInterval(t)
     }, [carregar])
     // veio direto do Início: termina voltando para lá; senão, volta ao menu das lavagens
-    const feito = (msg) => { setAviso(msg); if (inicio) { onSair(); return } setTela('menu'); carregar(); window.scrollTo(0, 0) }
+    const feito = (msg) => { setAviso(msg); if (inicio) { onSair(); return } setTela('menu'); carregar(); rolarAoTopo() }
     const voltarSub = () => (inicio ? onVoltar() : setTela('menu'))
     const procurar = useCallback((q) => {
         if (!q.trim()) return

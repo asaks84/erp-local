@@ -19,7 +19,7 @@ function Saida({ s, logo }) {
     const just = lados ? 'space-between' : s.al === 'c' ? 'center' : s.al === 'd' ? 'flex-end' : 'flex-start'
     return (
         <div className="d-flex gap-2" style={{ justifyContent: just, textAlign: s.al === 'c' ? 'center' : s.al === 'd' ? 'right' : 'left', fontWeight: s.neg ? 700 : 400, fontSize: s.gra ? '1.7em' : undefined, lineHeight: 1.3 }}>
-            <span>{s.a}</span>{lados && <span className="text-end">{s.b}</span>}
+            <span style={{ overflowWrap: 'anywhere', minWidth: 0 }}>{s.a}</span>{lados && <span className="text-end">{s.b}</span>}
         </div>
     )
 }

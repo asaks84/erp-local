@@ -13,7 +13,7 @@ import EstadiaSaida from './telas/EstadiaSaida'
 import Caixa from './telas/Caixa'
 import Lavagens from './telas/Lavagens'
 import { PinProvider } from './Pin'
-import { AvisosProvider, Cidade, Logo, useAvisos, useTema } from './visual'
+import { AvisosProvider, Cidade, Logo, rolarAoTopo, useAvisos, useTema } from './visual'
 import { carregarLogo } from './impressao/modelo'
 import { instalarVoltar } from './voltar'
 
@@ -51,7 +51,7 @@ function Pdv() {
         if (tela !== 'inicio' || !token.get()) return
         api('GET', '/eu').then(setEu).catch(() => { /* mantém o que tinha */ })
     }, [tela])
-    useEffect(() => { window.scrollTo(0, 0) }, [tela])
+    useEffect(() => { rolarAoTopo() }, [tela])
     // logo da impressão (vem do ERP) já convertido em pontos para a impressora
     const logoUrl = eu?.impressao?.logo
     useEffect(() => { carregarLogo(logoUrl) }, [logoUrl])
