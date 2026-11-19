@@ -34,7 +34,10 @@ class ImpressaoTest extends TestCase
         $this->assertSame(6, $salvo[1]['alt']);
         $this->assertSame('e', $salvo[2]['al']);
         $this->assertSame(200, mb_strlen($salvo[3]['txt']));
-        $this->assertSame(['k' => 'qr', 'on' => true, 'al' => 'e', 'neg' => false, 'gra' => false, 'tam' => 'G'], $salvo[5]);
+        // o MySQL reordena as chaves do JSON: compara sem depender da ordem
+        $qr = $salvo[5];
+        ksort($qr);
+        $this->assertSame(['al' => 'e', 'gra' => false, 'k' => 'qr', 'neg' => false, 'on' => true, 'tam' => 'G'], $qr);
 
         // chave de outro papel, dado repetido e papel desconhecido: recusados
         $this->actingAs($a->admin)->put('/configuracoes/impressao', ['modelos' => ['ticket' => [['k' => 'por_forma']]]])->assertSessionHasErrors('modelos');
