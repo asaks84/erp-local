@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
 import { cursorNoFim } from '../../Components/CampoValor'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasTicket, moeda } from '../comum'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasTicket, moeda, PixQr, usaPixQr } from '../comum'
 import { montarTicket, ticketDaEstadia } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 
@@ -62,15 +62,15 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
         }).finally(() => setEnviando(false))
     }
     /** registra com o que foi escolhido: por hora (sem diária), diária paga na saída ou paga agora */
-    function registrar({ comPacote = null, pagarAgora = false, valorRecebido = null } = {}) {
+    function registrar({ comPacote = null, pagarAgora = false, valorRecebido = null, pixId = null } = {}) {
         const dados = {
             placa: semPlaca ? null : placa, identificacao: semPlaca ? identificacao : null, modelo, tipo_veiculo_id: tipo,
-            pacote_id: comPacote, pagar_agora: pagarAgora, forma_pagamento_id: pagarAgora ? forma : null, valor_recebido: valorRecebido,
+            pacote_id: comPacote, pagar_agora: pagarAgora, forma_pagamento_id: pagarAgora ? forma : null, valor_recebido: valorRecebido, pix_id: pixId,
         }
         pedirPin('PIN para registrar a entrada').then(({ pin }) => enviar(pin, dados)).catch(() => {})
     }
     const ir = (e) => { setErro(null); setEtapa(e) }
-    const voltar = () => ir({ veiculo: 'placa', cobranca: 'veiculo', diaria: 'cobranca', forma: 'diaria', dinheiro: 'forma' }[etapa])
+    const voltar = () => ir({ veiculo: 'placa', cobranca: 'veiculo', diaria: 'cobranca', forma: 'diaria', dinheiro: 'forma', pix: 'forma' }[etapa])
 
     if (feito) {
         const r = feito.recibo
@@ -94,7 +94,7 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                     <h1 className="h5 mb-0">Entrada</h1>
                     {etapa !== 'placa' && <span className="h4 mb-0">{rotulo}</span>}
                 </div>
-                {['cobranca', 'diaria', 'forma', 'dinheiro'].includes(etapa) && (
+                {['cobranca', 'diaria', 'forma', 'dinheiro', 'pix'].includes(etapa) && (
                     <div className="small text-muted text-end">{[modelo, tipoObj?.nome, diaria && `${diaria.nome} ${moeda(diaria.valor)}`].filter(Boolean).join(' · ')}</div>
                 )}
             </div>
@@ -173,15 +173,21 @@ export default function EstadiaEntrada({ eu, opcoes, onVoltar, onFeito }) {
                     <Formas formas={opcoes.formas} value={forma} onChange={(fid) => {
                         setForma(fid)
                         setErro(null)
-                        if (opcoes.formas.find((x) => x.id === fid)?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') }
+                        const f = opcoes.formas.find((x) => x.id === fid)
+                        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
                     }} />
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
-                    {formaObj && formaObj.tipo !== 'dinheiro' && (
+                    {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => registrar({ comPacote: pacote, pagarAgora: true })}>
                             {enviando ? 'Registrando…' : `Recebi ${moeda(diaria?.valor)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
                         </button>
                     )}
                 </div>
+            )}
+
+            {etapa === 'pix' && (
+                <PixQr valor={diaria?.valor || 0} descricao={`Diária ${rotulo}`} enviando={enviando} erro={erro}
+                    onPago={(pixId) => registrar({ comPacote: pacote, pagarAgora: true, pixId })} onManual={() => registrar({ comPacote: pacote, pagarAgora: true })} />
             )}
 
             {etapa === 'dinheiro' && (() => {

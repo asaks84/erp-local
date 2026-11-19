@@ -196,8 +196,8 @@ body.pdv { background: var(--bs-body-bg); }
     span.cheio { background: var(--bs-body-color); border-color: var(--bs-body-color); }
 }
 .pdv-pin-erro { min-height: 1.5em; }
-.pdv-pin-campo { font-size: 1.75rem; letter-spacing: .6em; max-width: 220px; margin: 0 auto; }
-.pdv-pin-pontos { cursor: text; }
+.pdv-pin-pontos { position: relative; cursor: text; }
+.pdv-pin-campo { position: absolute; inset: -12px 0; width: 100%; opacity: 0; border: 0; background: transparent; color: transparent; caret-color: transparent; font-size: 16px; }
 .pdv-teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
     button { height: 64px; border-radius: 12px; border: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); font-size: 1.5rem; font-weight: 600; color: var(--bs-body-color); }
     button:active { background: var(--bs-secondary-bg); }
@@ -216,6 +216,9 @@ body.pdv { background: var(--bs-body-bg); }
     .small { font-size: 1rem; }
 }
 .pdv-valor { font-size: 2rem; font-weight: 700; text-align: center; }
+.pdv-pix-qr { display: inline-block; padding: 10px; background: #fff; border-radius: 12px; min-height: 280px; min-width: 280px;
+    img { display: block; width: 260px; height: 260px; image-rendering: pixelated; }
+}
 .pdv-resumo-fixo { position: sticky; top: 61px; z-index: 5; background: var(--bs-body-bg); padding-bottom: 8px; }
 .pdv-camera { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; object-fit: cover; }
 .pdv-previa-rolagem { max-height: 45vh; overflow: auto; margin-bottom: 8px; background: var(--bs-tertiary-bg); border-radius: 8px; padding: 8px 0;

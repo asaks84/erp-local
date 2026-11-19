@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, moeda } from '../comum'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, PixQr, Previa, moeda, usaPixQr } from '../comum'
 import { montarReciboLavagem, montarTicket, ticketDaLavagem } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 import { cursorNoFim } from '../../Components/CampoValor'
@@ -96,16 +96,16 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
     }
     const voltar = () => ir({ estadia: 'placa', veiculo: info?.estadia ? 'estadia' : 'placa', servico: 'veiculo', valor: 'servico',
         adicionais: sv?.preco_modo === 'ate' ? 'valor' : 'servico', celular: adicionaisDisp.length ? 'adicionais' : (sv?.preco_modo === 'ate' ? 'valor' : 'servico'),
-        pagamento: info?.veiculo ? (adicionaisDisp.length ? 'adicionais' : 'servico') : 'celular', forma: 'pagamento', dinheiro: 'forma' }[etapa])
+        pagamento: info?.veiculo ? (adicionaisDisp.length ? 'adicionais' : 'servico') : 'celular', forma: 'pagamento', dinheiro: 'forma', pix: 'forma' }[etapa])
 
-    const registrar = ({ agora = false, valorRecebido = null } = {}) => {
+    const registrar = ({ agora = false, valorRecebido = null, pixId = null } = {}) => {
         const cancelar = info?.estadia && estadiaAcao === 'cancelar'
         pedirPin(cancelar ? 'PIN de gerente (cancela a estadia)' : 'PIN para registrar a lavagem').then(({ pin }) => {
             setEnviando(true)
             setErro(null)
             api('POST', '/lavagens', {
                 pin, placa, modelo, tipo_veiculo_id: tipo, celular, servico_id: servico, adicionais, valor: sv?.preco_modo === 'ate' ? valorAte : null,
-                pagar_agora: agora, forma_pagamento_id: agora ? forma : null, valor_recebido: valorRecebido,
+                pagar_agora: agora, forma_pagamento_id: agora ? forma : null, valor_recebido: valorRecebido, pix_id: pixId,
                 estadia_id: info?.estadia?.id ?? null, estadia_acao: info?.estadia ? estadiaAcao : null,
             }).then(setFeito).catch((e) => setErro(e.message)).finally(() => setEnviando(false))
         }).catch(() => {})
@@ -129,7 +129,7 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
         <div className="pb-5">
             <Topo titulo="Nova lavagem" onVoltar={etapa === 'placa' ? onVoltar : voltar} voltarRotulo={etapa === 'placa' ? 'Lavagens' : 'Voltar'}
                 direita={etapa !== 'placa' && <span className="h4 mb-0">{placa}</span>}
-                linha={['servico', 'valor', 'adicionais', 'celular', 'pagamento', 'forma', 'dinheiro'].includes(etapa) ? [resumo, total ? moeda(total) : null].filter(Boolean).join(' · ') : null} />
+                linha={['servico', 'valor', 'adicionais', 'celular', 'pagamento', 'forma', 'dinheiro', 'pix'].includes(etapa) ? [resumo, total ? moeda(total) : null].filter(Boolean).join(' · ') : null} />
 
             {etapa === 'placa' && (
                 <div className="mt-2">
@@ -237,13 +237,20 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
             {etapa === 'forma' && (
                 <div className="mt-3">
                     <div className="fw-semibold mb-2">Forma de pagamento</div>
-                    <Formas formas={opcoes.formas} value={forma} onChange={(fid) => { setForma(fid); setErro(null); if (opcoes.formas.find((x) => x.id === fid)?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } }} />
+                    <Formas formas={opcoes.formas} value={forma} onChange={(fid) => {
+                        setForma(fid); setErro(null)
+                        const f = opcoes.formas.find((x) => x.id === fid)
+                        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
+                    }} />
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
-                    {formaObj && formaObj.tipo !== 'dinheiro' && (
+                    {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => registrar({ agora: true })}>{enviando ? 'Registrando…' : `Recebi ${moeda(total)} no ${nomeForma(formaObj)}`}</button>
                     )}
                 </div>
             )}
+
+            {etapa === 'pix' && <PixQr valor={total} descricao={`Lavagem ${placa}`.trim()} enviando={enviando} erro={erro}
+                onPago={(pixId) => registrar({ agora: true, pixId })} onManual={() => registrar({ agora: true })} />}
 
             {etapa === 'dinheiro' && <Recebido total={total} value={recebido} onChange={setRecebido} onConfirmar={() => registrar({ agora: true, valorRecebido: recebido })} enviando={enviando} erro={erro} />}
         </div>
@@ -255,6 +262,7 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
     const { pedirPin } = usePin()
     const [dados, setDados] = useState(null)
     const [etapa, setEtapa] = useState('como')
+    const [pixFixo, setPixFixo] = useState(null) // valor e hora do cálculo congelados enquanto o QR está na tela
     const [convenio, setConvenio] = useState('')
     const [contaDe, setContaDe] = useState(null)
     const [busca, setBusca] = useState('')
@@ -268,7 +276,9 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
     const calcular = useCallback(() => {
         api('GET', `/lavagens/${id}/calculo${convenio ? `?convenio_id=${convenio}` : ''}`).then((j) => { setDados(j); setErro(null) }).catch((e) => setErro(e.message))
     }, [id, convenio])
-    useEffect(() => { calcular(); const t = setInterval(calcular, 60000); return () => clearInterval(t) }, [calcular])
+    // com o QR na tela o valor fica parado (o Pix é do valor exato)
+    const noPix = etapa === 'pix'
+    useEffect(() => { if (noPix) return undefined; calcular(); const t = setInterval(calcular, 60000); return () => clearInterval(t) }, [calcular, noPix])
     useEffect(() => {
         if (busca.trim().length < 2) { setAchados([]); return undefined }
         const t = setTimeout(() => api('GET', `/clientes?q=${encodeURIComponent(busca.trim())}`).then(setAchados).catch(() => {}), 250)
@@ -297,7 +307,7 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
         api('POST', `/lavagens/${id}/entregar`, { pin, convenio_id: convenio || null, ...extra })
             .then(setFeito).catch((e) => setErro(e.message)).finally(() => setEnviando(false))
     }).catch(() => {})
-    const voltar = () => { setErro(null); setEtapa({ forma: 'como', conta: 'como', dinheiro: 'forma' }[etapa]) }
+    const voltar = () => { setErro(null); setEtapa({ forma: 'como', conta: 'como', dinheiro: 'forma', pix: 'forma' }[etapa]) }
 
     return (
         <div className="pb-5">
@@ -343,15 +353,23 @@ function Entrega({ eu, opcoes, id, onVoltar, onFeito }) {
             {etapa === 'forma' && (
                 <div className="mt-3">
                     <div className="fw-semibold mb-2">Forma de pagamento</div>
-                    <Formas formas={opcoes.formas} value={forma} onChange={(fid) => { setForma(fid); setErro(null); if (opcoes.formas.find((x) => x.id === fid)?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } }} />
+                    <Formas formas={opcoes.formas} value={forma} onChange={(fid) => {
+                        setForma(fid); setErro(null)
+                        const f = opcoes.formas.find((x) => x.id === fid)
+                        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) { setPixFixo({ valor: c.a_pagar, em: c.calculado_em }); setEtapa('pix') }
+                    }} />
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
-                    {formaObj && formaObj.tipo !== 'dinheiro' && (
-                        <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => entregar({ destino: 'pago', forma_pagamento_id: forma })}>{enviando ? 'Entregando…' : `Recebi ${moeda(c.a_pagar)} no ${nomeForma(formaObj)}`}</button>
+                    {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
+                        <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => entregar({ destino: 'pago', forma_pagamento_id: forma, calculado_em: c.calculado_em })}>{enviando ? 'Entregando…' : `Recebi ${moeda(c.a_pagar)} no ${nomeForma(formaObj)}`}</button>
                     )}
                 </div>
             )}
 
-            {etapa === 'dinheiro' && <Recebido total={c.a_pagar} value={recebido} onChange={setRecebido} onConfirmar={() => entregar({ destino: 'pago', forma_pagamento_id: forma, valor_recebido: recebido })} enviando={enviando} erro={erro} />}
+            {etapa === 'pix' && <PixQr valor={pixFixo.valor} descricao={`Lavagem ${l.placa || ''}`.trim()} enviando={enviando} erro={erro}
+                onPago={(pixId) => entregar({ destino: 'pago', forma_pagamento_id: forma, pix_id: pixId, calculado_em: pixFixo.em })}
+                onManual={() => entregar({ destino: 'pago', forma_pagamento_id: forma, calculado_em: pixFixo.em })} />}
+
+            {etapa === 'dinheiro' && <Recebido total={c.a_pagar} value={recebido} onChange={setRecebido} onConfirmar={() => entregar({ destino: 'pago', forma_pagamento_id: forma, valor_recebido: recebido, calculado_em: c.calculado_em })} enviando={enviando} erro={erro} />}
 
             {etapa === 'conta' && (
                 <div className="mt-3">

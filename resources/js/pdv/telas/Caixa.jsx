@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Formas, PerguntaImprimir, Previa, moeda } from '../comum'
+import { CampoDinheiro, Formas, PerguntaImprimir, PixQr, Previa, moeda, usaPixQr } from '../comum'
 import { montarFechamento, montarReciboConta } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 
@@ -69,10 +69,10 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
     const total = Math.round((contas.filter((o) => marcadas.includes(o.id)).reduce((s, o) => s + o.valor, 0) + creditos.reduce((s, o) => s + o.valor, 0)) * 100) / 100
     const formaObj = opcoes.formas.find((f) => f.id === forma)
 
-    const receber = (valorRecebido = null) => pedirPin('PIN para receber').then(({ pin }) => {
+    const receber = (valorRecebido = null, pixId = null) => pedirPin('PIN para receber').then(({ pin }) => {
         setEnviando(true)
         setErro(null)
-        api('POST', `/clientes/${dados.cliente.id}/receber`, { pin, ordens: marcadas, forma_pagamento_id: forma, valor_recebido: valorRecebido })
+        api('POST', `/clientes/${dados.cliente.id}/receber`, { pin, ordens: marcadas, forma_pagamento_id: forma, valor_recebido: valorRecebido, pix_id: pixId })
             .then(setFeito).catch((e) => setErro(e.message)).finally(() => setEnviando(false))
     }).catch(() => {})
 
@@ -87,7 +87,7 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
         )
     }
 
-    const voltar = () => { setErro(null); setEtapa({ contas: 'cliente', forma: 'contas', dinheiro: 'forma' }[etapa]) }
+    const voltar = () => { setErro(null); setEtapa({ contas: 'cliente', forma: 'contas', dinheiro: 'forma', pix: 'forma' }[etapa]) }
     return (
         <div className="pb-5">
             <Topo titulo={dados && etapa !== 'cliente' ? dados.cliente.nome : 'Receber conta de cliente'} onVoltar={etapa === 'cliente' ? onVoltar : voltar} voltarRotulo={etapa === 'cliente' ? 'Caixa' : 'Voltar'}
@@ -131,16 +131,20 @@ function ReceberConta({ eu, opcoes, onVoltar, onFeito }) {
                     <Formas formas={opcoes.formas} value={forma} onChange={(fid) => {
                         setForma(fid)
                         setErro(null)
-                        if (opcoes.formas.find((x) => x.id === fid)?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') }
+                        const f = opcoes.formas.find((x) => x.id === fid)
+                        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) setEtapa('pix')
                     }} />
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
-                    {formaObj && formaObj.tipo !== 'dinheiro' && (
+                    {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => receber()}>
                             {enviando ? 'Registrando…' : `Recebi ${moeda(total)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
                         </button>
                     )}
                 </div>
             )}
+
+            {etapa === 'pix' && <PixQr valor={total} descricao={`Conta ${dados.cliente.nome}`.slice(0, 140)} enviando={enviando} erro={erro}
+                onPago={(pixId) => receber(null, pixId)} onManual={() => receber()} />}
 
             {etapa === 'dinheiro' && <Recebido total={total} value={recebido} onChange={setRecebido} onConfirmar={() => receber(recebido)} enviando={enviando} erro={erro} />}
         </div>
@@ -312,6 +316,12 @@ function Fechar({ eu, onVoltar, onFeito }) {
                             <tr className="fw-bold fs-5"><td>Deveria ter</td><td className="text-end">{moeda(r.dinheiro_esperado)}</td></tr>
                         </tbody>
                     </table>
+                    {r.pix_sem_uso?.length > 0 && (
+                        <div className="alert alert-warning small">
+                            <strong>Pix pago no QR sem recebimento registrado</strong> (o app fechou ou a internet caiu antes de concluir). Registre pela gestão; no extrato ele aparece para conferir.
+                            {r.pix_sem_uso.map((p, i) => <div key={i}>{p.hora} · {moeda(p.valor)}{p.pagador ? ` · ${p.pagador}` : ''}{p.descricao ? ` · ${p.descricao}` : ''}</div>)}
+                        </div>
+                    )}
                     <button type="button" className="btn btn-primary btn-lg w-100" onClick={() => { setContado(0); setEtapa('contado') }}>Contar o dinheiro</button>
                 </div>
             )}

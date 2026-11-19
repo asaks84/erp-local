@@ -9,8 +9,10 @@ use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Servicos\Pdv\Aparelhos;
 use App\Servicos\Pdv\Pins;
+use App\Servicos\Pdv\PixPdv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -63,6 +65,8 @@ class PdvController extends Controller
             'empresa' => ['nome' => $e->nome, 'documento' => $e->documento, 'telefone' => $u?->telefone ?: $e->telefone, 'endereco' => $u?->endereco],
             'pin_memoria_min' => (int) ($e->config('pdv_pin_memoria_min') ?? 0),
             'servidor_hora' => now()->toIso8601String(),
+            // Pix com QR do Inter no lugar do "Recebi no Pix" (8.5)
+            'pix_qr' => PixPdv::ligado(),
         ]);
     }
 
@@ -84,5 +88,23 @@ class PdvController extends Controller
         $u = Pins::cadastrar(self::aparelho($r)->empresa_id, $d['login'], $d['senha'], $d['pin']);
 
         return response()->json(['ok' => true, 'mensagem' => 'PIN de '.$u->nome.' cadastrado.']);
+    }
+
+    /**
+     * Hora do cálculo que a tela mostrou, para cobrar o mesmo valor no registro (o cliente pode levar uns
+     * minutos no Pix). Só vale até 20 minutos atrás; fora disso, null (vale a hora de agora).
+     */
+    public static function momento(?string $quando): ?Carbon
+    {
+        if (! $quando) {
+            return null;
+        }
+        try {
+            $m = Carbon::parse($quando);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $m->between(now()->subMinutes(20), now()->addMinute()) ? $m : null;
     }
 }

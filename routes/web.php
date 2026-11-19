@@ -279,6 +279,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/inter/credenciais', [InterController::class, 'credenciais']);
         Route::post('/configuracoes/inter/testar', [InterController::class, 'testar']);
         Route::post('/configuracoes/inter/desligar', [InterController::class, 'desligar']);
+        Route::post('/configuracoes/inter/pix', [InterController::class, 'pix']);
+        Route::post('/configuracoes/inter/testar-pix', [InterController::class, 'testarPix']);
         Route::put('/configuracoes/inter/regras', [InterController::class, 'regras']);
         Route::get('/configuracoes/whatsapp', [WhatsAppController::class, 'index']);
         Route::post('/configuracoes/whatsapp/credenciais', [WhatsAppController::class, 'credenciais']);

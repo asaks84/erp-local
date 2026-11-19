@@ -135,8 +135,12 @@ class EstadiaPdvController extends Controller
 
     public function sair(Request $r, int $id): JsonResponse
     {
-        $d = $r->validate(EstadiaController::regrasSaida());
+        $d = $r->validate(EstadiaController::regrasSaida() + ['saida_calculo' => ['nullable', 'date']]);
         PdvController::pessoa($r);
+        // a saída é a hora do cálculo mostrado na tela (o Pix pode levar uns minutos para cair)
+        if ($m = PdvController::momento($d['saida_calculo'] ?? null)) {
+            $d['saida'] = $m->format('Y-m-d H:i');
+        }
         $e = Estadias::sair(self::achar($id), $d);
 
         return response()->json(['estadia' => EstadiaController::linha(self::achar($e->id)), 'recibo' => self::recibo($e, $e->ordem_id),

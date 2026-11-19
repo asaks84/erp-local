@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { moeda } from './impressao/ticket'
 import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
+import { api } from './api'
 
 export { moeda }
 
@@ -48,6 +49,101 @@ export function Troco({ total, value, onChange, erro }) {
             {recebido > 0 && (recebido + 0.001 >= total
                 ? <div className="pdv-troco">Troco: <strong>{moeda(recebido - total)}</strong></div>
                 : <div className="text-danger small mt-1">Menor que {moeda(total)}</div>)}
+        </div>
+    )
+}
+
+/** a forma escolhida é Pix e o Pix com QR do Inter está ligado */
+export const usaPixQr = (eu, forma) => !!eu?.pix_qr && forma?.tipo === 'pix'
+
+/**
+ * Pix com QR (8.5): gera o Pix do valor exato no Inter, mostra o QR e o copia e cola e consulta a cada
+ * 3 segundos. Pago, chama onPago(pixId) (o PIN e o registro vêm em seguida); se o registro falhar, o
+ * botão "Concluir" tenta de novo com o mesmo Pix. onManual: cliente pagou sem o QR (vai conferir no extrato).
+ */
+export function PixQr({ valor, descricao, onPago, onManual, enviando, erro }) {
+    const [pix, setPix] = useState(null)
+    const [falha, setFalha] = useState(null)
+    const [img, setImg] = useState(null)
+    const [resta, setResta] = useState(null)
+    const [copiado, setCopiado] = useState(false)
+    const [tentativa, setTentativa] = useState(0)
+    const atual = useRef(null)
+    const avisou = useRef(false)
+
+    // gera (de novo a cada tentativa)
+    useEffect(() => {
+        let vivo = true
+        setPix(null); setFalha(null); setImg(null); avisou.current = false
+        api('POST', '/pix', { valor, descricao }).then((j) => { if (vivo) { atual.current = j; setPix(j) } else api('POST', `/pix/${j.id}/cancelar`).catch(() => {}) })
+            .catch((e) => vivo && setFalha(e.message))
+        return () => { vivo = false }
+    }, [valor, descricao, tentativa])
+
+    // saiu da tela sem pagar: tira o QR do ar
+    useEffect(() => () => { const p = atual.current; if (p && p.situacao === 'ativa') api('POST', `/pix/${p.id}/cancelar`).catch(() => {}) }, [])
+
+    useEffect(() => { if (pix?.copia_cola) QRCode.toDataURL(pix.copia_cola, { margin: 1, width: 320 }).then(setImg).catch(() => {}) }, [pix?.copia_cola])
+
+    // consulta até mudar de situação
+    useEffect(() => {
+        if (!pix || pix.situacao !== 'ativa') return undefined
+        const fim = Date.now() + (pix.segundos ?? 900) * 1000
+        const relogio = setInterval(() => setResta(Math.max(0, Math.round((fim - Date.now()) / 1000))), 1000)
+        const consulta = setInterval(() => {
+            api('GET', `/pix/${pix.id}`).then((j) => { if (j.situacao !== 'ativa') { atual.current = j; setPix(j) } }).catch(() => { /* rede oscilou: tenta na próxima */ })
+        }, 3000)
+        return () => { clearInterval(relogio); clearInterval(consulta) }
+    }, [pix?.id, pix?.situacao])
+
+    useEffect(() => {
+        if (pix?.situacao === 'paga' && !avisou.current) { avisou.current = true; onPago(pix.id) }
+    }, [pix?.situacao])
+
+    const copiar = () => {
+        navigator.clipboard?.writeText(pix.copia_cola).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000) }).catch(() => {})
+    }
+    const semQr = onManual && <button type="button" className="btn btn-link w-100 mt-2" disabled={enviando} onClick={onManual}>Cliente pagou sem o QR</button>
+
+    if (falha) {
+        return (
+            <div className="mt-3">
+                <div className="alert alert-danger py-2 small">{falha}</div>
+                <button type="button" className="btn btn-primary btn-lg w-100" onClick={() => setTentativa((t) => t + 1)}>Tentar de novo</button>
+                {semQr}
+            </div>
+        )
+    }
+    if (!pix) return <div className="text-muted mt-3">Gerando o Pix…</div>
+    if (pix.situacao === 'paga') {
+        return (
+            <div className="mt-3">
+                <div className="pdv-troco-final"><div>Pix recebido <strong>{moeda(pix.valor)}</strong></div>{pix.pagador && <div className="small">{pix.pagador}</div>}</div>
+                {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
+                <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => onPago(pix.id)}>{enviando ? 'Registrando…' : 'Concluir'}</button>
+            </div>
+        )
+    }
+    if (pix.situacao !== 'ativa') {
+        return (
+            <div className="mt-3">
+                <div className="alert alert-warning py-2 small">{pix.situacao === 'expirada' ? 'O QR venceu sem pagamento.' : 'Este QR foi cancelado.'}</div>
+                <button type="button" className="btn btn-primary btn-lg w-100" onClick={() => setTentativa((t) => t + 1)}>Gerar outro QR</button>
+                {semQr}
+            </div>
+        )
+    }
+    return (
+        <div className="mt-3 text-center">
+            <div className="fw-semibold">Mostre o QR ao cliente</div>
+            <div className="pdv-pix-qr my-2">{img ? <img src={img} alt="QR do Pix" width="260" height="260" /> : <div className="text-muted">…</div>}</div>
+            <div className="fs-4 fw-bold">{moeda(pix.valor)}</div>
+            <div className="small text-muted mb-2">
+                <span className="spinner-grow spinner-grow-sm text-success me-1" aria-hidden="true" />
+                Aguardando o pagamento{resta !== null && ` · vence em ${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, '0')}`}
+            </div>
+            <button type="button" className="btn btn-outline-secondary w-100" onClick={copiar}>{copiado ? 'Copiado!' : 'Copiar código Pix (copia e cola)'}</button>
+            {semQr}
         </div>
     )
 }

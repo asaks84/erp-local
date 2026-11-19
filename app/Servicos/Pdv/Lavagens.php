@@ -118,8 +118,9 @@ class Lavagens
      * Cálculo da entrega (sem gravar): serviços em aberto, a parte do convênio escolhido (por serviço), estadia
      * depois de pronta e o que o cliente paga. Contas que já estão na conta de alguém ou do convênio não entram.
      */
-    public static function calculo(OrdemServico $o, ?int $convenioId = null): array
+    public static function calculo(OrdemServico $o, ?int $convenioId = null, ?CarbonInterface $agora = null): array
     {
+        $agora ??= now();
         $grupo = Vendas::grupo($o);
         $principal = $grupo->first();
         $convenio = $convenioId ? self::convenio($convenioId) : null;
@@ -128,7 +129,7 @@ class Lavagens
             $div = Convenios::dividir($convenio, 'servico', (float) $x->valor, 0, null, $x->servico_id);
             $itens[] = ['id' => $x->id, 'descricao' => $x->descricao, 'valor' => (float) $x->valor, 'convenio' => $div['convenio'], 'cliente' => $div['cliente'], 'regra' => $div['regra']];
         }
-        $est = self::estadiaDepois($principal);
+        $est = self::estadiaDepois($principal, $agora);
         $estadia = null;
         if ($est) {
             $div = Convenios::dividir($convenio, 'estadia', $est['valor'], $est['minutos'], $est['valor_ate']);
@@ -140,6 +141,8 @@ class Lavagens
 
         return [
             'itens' => $itens,
+            // o PDV devolve na entrega: o preço fica o da tela, mesmo que o Pix demore
+            'calculado_em' => $agora->format('Y-m-d H:i:s'),
             'estadia' => $estadia,
             'pago_antes' => round((float) $pagas->sum('valor'), 2),
             'na_conta' => round((float) $naConta->sum('valor'), 2),
@@ -173,7 +176,7 @@ class Lavagens
             self::erro('entrega', 'Esta lavagem já foi entregue.');
         }
         $convenio = ! empty($d['convenio_id']) ? self::convenio((int) $d['convenio_id']) : null;
-        $c = self::calculo($principal, $convenio?->id);
+        $c = self::calculo($principal, $convenio?->id, $d['agora'] ?? null);
         $destino = $d['destino'] ?? 'pago';
         $contaDe = null;
         if ($c['a_pagar'] > 0 && $destino === 'conta') {

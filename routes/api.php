@@ -4,6 +4,7 @@ use App\Http\Controllers\Pdv\CaixaPdvController;
 use App\Http\Controllers\Pdv\EstadiaPdvController;
 use App\Http\Controllers\Pdv\LavagemPdvController;
 use App\Http\Controllers\Pdv\PdvController;
+use App\Http\Controllers\Pdv\PixPdvController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,7 +36,11 @@ Route::prefix('pdv')->middleware('publica')->group(function () {
         Route::get('/lavagens/placa/{placa}', [LavagemPdvController::class, 'placa']);
         Route::get('/lavagens/buscar', [LavagemPdvController::class, 'buscar']);
         Route::get('/lavagens/{id}/calculo', [LavagemPdvController::class, 'calculo'])->whereNumber('id');
+        // Pix com QR (8.5): a tela consulta a cada 3 segundos até pagar
+        Route::get('/pix/{id}', [PixPdvController::class, 'ver'])->whereNumber('id');
         Route::middleware('throttle:60,1,pdv-acao')->group(function () {
+            Route::post('/pix', [PixPdvController::class, 'criar']);
+            Route::post('/pix/{id}/cancelar', [PixPdvController::class, 'cancelar'])->whereNumber('id');
             Route::post('/lavagens', [LavagemPdvController::class, 'vender']);
             Route::post('/lavagens/{id}/etapa', [LavagemPdvController::class, 'etapa'])->whereNumber('id');
             Route::post('/lavagens/{id}/entregar', [LavagemPdvController::class, 'entregar'])->whereNumber('id');

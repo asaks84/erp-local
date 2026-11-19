@@ -103,6 +103,9 @@ class Caixas
             'movimentos' => $movs->map(fn (CaixaMovimento $m) => ['id' => $m->id, 'tipo' => $m->tipo, 'rotulo' => $m->rotulo(), 'valor' => (float) $m->valor,
                 'sinal' => $m->sinal(), 'motivo' => $m->motivo, 'quem' => $m->usuario?->nome, 'hora' => $m->criado_em?->format('d/m H:i')])->values()->all(),
             'dinheiro_esperado' => $esperado,
+            // Pix pago no QR que não virou recebimento (app fechou, internet caiu): resolver pela gestão
+            'pix_sem_uso' => PixPdv::semUso($c->id)->map(fn ($p) => ['valor' => (float) $p->valor_pago, 'hora' => $p->pago_em?->format('d/m H:i'),
+                'pagador' => $p->pagador, 'descricao' => $p->descricao])->values()->all(),
         ];
     }
 

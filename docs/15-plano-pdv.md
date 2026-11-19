@@ -105,6 +105,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 | 8.5 Pix imediato | QR na tela com confirmação automática | Pix real pago no balcão dá baixa sozinho |
 | 8.6 Ticket e impressão | Página `/t/<código>`, impressão na térmica escolhida | Ticket impresso com QR que abre a página certa |
 | 8.7 Modo de emergência | Fila no aparelho, tarifador em JavaScript, envio ao voltar, diferenças para conferir | Um dia simulado sem internet sobe sem duplicar e com as diferenças apontadas |
+| 8.8 Visual do app | Identidade visual do PDV a partir de referências de apps que o Cauê vai escolher: cores, tipografia, botões, ícones, telas de etapa, tema claro/escuro, tela inicial e ícone do app instalado. Só aparência: os fluxos e as regras ficam como estão | Telas do PDV refeitas no visual escolhido, conferidas no celular do balcão |
 
 **Portão da etapa 8:** uma a duas semanas de uso real no balcão, com o caixa de cada turno batendo e nenhuma estadia ou lavagem perdida.
 
@@ -133,7 +134,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 10. **Sangria, suprimento, fechar caixa, cancelar estadia ou venda e dar desconto:** só com PIN de **gerente ou administrador**.
 11. **Atendentes:** cada um vira usuário com o nível **operador**, configurado por usuário na gestão (PIN para o PDV; entrar na gestão é opção do usuário).
 12. **Cartão:** **crédito e débito separados** (taxas diferentes no Resultado).
-13. **Pix:** a integração do Inter (ERP Local Estacionamento) já tem a permissão **"Receber e enviar pagamentos por Pix"**. Apesar do nome, os itens dela são todos do lado de receber: cobranças imediatas (a do PDV) e com vencimento, consulta de Pix recebidos, webhooks e payloads, e devolução de Pix recebido (só para quem pagou). Nenhum envia Pix para outra conta. A chave Pix da conta PJ é escolhida em Configurações › Banco Inter quando o Pix do PDV for construído (parte 8.5).
+13. **Pix:** a integração do Inter (ERP Local Estacionamento) já tem a permissão **"Receber e enviar pagamentos por Pix"**. Apesar do nome, os itens dela são todos do lado de receber: cobranças imediatas (a do PDV) e com vencimento, consulta de Pix recebidos, webhooks e payloads, e devolução de Pix recebido (só para quem pagou). Nenhum envia Pix para outra conta. A chave Pix da conta PJ é escolhida em Configurações › Banco Inter (seção 8g). Atenção: no cadastro da integração, conferir se os itens de cobrança imediata estão marcados (o "Testar Pix" acusa se faltar).
 
 **Consequência para o escopo:** o vigia recebe mensalidade no balcão. A primeira versão do PDV ganha **receber conta de cliente**: buscar o cliente pela placa ou nome, ver as ordens e cobranças em aberto e receber (mesma baixa da gestão, com o turno e o PIN).
 
@@ -220,6 +221,16 @@ O PDV usa as mesmas regras da gestão, então estas entram primeiro (ver [05-reg
 - **Entrega, em etapas:** resumo e A pagar fixos (serviços em aberto, estadia depois de pronta, convênio, já pago, já na conta) → convênio escolhido na hora (a parte dele vai para a conta do convênio, o excedente fica com quem usou) → **Pagar agora**, **Na conta de [cliente do veículo]**, **Na conta de outro cliente** (sempre pergunta, sem opção marcada) ou nada a pagar → forma → valor recebido → PIN → recibo com troco. A venda fica Entregue e o pagamento cai no caixa, em "Lavagens e serviços".
 - **Estadia depois de pronta** (Configurações › Etapas da lavagem): cobrar ou não e a tolerância em minutos. "Pronta" é a última etapa ativa antes de Entregue. Passada a tolerância, cobra todo o tempo desde que ficou pronta pela tabela de estadia do tamanho, na mesma entrega (o convênio vale pela regra de estadia dele). Não cobra se o carro continua com estadia aberta no pátio. Só na entrega pelo PDV.
 - Lavagem do PDV aparece no quadro da gestão (origem "pdv") e a da gestão pode ser entregue no PDV.
+
+## 8g. Como ficou a parte 8.5, Pix com QR (18/11/2026)
+
+- **Ligar:** Configurações › Banco Inter › Pix com QR no PDV: chave Pix da conta (e-mail, CNPJ, celular com +55 ou aleatória) e "Testar Pix" (gera um Pix de R$ 0,01 e tira do ar na hora). A integração precisa das permissões de cobrança imediata (emitir/alterar e consultar). Chave vazia desliga: o PDV volta ao "Recebi no Pix".
+- **No balcão:** escolhida a forma Pix (estadia na entrada e na saída, lavagem na venda e na entrega, receber conta), entra uma etapa só do QR: o valor exato, o QR grande, "Copiar código Pix" e o tempo que falta (vale 15 minutos). O celular consulta a cada 3 segundos; caiu o Pix, aparece "Pix recebido" com o nome de quem pagou, pede o PIN e registra. Se o registro falhar (internet, PIN cancelado), o botão Concluir tenta de novo com o mesmo Pix.
+- **Preço congelado:** enquanto o QR está na tela o valor não muda. A saída da estadia e a entrega da lavagem usam a hora do cálculo mostrado (até 20 minutos), para o cliente que demorou no Pix não cair na hora seguinte.
+- **Segurança:** o registro só aceita Pix pago, de mesmo valor e ainda não usado; o pagamento guarda o txid. Voltar ou desistir tira o QR do ar no Inter (antes confere se não acabou de ser pago).
+- **Sem QR:** "Cliente pagou sem o QR" registra normal, com a observação "Pix sem QR: conferir no extrato".
+- **Extrato do Inter:** o Pix do QR que virou recebimento fica de fora da conferência (já baixado). Pix pago no QR que não virou recebimento (o app fechou antes) aparece no fechamento do caixa e entra na conferência do extrato normalmente.
+- Webhook do Inter não é usado (a hospedagem não aceita a conexão com certificado): a confirmação vem da consulta.
 
 ## 9. Riscos e cuidados
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\PertenceAEmpresa;
 use App\Servicos\Pdv\Caixas;
+use App\Servicos\Pdv\PixPdv;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -28,6 +29,17 @@ class Pagamento extends Modelo
             // tudo o que entra pelo PDV cai no caixa aberto do balcão
             if ($p->origem === 'pdv' && ! $p->caixa_id) {
                 $p->caixa_id = Caixas::atual()->id;
+            }
+            // Pix com QR do balcão (8.5): confere o Pix pago e grava o txid
+            if ($a && ($pix = PixPdv::noPagamento($p))) {
+                request()->attributes->set('pix_vincular', $pix);
+            }
+        });
+        static::created(function (Pagamento $p) {
+            $pix = request()?->attributes->get('pix_vincular');
+            if ($pix && $p->pix_txid === $pix->txid) {
+                $pix->update(['pagamento_id' => $p->id]);
+                request()->attributes->remove('pix_vincular');
             }
         });
     }

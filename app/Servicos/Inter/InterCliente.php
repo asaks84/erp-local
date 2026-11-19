@@ -25,6 +25,9 @@ class InterCliente
     /** extrato e saldo: token separado, para que a falta dessa permissão não pare o boleto */
     public const ESCOPOS_EXTRATO = 'extrato.read';
 
+    /** Pix imediato do PDV (cob): token separado, para que a falta dessa permissão não pare o boleto */
+    public const ESCOPOS_PIX = 'cob.write cob.read';
+
     /** arquivos temporários do certificado e da chave (apagados ao fim; o Guzzle só aceita arquivo) */
     private array $temporarios = [];
 
@@ -98,7 +101,11 @@ class InterCliente
         ]);
         if (! $r->successful() || ! $r->json('access_token')) {
             throw new InterErro('O Inter recusou as credenciais: '.self::mensagem($r).' Confira o client id, o client secret, o certificado e se a integração tem as permissões de '
-                .($escopos === self::ESCOPOS_EXTRATO ? '"Conferir saldo e movimentações".' : 'boleto.'));
+                .match ($escopos) {
+                    self::ESCOPOS_EXTRATO => '"Conferir saldo e movimentações".',
+                    self::ESCOPOS_PIX => 'Pix ("Emitir / alterar cobranças imediatas" e "Consultar cobranças imediatas").',
+                    default => 'boleto.',
+                });
         }
         Cache::put($chave, $r->json('access_token'), max(60, (int) $r->json('expires_in', 3600) - 120));
 
@@ -179,6 +186,27 @@ class InterCliente
         }
 
         return $todas;
+    }
+
+    /**
+     * Pix imediato (cob v2) com txid nosso: devolve a cobrança criada (status ATIVA, pixCopiaECola).
+     * $dados: calendario.expiracao, valor.original ("12.34"), chave, solicitacaoPagador.
+     */
+    public function pixCriar(string $txid, array $dados): array
+    {
+        return $this->chamar('PUT', '/cob/'.$txid, $dados, false, '/pix/v2', self::ESCOPOS_PIX)->json() ?? [];
+    }
+
+    /** situação do Pix imediato: status (ATIVA, CONCLUIDA, REMOVIDA_...) e, pago, a lista "pix" (endToEndId, valor, horario) */
+    public function pixConsultar(string $txid): array
+    {
+        return $this->chamar('GET', '/cob/'.$txid, [], false, '/pix/v2', self::ESCOPOS_PIX)->json() ?? [];
+    }
+
+    /** tira o QR do ar (quem desistiu no balcão não consegue pagar depois) */
+    public function pixRemover(string $txid): array
+    {
+        return $this->chamar('PATCH', '/cob/'.$txid, ['status' => 'REMOVIDA_PELO_USUARIO_RECEBEDOR'], false, '/pix/v2', self::ESCOPOS_PIX)->json() ?? [];
     }
 
     /** teste de conexão: pede um token e consulta o resumo do dia */

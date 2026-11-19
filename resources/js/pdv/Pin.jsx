@@ -69,9 +69,13 @@ export function TecladoPin({ titulo, onCancelar, onConferido }) {
         <div className="pdv-pin" role="dialog" aria-modal="true" aria-label={titulo}>
             <form className="pdv-pin-caixa" onSubmit={(e) => e.preventDefault()} autoComplete="off">
                 <label className="fw-semibold text-center mb-2 d-block" htmlFor="pdv-pin-campo">{titulo}</label>
-                <input ref={campo} id="pdv-pin-campo" className="form-control form-control-lg text-center texto-oculto pdv-pin-campo" type="text" inputMode="numeric" pattern="[0-9]*"
-                    autoComplete="off" autoCorrect="off" spellCheck="false" maxLength={4} autoFocus value={pin} disabled={conferindo}
-                    onChange={(e) => mudar(e.target.value)} aria-describedby="pdv-pin-erro" />
+                {/* as bolinhas são o que aparece; o campo de verdade fica invisível por cima delas, para o teclado do celular abrir */}
+                <div className="pdv-pin-pontos">
+                    {[0, 1, 2, 3].map((i) => <span key={i} className={i < pin.length ? 'cheio' : ''} />)}
+                    <input ref={campo} id="pdv-pin-campo" className="pdv-pin-campo" type="text" inputMode="numeric" pattern="[0-9]*"
+                        autoComplete="off" autoCorrect="off" spellCheck="false" maxLength={4} autoFocus value={pin} readOnly={conferindo}
+                        onChange={(e) => mudar(e.target.value)} aria-describedby="pdv-pin-erro" />
+                </div>
                 <div id="pdv-pin-erro" className="pdv-pin-erro text-danger small text-center" aria-live="polite">{conferindo ? <span className="text-muted">Conferindo…</span> : erro}</div>
                 <button type="button" className="btn btn-outline-secondary btn-lg w-100 mt-2" onClick={onCancelar}>Cancelar</button>
             </form>

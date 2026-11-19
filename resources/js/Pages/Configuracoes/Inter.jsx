@@ -73,7 +73,29 @@ function Regras({ regras }) {
     )
 }
 
-export default function Inter({ integracao: i, regras, boletos }) {
+function PixPdv({ pix, ativo }) {
+    const form = useForm({ pix_chave: pix.chave || '' })
+    const [testando, setTestando] = useState(false)
+    return (
+        <form className="card" onSubmit={(e) => { e.preventDefault(); form.post('/configuracoes/inter/pix', { preserveScroll: true }) }}>
+            <div className="card-header d-flex align-items-center gap-2">Pix com QR no PDV {pix.ligado ? <span className="selo selo-ok">Ligado</span> : <span className="selo">Desligado</span>}</div>
+            <div className="card-body">
+                <p className="small text-muted">Quando o cliente escolhe Pix no balcão, o celular mostra o QR do valor exato e confirma sozinho quando o Pix cai (o recebimento já entra no caixa e fica de fora da conferência do extrato). A integração do Inter precisa também das permissões de Pix: <strong>emitir / alterar cobranças imediatas</strong> e <strong>consultar cobranças imediatas</strong>. Chave vazia desliga e o PDV volta ao "Recebi no Pix".</p>
+                <Campo rotulo="Chave Pix da conta do Inter" value={form.data.pix_chave} onChange={(e) => form.setData('pix_chave', e.target.value)} erro={form.errors.pix_chave} autoComplete="off"
+                    ajuda="E-mail, CNPJ, celular (+55...) ou chave aleatória, cadastrada nesta conta do Inter." />
+            </div>
+            <div className="card-footer bg-transparent d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-outline-primary" disabled={!ativo || !pix.chave || testando}
+                    onClick={() => { setTestando(true); router.post('/configuracoes/inter/testar-pix', {}, { preserveScroll: true, onFinish: () => setTestando(false) }) }}>
+                    {testando ? 'Testando…' : 'Testar Pix'}
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={form.processing}>Salvar chave</button>
+            </div>
+        </form>
+    )
+}
+
+export default function Inter({ integracao: i, regras, boletos, pix }) {
     const [testando, setTestando] = useState(false)
     const completo = i.client_id && i.tem_secret && i.tem_certificado && i.tem_chave
     const vence = i.certificado_validade ? Math.ceil((new Date(i.certificado_validade + 'T12:00:00') - new Date()) / 86400000) : null
@@ -110,6 +132,7 @@ export default function Inter({ integracao: i, regras, boletos }) {
                 <div className="row g-4">
                     <div className="col-xl-6"><Credenciais i={i} /></div>
                     <div className="col-xl-6"><Regras regras={regras} /></div>
+                    <div className="col-xl-6"><PixPdv pix={pix} ativo={i.ativo} /></div>
                 </div>
             </div>
         </div>

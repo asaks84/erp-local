@@ -227,8 +227,10 @@ class LavagemPdvController extends Controller
             'forma_pagamento_id' => ['nullable', 'integer'],
             'parcelas' => ['nullable', 'integer', 'min:1', 'max:24'],
             'valor_recebido' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'calculado_em' => ['nullable', 'date'],
         ]);
         PdvController::pessoa($r);
+        $d['agora'] = PdvController::momento($d['calculado_em'] ?? null);
         [$principal, $pag, $troco, $msg] = Lavagens::entregar(OrdemServico::findOrFail($id), $d);
 
         return response()->json(['mensagem' => $msg.'.', 'troco' => $troco, 'recibo' => self::recibo($principal, $pag)]);

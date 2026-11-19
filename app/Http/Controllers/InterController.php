@@ -9,10 +9,13 @@ use App\Models\Integracao;
 use App\Servicos\Inter\Boletos;
 use App\Servicos\Inter\InterCliente;
 use App\Servicos\Inter\InterErro;
+use App\Servicos\Pdv\PixPdv;
+use App\Servicos\Pontualidade;
 use App\Support\Atividades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,7 +50,8 @@ class InterController extends Controller
                 'testado_em' => $i->testado_em?->format('Y-m-d H:i'),
                 'ultimo_erro' => $i->ultimo_erro,
             ],
-            'regras' => Boletos::regras() + ['boleto_prazo_dias' => Boletos::prazo(), 'desconto_pontualidade_geral' => \App\Servicos\Pontualidade::ativa()],
+            'regras' => Boletos::regras() + ['boleto_prazo_dias' => Boletos::prazo(), 'desconto_pontualidade_geral' => Pontualidade::ativa()],
+            'pix' => ['chave' => PixPdv::chave(), 'ligado' => PixPdv::ligado()],
             'boletos' => ['ativos' => Boleto::whereIn('situacao', Boleto::ATIVAS)->count(), 'com_erro' => Boleto::whereNotNull('erro')->whereIn('situacao', ['recebido', 'falha'])->where('criado_em', '>=', now()->subDays(30))->count()],
         ]);
     }
@@ -124,6 +128,53 @@ class InterController extends Controller
         Atividades::registrar('inter_ligado', 'conexão com o Banco Inter testada e ligada');
 
         return back()->with('sucesso', 'Conexão com o Inter funcionando. Os boletos já podem ser gerados.');
+    }
+
+    /** chave Pix do Pix com QR do PDV (8.5); vazia desliga */
+    public function pix(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['pix_chave' => ['nullable', 'string', 'max:77']]);
+        $chave = null;
+        if (filled($d['pix_chave'] ?? null)) {
+            $chave = PixPdv::normalizarChave($d['pix_chave']);
+            if (! $chave) {
+                throw ValidationException::withMessages(['pix_chave' => 'Chave inválida: use o e-mail, o CNPJ/CPF, o celular com +55 ou a chave aleatória cadastrada no Inter.']);
+            }
+        }
+        $e = Empresa::atual();
+        $e->configuracoes = array_merge($e->configuracoes ?? [], ['pix_chave' => $chave]);
+        $e->save();
+        Atividades::registrar('empresa_config_alterada', $chave ? 'chave Pix do PDV alterada' : 'Pix com QR do PDV desligado');
+
+        return back()->with('sucesso', $chave ? 'Chave Pix salva. Use "Testar Pix" para conferir a permissão no Inter.' : 'Pix com QR do PDV desligado.');
+    }
+
+    /** gera um Pix de R$ 0,01 e tira do ar em seguida: confere a permissão e a chave */
+    public function testarPix(): RedirectResponse
+    {
+        $i = Integracao::inter();
+        if (! $i?->ativo || ! PixPdv::chave()) {
+            return back()->with('erro', 'Ligue o Inter e salve a chave Pix primeiro.');
+        }
+        $txid = 'TESTE'.now()->format('ymdHis').Str::random(15);
+        try {
+            $c = new InterCliente($i);
+            $j = $c->pixCriar($txid, ['calendario' => ['expiracao' => 60], 'valor' => ['original' => '0.01'], 'chave' => PixPdv::chave(), 'solicitacaoPagador' => 'Teste do sistema']);
+            try {
+                $c->pixRemover($txid);
+            } catch (\Throwable) {
+                // vence em 1 minuto de qualquer jeito
+            }
+        } catch (InterErro $e) {
+            return back()->with('erro', 'O teste do Pix falhou: '.$e->getMessage());
+        } catch (\Throwable $e) {
+            return back()->with('erro', 'Sem conexão com o Inter: '.mb_substr($e->getMessage(), 0, 200));
+        }
+        if (empty($j['pixCopiaECola'])) {
+            return back()->with('erro', 'O Inter respondeu sem o QR do Pix. Confira a chave.');
+        }
+
+        return back()->with('sucesso', 'Pix funcionando: o PDV já mostra o QR quando a forma for Pix.');
     }
 
     public function desligar(): RedirectResponse

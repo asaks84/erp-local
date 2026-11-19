@@ -6,13 +6,15 @@ use App\Models\Boleto;
 use App\Models\Despesa;
 use App\Models\Estorno;
 use App\Models\ExtratoLancamento;
+use App\Models\PixCobranca;
 use App\Servicos\Extrato;
+use App\Support\EmpresaAtual;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * Extrato pela API do Inter (permissão "Conferir saldo e movimentações"): monta o mesmo lote de
- * conferência do CSV. Entradas de boleto (e do Pix do boleto) já baixadas pela cobrança não entram;
+ * conferência do CSV. Entradas de boleto (e do Pix do boleto) já baixadas pela cobrança e o Pix com QR do PDV não entram;
  * as saídas são comparadas com o que está registrado (contas pagas e estornos a clientes).
  */
 class ExtratoInter
@@ -20,7 +22,7 @@ class ExtratoInter
     /** saldo do Inter guardado por 10 minutos (o Inter limita as chamadas) */
     public static function saldo(bool $novo = false): ?float
     {
-        $chave = 'inter_saldo_'.app(\App\Support\EmpresaAtual::class)->id();
+        $chave = 'inter_saldo_'.app(EmpresaAtual::class)->id();
         if (! $novo && Cache::has($chave)) {
             return Cache::get($chave);
         }
@@ -39,7 +41,8 @@ class ExtratoInter
         $transacoes ??= (new InterCliente(Boletos::integracao()))->extrato($de, $ate);
         $boletos = Boleto::whereNotNull('codigo_solicitacao')->get(['codigo_solicitacao', 'txid', 'seu_numero', 'nosso_numero']);
         $codigos = $boletos->pluck('codigo_solicitacao')->filter()->flip();
-        $txids = $boletos->pluck('txid')->filter()->flip();
+        // + Pix com QR do PDV que já virou recebimento (os pagos sem uso entram na conferência normal)
+        $txids = $boletos->pluck('txid')->filter()->merge(PixCobranca::whereNotNull('pagamento_id')->pluck('txid'))->flip();
         $seus = $boletos->pluck('seu_numero')->filter()->flip();
         $nossos = $boletos->pluck('nosso_numero')->filter()->flip();
 

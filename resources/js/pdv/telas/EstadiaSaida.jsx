@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { usePin } from '../Pin'
-import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda } from '../comum'
+import { CampoDinheiro, Folha, Formas, PerguntaImprimir, Previa, linhasRecibo, moeda, PixQr, usaPixQr } from '../comum'
 import { montarRecibo } from '../impressao/ticket'
 import { preferencia } from '../impressao/preferencia'
 
@@ -14,7 +14,8 @@ import { preferencia } from '../impressao/preferencia'
 export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
     const { pedirPin } = usePin()
     const [dados, setDados] = useState(null) // { estadia, calculo }
-    const [etapa, setEtapa] = useState('como') // como | forma | dinheiro | conta
+    const [etapa, setEtapa] = useState('como') // como | forma | dinheiro | pix | conta
+    const [pixFixo, setPixFixo] = useState(null) // valor e hora do cálculo congelados enquanto o QR está na tela
     const [convenio, setConvenio] = useState(undefined)
     const [destino, setDestino] = useState(null)
     const [forma, setForma] = useState(null)
@@ -39,11 +40,14 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
             setContaDe((c) => c || j.estadia.cliente || null)
         }).catch((e) => setErro(e.message))
     }, [id, convenio])
+    // com o QR na tela o valor fica parado (o Pix é do valor exato)
+    const noPix = etapa === 'pix'
     useEffect(() => {
+        if (noPix) return undefined
         calcular()
         const t = setInterval(calcular, 60000)
         return () => clearInterval(t)
-    }, [calcular])
+    }, [calcular, noPix])
 
     // "na conta de": busca de cliente
     useEffect(() => {
@@ -89,7 +93,7 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
             setErro(null)
             api('POST', `/estadias/${id}/saida`, {
                 pin, destino: d.destino, convenio_id: convenio || null, conta_cliente_id: d.destino === 'conta' ? contaDe?.id : null,
-                forma_pagamento_id: d.forma ?? null, valor_recebido: d.recebido ?? null,
+                forma_pagamento_id: d.forma ?? null, valor_recebido: d.recebido ?? null, pix_id: d.pix_id ?? null, saida_calculo: d.saida ?? c.saida,
                 perdido, retirada_nome: perdido ? retirada.nome : null, retirada_documento: perdido ? retirada.documento : null,
             }).then((j) => setFeito({ ...j, recebido: d.recebido, troco: d.recebido ? Math.round((d.recebido - aPagar) * 100) / 100 : 0 }))
                 .catch((ex) => setErro(ex.message)).finally(() => setEnviando(false))
@@ -99,9 +103,9 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
         setForma(fid)
         setErro(null)
         const f = opcoes.formas.find((x) => x.id === fid)
-        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') }
+        if (f?.tipo === 'dinheiro') { setRecebido(0); setEtapa('dinheiro') } else if (usaPixQr(eu, f)) { setPixFixo({ valor: aPagar, saida: c.saida }); setEtapa('pix') }
     }
-    const voltarEtapa = () => { setErro(null); setEtapa(etapa === 'dinheiro' ? 'forma' : 'como') }
+    const voltarEtapa = () => { setErro(null); setEtapa(['dinheiro', 'pix'].includes(etapa) ? 'forma' : 'como') }
     const cancelar = () => pedirPin('PIN de gerente para cancelar').then(({ pin }) => {
         setEnviando(true)
         api('POST', `/estadias/${id}/cancelar`, { pin, motivo }).then((j) => onFeito(j.mensagem)).catch((ex) => setErro(ex.message)).finally(() => { setEnviando(false); setCancelando(false) })
@@ -173,12 +177,17 @@ export default function EstadiaSaida({ eu, opcoes, id, onVoltar, onFeito }) {
                     <div className="fw-semibold mb-2">Forma de pagamento</div>
                     <Formas formas={opcoes.formas} value={forma} onChange={escolherForma} />
                     {erro && <div className="alert alert-danger py-2 small mt-3">{erro}</div>}
-                    {formaObj && formaObj.tipo !== 'dinheiro' && (
+                    {formaObj && formaObj.tipo !== 'dinheiro' && !usaPixQr(eu, formaObj) && (
                         <button type="button" className="btn btn-primary btn-lg w-100 mt-3" disabled={enviando} onClick={() => finalizar({ forma })}>
                             {enviando ? 'Finalizando…' : `Recebi ${moeda(aPagar)} no ${formaObj.nome.replace(/^Cartão de /i, '').toLowerCase()}`}
                         </button>
                     )}
                 </div>
+            )}
+
+            {etapa === 'pix' && (
+                <PixQr valor={pixFixo.valor} descricao={`Estacionamento ${e.placa || e.identificacao || ''}`.trim()} enviando={enviando} erro={erro}
+                    onPago={(pixId) => finalizar({ forma, pix_id: pixId, saida: pixFixo.saida })} onManual={() => finalizar({ forma, saida: pixFixo.saida })} />
             )}
 
             {etapa === 'dinheiro' && (

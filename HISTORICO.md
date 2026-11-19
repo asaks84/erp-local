@@ -4,13 +4,25 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 18/11/2026 — PDV, parte 8.5: Pix com QR
+
+- **Configurações › Banco Inter:** novo quadro "Pix com QR no PDV" com a chave Pix e o botão "Testar Pix".
+- **PDV:** escolhendo Pix (estadia, lavagem, receber conta), aparece o QR do valor exato com o copia e cola; quando o Pix cai, a tela mostra "Pix recebido" com o nome de quem pagou, pede o PIN e registra. Desistiu: o QR sai do ar. "Cliente pagou sem o QR" continua possível (fica marcado para conferir no extrato).
+- O valor fica parado enquanto o QR está na tela; saída da estadia e entrega da lavagem cobram pela hora do cálculo mostrado (até 20 minutos).
+- O pagamento guarda o código do Pix (txid); o mesmo Pix não paga duas coisas nem valor diferente. O extrato do Inter deixa de fora o Pix do QR já registrado. Pix pago que não virou recebimento aparece no fechamento do caixa.
+- Migração `2026_11_29_000001_pix_pdv` (tabela `pix_cobrancas`, coluna `pagamentos.pix_txid`). App do PDV 0.5.0. 5 testes novos (244).
+
+## 18/11/2026 — Plano do PDV: parte 8.8 (visual do app)
+
+- Entrou no plano a parte 8.8: estilizar o app do PDV a partir de referências de apps que o Cauê vai escolher (só aparência).
+
 ## 18/11/2026 — Busca de cliente no celular
 
 - Corrigido: no celular, tocar num resultado da busca de cliente (ex.: no Início) às vezes abria a tela que estava embaixo da lista (o card "Em aberto" levava a Contas em aberto). A escolha agora acontece no clique, e não no início do toque, então o "clique fantasma" não cai mais no link de baixo.
 
 ## 18/11/2026 — PDV: PIN pelo teclado do celular e dados do carro entre estadia e lavagem
 
-- O PIN agora é digitado no teclado numérico do próprio celular (campo com os dígitos escondidos, sem senha salva do navegador), no lugar do teclado na tela; confere sozinho ao completar 4 dígitos e, se errar, o campo volta selecionado.
+- O PIN agora é digitado no teclado numérico do próprio celular (na tela aparecem só as 4 bolinhas sendo preenchidas) (campo com os dígitos escondidos, sem senha salva do navegador), no lugar do teclado na tela; confere sozinho ao completar 4 dígitos e, se errar, o campo volta selecionado.
 - Placa avulsa que já passou pela lavagem traz modelo, tamanho e celular na entrada da estadia, e vice-versa (vale a visita mais recente, estadia ou lavagem).
 - O PDV avisa o navegador para encolher a tela quando o teclado abre, para nada ficar escondido atrás dele. 1 teste novo (239).
 
