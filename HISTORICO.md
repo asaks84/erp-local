@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV: conferir se o celular está pronto para ficar sem internet
+
+- Em **Este aparelho**, novo bloco "Sem internet": mostra se o app está guardado no celular, de quando é a cópia do sistema e de quem é o PIN guardado, com o botão "Preparar agora". Se faltar algo, diz o que fazer.
+- O service worker guarda a página primeiro e cada arquivo por conta própria (antes, uma falha ao ler a lista do Vite impedia guardar a página, e o app não abria sem internet).
+- Sem "puxar para atualizar" no PDV (recarregar sem internet é o que levava à tela "You're offline" do Chrome quando o app não estava guardado).
+- Arquivos: `public/pdv-sw.js`, `resources/js/pdv/offline/prontidao.js` (novo), `resources/js/pdv/telas/Aparelho.jsx`, `resources/scss/_pdv.scss`.
+
 ## 19/11/2026 — Usuário só do PDV (sem login e sem senha)
 
 - Novo no cadastro de usuário: **"Acessa a gestão"** (ligado por padrão). Desligado, a pessoa fica sem login e sem senha, só com o PIN, e não entra na gestão. Quem virar só PDV com a sessão aberta é desconectado; a senha antiga é apagada. Para voltar a acessar a gestão, precisa de login e senha.

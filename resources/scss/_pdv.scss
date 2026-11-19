@@ -1,6 +1,9 @@
 // PDV (app do balcão, /pdv). Visual da parte 8.8: vermelho da marca, cartões grandes, topo com onda,
 // avisos que descem do topo e tema claro/escuro (data-bs-theme, escolhido em "Este aparelho").
 
+// sem "puxar para atualizar" do Chrome: no PDV não há o que recarregar puxando a tela
+html:has(> body.pdv), body.pdv { overscroll-behavior: none; }
+
 body.pdv {
     --pdv-fundo: #f3f4f6; --pdv-cartao: #fff; --pdv-borda: #e5e7eb; --pdv-texto2: #5b6170;
     --pdv-marca: #c0281b; --pdv-marca-texto: #a8231a; --pdv-marca-suave: #fdecea; --pdv-marca-sombra: rgba(192, 40, 27, .28);

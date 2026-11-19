@@ -2,7 +2,7 @@
 // - a página /pdv: tenta a internet primeiro (versão nova); sem internet, abre a guardada;
 // - os arquivos do app (/build, imagens, manifesto): guardados ao instalar, pela lista do Vite, e servidos daqui;
 // - a API (/api) nunca é guardada: sem internet quem responde é o próprio app (fila e cópia do servidor).
-const CAIXA = 'pdv-app-v1'
+const CAIXA = 'pdv-app-v2'
 const PAGINA = '/pdv'
 const FIXOS = [PAGINA, '/pdv.webmanifest', '/imagens/logo-local.png', '/imagens/logo-local-escuro.png', '/imagens/favicon-96.png', '/imagens/pdv-192.png']
 
@@ -26,8 +26,15 @@ async function listaDoApp() {
 
 async function guardar() {
     const caixa = await caches.open(CAIXA)
-    const app = await listaDoApp()
-    await Promise.all([...FIXOS, ...app].map((u) => caixa.add(new Request(u, { cache: 'reload' })).catch(() => {})))
+    // a página e as imagens primeiro, cada uma por conta própria (uma falha não impede as outras)
+    await Promise.all(FIXOS.map((u) => caixa.add(new Request(u, { cache: 'reload' })).catch(() => {})))
+    let app = []
+    try {
+        app = await listaDoApp()
+    } catch {
+        return // sem a lista do Vite: os arquivos ficam guardados conforme o app usa
+    }
+    await Promise.all(app.map((u) => caixa.add(new Request(u, { cache: 'reload' })).catch(() => {})))
     // versões antigas dos arquivos do app saem (cada publicação muda os nomes)
     const atuais = new Set(app)
     for (const r of await caixa.keys()) {
@@ -49,6 +56,22 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
 // o app pede para guardar de novo depois de abrir com internet (pega a versão publicada agora)
 self.addEventListener('message', (e) => {
     if (e.data === 'guardar') e.waitUntil(guardar().catch(() => {}))
+})
+
+// o app pergunta se já dá para abrir sem internet (página e arquivos guardados)
+self.addEventListener('message', (e) => {
+    if (e.data !== 'pronto?' || !e.ports?.[0]) return
+    e.waitUntil((async () => {
+        const pagina = await caches.match(PAGINA)
+        let ok = !!pagina
+        if (ok) {
+            try {
+                const app = await listaDoApp()
+                for (const u of app.filter((x) => /\.(js|css)$/.test(x))) if (!(await caches.match(u))) { ok = false; break }
+            } catch { /* sem internet: confia no que já está guardado */ }
+        }
+        e.ports[0].postMessage(ok)
+    })())
 })
 
 self.addEventListener('fetch', (e) => {
