@@ -4,6 +4,10 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — Menu do celular não arrasta a página
+
+- Com o menu lateral aberto no celular, rolar o menu (ou o fundo escuro) não rola mais a página de trás. Arquivo: `resources/scss/_layout.scss`.
+
 ## 19/11/2026 — PDV: voltar do celular e tela cheia (modo quiosque)
 
 - **Voltar do celular** agora fica dentro do app: faz o mesmo que a setinha do topo (volta uma etapa, ou ao Início) e fecha o PIN e as confirmações. No Início não faz nada; o app nunca fecha pelo voltar. Com a tela fixada (fixar app do Android), o app não trava mais.

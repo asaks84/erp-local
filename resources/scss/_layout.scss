@@ -116,7 +116,10 @@
 		z-index: 200;
 	}
 	.app-menu-aberto .app-side { transform: none; visibility: visible; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
-	.app-side-in { height: 100%; }
+	.app-side-in { height: 100%; overscroll-behavior: contain; }
+	// menu aberto: a página de trás fica parada (rolar o menu não arrasta o site junto)
+	html.app-menu-aberto, html.app-menu-aberto body { overflow: hidden; }
+	.app-menu-aberto .app-veu { touch-action: none; }
 	.app-veu {
 		display: block; position: fixed; inset: 0; z-index: 150; background: rgba(0, 0, 0, .45);
 		opacity: 0; pointer-events: none; transition: opacity .2s;
