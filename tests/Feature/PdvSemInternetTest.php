@@ -77,8 +77,10 @@ class PdvSemInternetTest extends TestCase
         $this->assertSame($this->a->tipo->id, $j['patio'][0]['tipo_veiculo_id']);
         $this->assertSame(1, $j['ultimo_numero']);
         $this->assertContains($this->a->operador->id, array_column($j['usuarios'], 'id'));
-        // PIN nunca vai no pacote
+        // PIN nunca vai no pacote; vai só a versão para conferir sem internet (PBKDF2 com o sal da empresa)
         $this->assertStringNotContainsString('pin_hash', json_encode($j));
+        $op = collect($j['usuarios'])->firstWhere('id', $this->a->operador->id);
+        $this->assertSame(hash_pbkdf2('sha256', '4831', $j['pin_sal'], $j['pin_rodadas'], 64), $op['h']);
         // conferir o PIN devolve o que o celular guarda para conferir sem internet
         $this->pdv()->postJson('/api/pdv/pin/conferir', ['pin' => '4831'])->assertOk()->assertJsonPath('usuario.gerente', false);
     }

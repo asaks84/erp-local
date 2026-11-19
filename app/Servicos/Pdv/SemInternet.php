@@ -74,10 +74,13 @@ class SemInternet
                 'tipo_id' => $m->veiculo->tipo_veiculo_id, 'modelo' => trim($m->veiculo->marca.' '.$m->veiculo->modelo) ?: null])
             ->unique('placa')->values();
 
-        // quem tem PIN: o celular só guarda o PIN de quem já usou nele com internet (nunca recebe PIN daqui)
+        // quem tem PIN nesta unidade (ou em todas), com a versão do PIN para conferir sem internet (PBKDF2 com o sal da
+        // empresa; o PIN em si nunca sai daqui). Quem ainda não tem a versão sem internet ganha no próximo uso com internet.
         $usuarios = Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $a->empresa_id)->where('ativo', true)
-            ->whereNotNull('pin_hash')->with('nivel')->get()
-            ->map(fn (Usuario $u) => ['id' => $u->id, 'nome' => $u->nome, 'pin_desde' => $u->pin_definido_em ? Carbon::parse($u->pin_definido_em)->toIso8601String() : null, 'gerente' => $u->pode('pdv_gerente')])->values();
+            ->whereNotNull('pin_hash')->when($a->unidade_id, fn ($q) => $q->where(fn ($w) => $w->whereNull('unidade_id')->orWhere('unidade_id', $a->unidade_id)))
+            ->with('nivel')->get()
+            ->map(fn (Usuario $u) => ['id' => $u->id, 'nome' => $u->nome, 'pin_desde' => $u->pin_definido_em ? Carbon::parse($u->pin_definido_em)->toIso8601String() : null,
+                'gerente' => $u->pode('pdv_gerente'), 'nivel' => $u->nivel?->nome, 'h' => $u->pin_offline_hash])->values();
 
         $caixa = Caixa::where('situacao', 'aberto')->orderBy('id')->first();
 
@@ -95,6 +98,8 @@ class SemInternet
             'ultimo_numero' => (int) (DB::table('numeracoes')->where('empresa_id', $a->empresa_id)->where('tipo', 'estadia')->value('ultimo')
                 ?? Estadia::max('numero')),
             'usuarios' => $usuarios,
+            'pin_sal' => Pins::salOffline($a->empresa_id),
+            'pin_rodadas' => Pins::OFFLINE_RODADAS,
             'caixa' => $caixa ? ['desde' => $caixa->aberto_em->format('H:i')] : null,
             'pendentes' => PdvAcao::where('aparelho_id', $a->id)->where('situacao', 'pendente')->count(),
         ];

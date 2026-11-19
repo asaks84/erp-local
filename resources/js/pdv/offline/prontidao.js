@@ -1,5 +1,5 @@
 import { pacote } from './fila'
-import { ler } from './estado'
+import { pessoasComPin } from './pins'
 
 /**
  * Este celular já consegue abrir e trabalhar sem internet? Precisa de três coisas guardadas: o app (página e
@@ -42,7 +42,7 @@ export async function prontidao() {
         }
     }
     const p = pacote()
-    const pins = (ler('pins', []) || []).map((x) => x.nome)
+    const pins = pessoasComPin()
     return { app, motivo, pacote: p?.gerado_em ? new Date(p.gerado_em) : null, pins }
 }
 

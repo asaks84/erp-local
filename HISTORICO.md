@@ -4,6 +4,15 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — PDV: PINs da unidade valem sem internet (8.7 encerrada)
+
+- A cópia do sistema que o celular guarda passa a trazer, de quem tem PIN na unidade do aparelho, uma versão do PIN para conferir sem internet (PBKDF2 com o sal da empresa; o PIN em si nunca sai do servidor). Funcionário novo ou PIN trocado já vale sem internet na próxima cópia, sem precisar usar o PIN naquele celular antes. PINs de antes disto ganham a versão no primeiro uso com internet.
+- Este aparelho mostra "PIN sem internet de: ...".
+- Com isto, a parte 8.7 fica encerrada com estadias sem internet. Lavagem e caixa sem internet, QR assinado e servidor local ficam para depois, se a falta aparecer (docs/15, seção 8j).
+- 266 testes; `npm run test:js` confere também a conta do PIN.
+- Migração: `2026_12_03_000001_pin_sem_internet` (`usuarios.pin_offline_hash`).
+- Arquivos: `app/Servicos/Pdv/Pins.php`, `app/Servicos/Pdv/SemInternet.php`, `app/Models/Usuario.php`, `resources/js/pdv/offline/pins.js`, `prontidao.js`, `telas/Aparelho.jsx`, `tests/Unit/PinOfflineTest.php`, `tests/js/pin.test.mjs`, `tests/Feature/PdvSemInternetTest.php`, docs 12, 13 e 15.
+
 ## 19/11/2026 — PDV: conferir se o celular está pronto para ficar sem internet
 
 - Em **Este aparelho**, novo bloco "Sem internet": mostra se o app está guardado no celular, de quando é a cópia do sistema e de quem é o PIN guardado, com o botão "Preparar agora". Se faltar algo, diz o que fazer.

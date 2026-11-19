@@ -18,9 +18,9 @@ class Usuario extends Authenticatable
 
     protected $authPasswordName = 'senha';
 
-    protected $guarded = ['id', 'empresa_id', 'senha', 'remember_token', 'pin_hash', 'pin_codigo_hash'];
+    protected $guarded = ['id', 'empresa_id', 'senha', 'remember_token', 'pin_hash', 'pin_codigo_hash', 'pin_offline_hash'];
 
-    protected $hidden = ['senha', 'remember_token', 'pin_hash', 'pin_codigo_hash'];
+    protected $hidden = ['senha', 'remember_token', 'pin_hash', 'pin_codigo_hash', 'pin_offline_hash'];
 
     // valores padrão já no objeto (iguais aos do banco)
     // acessa_gestao falso: usuário só do PDV (sem login e sem senha, só o PIN)

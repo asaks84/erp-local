@@ -32,7 +32,7 @@ function SemInternet() {
                 <ul className="list-unstyled small mb-2 d-flex flex-column gap-1">
                     {item(p.app, p.app ? 'App guardado no celular' : `App ainda não guardado${p.motivo ? `: ${p.motivo}` : ''}`)}
                     {item(!!p.pacote, p.pacote ? `Cópia do sistema de ${p.pacote.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Sem cópia do sistema ainda')}
-                    {item(p.pins.length > 0, p.pins.length ? `PIN guardado de: ${p.pins.join(', ')}` : 'Nenhum PIN guardado: cada pessoa usa o PIN uma vez com internet')}
+                    {item(p.pins.length > 0, p.pins.length ? `PIN sem internet de: ${p.pins.join(', ')}` : 'Nenhum PIN conhecido ainda: quem tem PIN aparece aqui depois de usar uma vez com internet')}
                 </ul>
                 <button type="button" className="btn btn-sm btn-outline-secondary" disabled={preparando} onClick={preparar}>{preparando ? 'Preparando…' : 'Preparar agora'}</button>
             </div>

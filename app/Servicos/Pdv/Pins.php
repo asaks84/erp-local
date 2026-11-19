@@ -30,6 +30,21 @@ class Pins
         return hash_hmac('sha256', $empresaId.':'.$pin, (string) config('app.key'));
     }
 
+    /** rodadas do PBKDF2 da versão do PIN que vai para o celular (deixa lento descobrir o PIN a partir da cópia) */
+    public const OFFLINE_RODADAS = 100000;
+
+    /** sal da versão sem internet: um por empresa, derivado da chave do sistema (não precisa guardar) */
+    public static function salOffline(int $empresaId): string
+    {
+        return substr(hash_hmac('sha256', 'pdv-pin-offline:'.$empresaId, (string) config('app.key')), 0, 32);
+    }
+
+    /** versão do PIN que o celular confere sem internet (mesma conta em resources/js/pdv/offline/pins.js) */
+    public static function hashOffline(int $empresaId, string $pin): string
+    {
+        return hash_pbkdf2('sha256', $pin, self::salOffline($empresaId), self::OFFLINE_RODADAS, 64);
+    }
+
     public static function obvio(string $pin): bool
     {
         if (preg_match('/^(\d)\1{3}$/', $pin)) {
@@ -109,17 +124,18 @@ class Pins
             throw ValidationException::withMessages(['pin' => 'PIN fácil demais (sequência ou número repetido). Escolha outro.']);
         }
         $hash = self::hash($empresaId, $pin);
+        $offline = self::hashOffline($empresaId, $pin);
 
-        $descoberto = DB::transaction(function () use ($u, $hash, $empresaId) {
+        $descoberto = DB::transaction(function () use ($u, $hash, $empresaId, $offline) {
             $dono = Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $empresaId)->where('pin_hash', $hash)->lockForUpdate()->first();
             if ($dono && $dono->id !== $u->id) {
                 // não diz de quem é; o PIN do outro foi descoberto, então deixa de valer (gravado antes do erro)
-                $dono->forceFill(['pin_hash' => null, 'pin_definido_em' => null])->save();
+                $dono->forceFill(['pin_hash' => null, 'pin_definido_em' => null, 'pin_offline_hash' => null])->save();
                 Atividades::registrar('pdv_pin_cancelado', 'PIN de '.$dono->nome.' cancelado: outra pessoa tentou o mesmo PIN', $u);
 
                 return true;
             }
-            $u->forceFill(['pin_hash' => $hash, 'pin_definido_em' => now()])->save();
+            $u->forceFill(['pin_hash' => $hash, 'pin_definido_em' => now(), 'pin_offline_hash' => $offline])->save();
             Atividades::registrar('pdv_pin_definido', 'PIN do PDV cadastrado', $u);
 
             return false;
@@ -153,6 +169,10 @@ class Pins
         if ($a->pin_erros) {
             $a->forceFill(['pin_erros' => 0])->save();
         }
+        // PIN de antes da versão sem internet: cria agora, que o PIN acabou de ser digitado (vai na próxima cópia)
+        if (! $u->pin_offline_hash) {
+            $u->forceFill(['pin_offline_hash' => self::hashOffline((int) $a->empresa_id, $pin)])->saveQuietly();
+        }
 
         return $u;
     }
@@ -160,7 +180,7 @@ class Pins
     /** a gestão apaga o PIN de alguém (a pessoa cadastra outro no PDV) */
     public static function apagar(Usuario $u): void
     {
-        $u->forceFill(['pin_hash' => null, 'pin_definido_em' => null])->save();
+        $u->forceFill(['pin_hash' => null, 'pin_definido_em' => null, 'pin_offline_hash' => null])->save();
         Atividades::registrar('pdv_pin_apagado', 'PIN do PDV de '.$u->nome.' apagado');
     }
 }
