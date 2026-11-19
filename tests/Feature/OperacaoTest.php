@@ -2,19 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\EstadiaController;
 use App\Models\Convenio;
 use App\Models\Estadia;
+use App\Models\EtapaLavagem;
 use App\Models\FormaPagamento;
 use App\Models\MensalidadeContrato;
+use App\Models\OrdemEtapa;
 use App\Models\OrdemServico;
 use App\Models\Pagamento;
 use App\Models\Servico;
 use App\Models\ServicoPreco;
 use App\Models\Tarifa;
 use App\Models\TarifaFaixa;
+use App\Models\TarifaPacote;
 use App\Servicos\Baixa;
 use App\Servicos\Cobrancas;
+use App\Servicos\Convenios;
 use App\Servicos\Estadias;
+use App\Servicos\EtapasLavagem;
 use App\Servicos\FormasPagamento;
 use App\Servicos\Vendas;
 use App\Support\EmpresaAtual;
@@ -112,17 +118,17 @@ class OperacaoTest extends TestCase
         // com tabela para moto, o tipo escolhido vale mesmo com o cadastro dizendo carro
         $t = Tarifa::create(['nome' => 'Motos', 'tolerancia_min' => 0, 'fracao_min' => 0, 'restante' => 'faixas', 'vigencia_inicio' => '2000-01-01']);
         TarifaFaixa::create(['tarifa_id' => $t->id, 'ordem' => 0, 'duracao_min' => null, 'modo' => 'bloco', 'bloco_min' => 60, 'valor' => 4]);
-        \App\Models\TarifaPacote::create(['tarifa_id' => $t->id, 'nome' => 'Diária', 'duracao_min' => 720, 'valor' => 10]);
+        TarifaPacote::create(['tarifa_id' => $t->id, 'nome' => 'Diária', 'duracao_min' => 720, 'valor' => 10]);
         $t->tipos()->attach($this->a->moto->id);
         $e = Estadias::entrar(['placa' => 'ABC1D23', 'tipo_veiculo_id' => $this->a->moto->id, 'entrada' => '2026-11-10 10:00']);
         $this->assertSame($this->a->moto->id, $e->tipo_veiculo_id);
         $this->assertSame($this->x->cliente->id, $e->cliente_id);
         $this->assertSame(8.0, Estadias::calcular($e, Carbon::parse('2026-11-10 11:30'))['valor']);
 
-        // tela lista os tipos com o resumo da tabela
-        $this->actingAs($this->a->operador)->get('/estadias')->assertOk()
-            ->assertInertia(fn ($p) => $p->where('tipos.0.nome', 'Carro')->where('tipos.0.tabela', 'Carros · 1h R$ 15,00 · cada 1h R$ 5,00')
-                ->where('tipos.1.tabela', 'Motos · cada 1h R$ 4,00 · Diária (12h) R$ 10,00'));
+        // os tipos com o resumo da tabela (o PDV mostra na entrada)
+        $t = EstadiaController::tiposComTabela();
+        $this->assertSame(['Carro', 'Carros · 1h R$ 15,00 · cada 1h R$ 5,00'], [$t[0]['nome'], $t[0]['tabela']]);
+        $this->assertSame('Motos · cada 1h R$ 4,00 · Diária (12h) R$ 10,00', $t[1]['tabela']);
     }
 
     public function test_tolerancia_nao_gera_conta(): void
@@ -178,13 +184,13 @@ class OperacaoTest extends TestCase
     public function test_convenio_parcial_paga_ate_um_valor(): void
     {
         $c = $this->convenio(['modo' => 'tudo']);
-        \App\Servicos\Convenios::salvarRegras($c, [['servico_id' => null, 'modo' => 'parcial', 'limite_valor' => 10]]);
+        Convenios::salvarRegras($c, [['servico_id' => null, 'modo' => 'parcial', 'limite_valor' => 10]]);
         // estadia de R$ 25: o convênio paga R$ 10, quem usou R$ 15
         $e = Estadias::entrar(['placa' => 'QQQ1Q11', 'tipo_veiculo_id' => $this->a->tipo->id, 'convenio_id' => $c->id, 'entrada' => '2026-11-10 09:00']);
         $e = Estadias::sair($e, ['saida' => '2026-11-10 12:00', 'destino' => 'pago', 'forma_pagamento_id' => $this->pix()]);
         $this->assertSame(['10.00', '15.00', '0.00'], [$e->valor_convenio, $e->valor_cliente, $e->desconto]);
         // abaixo do limite: o convênio paga tudo
-        $div = \App\Servicos\Convenios::dividir($c->fresh(), 'estadia', 7.5);
+        $div = Convenios::dividir($c->fresh(), 'estadia', 7.5);
         $this->assertSame([7.5, 0.0], [$div['convenio'], $div['cliente']]);
     }
 
@@ -199,7 +205,8 @@ class OperacaoTest extends TestCase
     {
         $this->actingAs($this->a->operador)->post('/estadias', ['placa' => 'ZZZ1Z11', 'tipo_veiculo_id' => $this->a->tipo->id])->assertSessionHasNoErrors();
         $e = Estadia::firstOrFail();
-        $this->actingAs($this->a->operador)->get('/estadias')->assertOk();
+        $this->actingAs($this->a->operador)->get('/patio')->assertOk()->assertInertia(fn ($p) => $p->component('Patio/Index')->where('linhas.0.tipo', 'estadia'));
+        $this->actingAs($this->a->operador)->get('/estadias')->assertRedirect('/patio');
         $this->actingAs($this->a->operador)->getJson("/estadias/{$e->id}/calcular")->assertOk()->assertJsonStructure(['valor', 'cliente', 'tempo']);
         Carbon::setTestNow('2026-11-10 13:30:00');
         $this->actingAs($this->a->operador)->post("/estadias/{$e->id}/saida", ['destino' => 'pago', 'forma_pagamento_id' => $this->pix()])->assertSessionHasNoErrors();
@@ -263,8 +270,7 @@ class OperacaoTest extends TestCase
     public function test_telas_de_lavagens(): void
     {
         [$lav, $cera] = $this->servicos();
-        $this->actingAs($this->a->operador)->get('/lavagens')->assertOk();
-        $this->actingAs($this->a->operador)->get('/lavagens/nova')->assertOk();
+        $this->actingAs($this->a->operador)->get('/lavagens')->assertRedirect('/patio');
         $this->actingAs($this->a->operador)->getJson('/lavagens/placa?placa=ABC1D23')->assertOk()->assertJsonPath('veiculo.cliente', 'FULANO');
         $this->actingAs($this->a->operador)->post('/lavagens', ['placa' => 'AVU1L50', 'tipo_veiculo_id' => $this->a->tipo->id, 'servico_id' => $lav->id,
             'adicionais' => [$cera->id], 'destino' => 'entrega'])->assertSessionHasNoErrors();
@@ -272,8 +278,8 @@ class OperacaoTest extends TestCase
         // "Lavando" vem desativada no padrão: não pode ser usada
         $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/etapa", ['etapa' => 'lavando'])->assertSessionHasErrors('etapa');
         $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/etapa", ['etapa' => 'pronta'])->assertSessionHasNoErrors();
-        $this->assertSame(['aguardando', 'pronta'], \App\Models\OrdemEtapa::where('ordem_id', $o->id)->orderBy('id')->pluck('etapa')->all());
-        $this->assertSame($this->a->operador->id, \App\Models\OrdemEtapa::where('etapa', 'pronta')->value('usuario_id'));
+        $this->assertSame(['aguardando', 'pronta'], OrdemEtapa::where('ordem_id', $o->id)->orderBy('id')->pluck('etapa')->all());
+        $this->assertSame($this->a->operador->id, OrdemEtapa::where('etapa', 'pronta')->value('usuario_id'));
         $this->actingAs($this->a->operador)->post("/lavagens/{$o->id}/receber", ['forma_pagamento_id' => $this->pix()])->assertSessionHasNoErrors();
         $this->assertSame(0, OrdemServico::abertas()->count());
     }
@@ -289,14 +295,14 @@ class OperacaoTest extends TestCase
         // detailer: cria Polimento, ativa Lavando e coloca Polimento antes de Pronta
         $adm->post('/configuracoes/etapas', ['nome' => 'Polimento'])->assertSessionHasNoErrors();
         $adm->post('/configuracoes/etapas', ['nome' => 'polimento'])->assertSessionHasErrors('nome');
-        $lavando = \App\Models\EtapaLavagem::where('chave', 'lavando')->first();
+        $lavando = EtapaLavagem::where('chave', 'lavando')->first();
         $adm->put("/configuracoes/etapas/{$lavando->id}", ['nome' => 'Lavagem', 'ativa' => true])->assertSessionHasNoErrors();
-        $pol = \App\Models\EtapaLavagem::where('chave', 'polimento')->first();
+        $pol = EtapaLavagem::where('chave', 'polimento')->first();
         $adm->post("/configuracoes/etapas/{$pol->id}/mover", ['direcao' => 'subir']);
-        $this->assertSame(['aguardando' => 'Aguardando', 'lavando' => 'Lavagem', 'polimento' => 'Polimento', 'pronta' => 'Pronta', 'entregue' => 'Entregue'], \App\Servicos\EtapasLavagem::ativas());
+        $this->assertSame(['aguardando' => 'Aguardando', 'lavando' => 'Lavagem', 'polimento' => 'Polimento', 'pronta' => 'Pronta', 'entregue' => 'Entregue'], EtapasLavagem::ativas());
 
         // fixas não desativam
-        $ent = \App\Models\EtapaLavagem::where('chave', 'entregue')->first();
+        $ent = EtapaLavagem::where('chave', 'entregue')->first();
         $adm->put("/configuracoes/etapas/{$ent->id}", ['nome' => 'Retirado', 'ativa' => false]);
         $this->assertTrue($ent->fresh()->ativa);
         $this->assertSame('Retirado', $ent->fresh()->nome);
@@ -311,6 +317,6 @@ class OperacaoTest extends TestCase
 
         // desativar uma etapa com carro nela: o cartão volta para a primeira coluna
         $adm->put("/configuracoes/etapas/{$pol->id}", ['nome' => 'Polimento', 'ativa' => false]);
-        $adm->get('/lavagens')->assertInertia(fn ($p) => $p->where('cartoes.0.etapa', 'aguardando')->has('etapas', 3));
+        $adm->get('/patio')->assertInertia(fn ($p) => $p->where('linhas.0.etapa', EtapasLavagem::ativas()['aguardando']));
     }
 }

@@ -12,6 +12,7 @@ return [
         'excluir_cadastro' => ['Remover clientes e veículos', null],
         'aprovar' => ['Aprovar cadastros da fila de espera', null],
         'pdv_gerente' => ['Gerente no PDV', 'Cancelar no PDV; depois, fechar caixa, sangria e suprimento'],
+        'patio_corrigir' => ['Corrigir no pátio', 'Corrigir placa, modelo e tamanho, cancelar e encerrar entradas esquecidas'],
     ],
     'Gestão' => [
         'contas_aberto' => ['Contas em aberto e inadimplência', 'Também os valores no Início'],

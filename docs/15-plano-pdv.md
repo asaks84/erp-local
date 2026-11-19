@@ -104,7 +104,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 | 8.4 Lavagens | Venda, etapas e entrega pelo celular | Lavagem vendida no celular aparece no quadro da gestão e vice-versa |
 | 8.5 Pix imediato | QR na tela com confirmação automática | Pix real pago no balcão dá baixa sozinho |
 | 8.6 Ticket e impressão | Página `/t/<código>`, impressão na térmica escolhida | Ticket impresso com QR que abre a página certa |
-| 8.7 Modo de emergência | Fila no aparelho, tarifador em JavaScript, envio ao voltar, diferenças para conferir | Um dia simulado sem internet sobe sem duplicar e com as diferenças apontadas |
+| 8.7 Modo de emergência | Fila no aparelho, tarifador em JavaScript, envio ao voltar, diferenças para conferir (planejamento detalhado na seção 8i) | Um dia simulado sem internet sobe sem duplicar e com as diferenças apontadas |
 | 8.8 Visual do app | Identidade visual do PDV a partir de referências de apps que o Cauê vai escolher: cores, tipografia, botões, ícones, telas de etapa, tema claro/escuro, tela inicial e ícone do app instalado. Só aparência: os fluxos e as regras ficam como estão | Telas do PDV refeitas no visual escolhido, conferidas no celular do balcão |
 
 **Portão da etapa 8:** uma a duas semanas de uso real no balcão, com o caixa de cada turno batendo e nenhuma estadia ou lavagem perdida.
@@ -245,6 +245,37 @@ Desenho aprovado pelo Cauê no canvas "Visual do PDV Local" e aplicado com Boots
 - **Tema:** Automático (segue o celular), Claro ou Escuro, em Este aparelho; vale só para aquele celular. Logo com versão de texto claro para o escuro.
 - **Editor de impressão** (ERP › Configurações › Impressão (PDV)): três papéis: **ticket de entrada** (estadia e lavagem), **recibo de pagamento** (todo pagamento: estadia, lavagem, contas de cliente; cada um mostra só as linhas que tem) e **fechamento do caixa**. Edita direto no papel: clica na linha, formata (alinhamento, negrito, letra grande), sobe/desce, esconde; insere espaço (1 a 6 linhas), linha tracejada ou texto livre. Dados do veículo mudam de lugar e formato, mas o texto não se edita. Logo enviado uma vez e convertido para preto e branco (até 384 pontos, cabe na bobina de 58 e de 80 mm).
 - O modelo fica na configuração da empresa; papel nunca editado sai no padrão (igual ao de antes). O PDV recebe os modelos e o logo junto com os dados do aparelho e monta a prévia e os comandos da impressora da mesma lista (resources/js/pdv/impressao/modelo.js). O Teste de impressão usa o modelo do ticket de entrada.
+
+## 8i. Planejamento da parte 8.7, modo sem internet (combinado em 19/11/2026)
+
+Conversa com o Cauê antes de executar. O PDV precisa ser **autossuficiente** sem internet e, quando ela voltar, atualizar o ERP.
+
+**Como funciona**
+- O app fica guardado no celular (service worker) e abre sem internet. O celular mantém uma cópia do que precisa: tabelas de estadia e diárias, tamanhos, formas de pagamento, convênios, placas de mensalistas, PINs (só o hash derivado por aparelho, nunca o número) e o pátio atual.
+- Sem internet, as mesmas telas funcionam; cada ação vai para uma fila no celular com um código único (idempotência). Aviso no topo: "Sem internet · N pendentes".
+- Na volta, a fila sobe na ordem em que aconteceu; o código único impede lançar duas vezes; o ERP dá a palavra final.
+
+**O que funciona sem internet**
+- Estadia (entrada e saída): sim. O cálculo do valor passa a existir também em JavaScript, igual ao Tarifador do servidor, com testes comparando os dois. Se divergir, vale o que o cliente pagou e a diferença vai para conferência.
+- Lavagem (venda, etapas, entrega) e caixa (sangria, pagamento, suprimento, fechamento): sim, sobem depois.
+- Impressão: sim (Bluetooth direto do celular).
+- Pix com QR: não (depende do Inter). Sem internet: Pix pela chave fixa (conferir no extrato), dinheiro ou cartão.
+- Receber conta de cliente no caixa: bloqueado sem internet (risco de a gestão receber a mesma conta ao mesmo tempo).
+
+**Numeração (decisão do Cauê)**
+- Sem reserva de números: sem internet o celular continua do último número que conhece; o número é provisório. **Quem identifica o ticket é o código do QR**, gerado no celular. O número passa a valer quando chega na gestão (que dá o definitivo e guarda o número impresso para busca pelo papel do cliente).
+- Sem internet, a saída é feita pelo QR; busca por número só procura no próprio celular.
+
+**Mais de um celular (hoje é um só, mas já preparado)**
+- O QR passa a carregar os dados da entrada (hora, placa, tamanho, já pago) com assinatura (chave dos aparelhos pareados), para outro celular cobrar sem ter visto a entrada e sem aceitar QR falsificado. A página do ticket (8.6) continua igual: os dados vão numa parte do link que só o app lê.
+- O que não fechar na volta (saída em dobro, placa corrigida na gestão no meio) vai para uma lista de **pendências** na gestão, para o gerente resolver.
+- Hora: vale a do celular; o ERP avisa se estiver muito diferente da do servidor.
+
+**Servidor local (ideia do Cauê, para quando houver mais de um celular)**
+- Um Raspberry Pi (ou similar) na rede do estacionamento, para numerar os tickets em sequência, manter um pátio e um caixa únicos entre os celulares sem internet e conversar com o ERP quando ela voltar.
+- Não substitui o modo sem internet do celular: sem luz, roteador e Raspberry desligam (só com nobreak). Cobre o caso "caiu a internet, tem luz".
+- Obstáculo: o PDV abre em https; para os celulares falarem com o Raspberry, ele precisa de endereço próprio com certificado válido (ex.: `balcao.localestacionamento.com.br` apontando para o IP interno). Manutenção: cartão de memória, atualizações junto com o ERP.
+- **Ordem combinada:** primeiro o modo sem internet no celular; a sincronização já desenhada para tentar, em ordem, ERP → servidor local (se existir) → guardar no celular. O servidor local entra quando houver o segundo celular, sem refazer o PDV.
 
 ## 9. Riscos e cuidados
 

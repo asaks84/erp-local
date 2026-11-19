@@ -19,8 +19,7 @@ export const MENU = [
     {
         grupo: 'Operação',
         itens: [
-            { rotulo: 'Estadias', href: '/estadias', icone: 'relogio', acende: ['/estadias'] },
-            { rotulo: 'Lavagens', href: '/lavagens', icone: 'gota', acende: ['/lavagens'] },
+            { rotulo: 'Pátio', href: '/patio', icone: 'relogio', acende: ['/patio', '/estadias', '/lavagens'] },
             { rotulo: 'Gerar mensalidades', href: '/mensalidades/gerar', icone: 'calendario', acende: ['/mensalidades'] },
             { rotulo: 'Ordens de serviço', href: '/ordens', icone: 'lista', acende: ['/ordens'] },
         ],

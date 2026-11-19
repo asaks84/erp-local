@@ -153,6 +153,7 @@ body { -webkit-font-smoothing: antialiased; }
 .selo-erro { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); border-color: transparent; }
 .selo-aviso { background: var(--l-aviso-suave); color: var(--l-aviso-texto); border-color: transparent; }
 .selo-marca { background: var(--l-marca-suave); color: var(--l-marca); border-color: transparent; }
+.selo-info { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); border-color: transparent; }
 
 // larguras: página (1200px) e formulário (640px)
 .pagina { max-width: 1200px; }

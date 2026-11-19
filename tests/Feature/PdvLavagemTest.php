@@ -118,7 +118,7 @@ class PdvLavagemTest extends TestCase
         $r = $this->pdv()->postJson('/api/pdv/caixa/resumo', ['pin' => '5072'])->json('por_servico');
         $this->assertSame(25, collect($r)->firstWhere('servico', 'Lavagens e serviços')['total']);
         // aparece no quadro da gestão
-        $this->actingAs($this->a->admin)->get('/lavagens')->assertInertia(fn ($pg) => $pg->where('cartoes.0.etapa', 'entregue'));
+        $this->actingAs($this->a->admin)->get('/patio/historico')->assertInertia(fn ($pg) => $pg->where('linhas.data.0.tipo', 'lavagem')->where('linhas.data.0.situacao', 'finalizada'));
     }
 
     public function test_pagar_agora_conta_de_cliente_e_estadia_depois_de_pronta(): void

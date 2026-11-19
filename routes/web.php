@@ -36,6 +36,7 @@ use App\Http\Controllers\MensalistasController;
 use App\Http\Controllers\NivelController;
 use App\Http\Controllers\OrdemController;
 use App\Http\Controllers\PagadorController;
+use App\Http\Controllers\PatioController;
 use App\Http\Controllers\PendenteController;
 use App\Http\Controllers\PlanoContaController;
 use App\Http\Controllers\RecorrenteController;
@@ -146,22 +147,33 @@ Route::middleware('auth')->group(function () {
         Route::post('/boletos/{boleto}/atualizar', [BoletoController::class, 'atualizar']);
         Route::get('/boletos/{boleto}/pdf', [BoletoController::class, 'pdf']);
 
-        // operação (etapa 4): estadias e venda de lavagens e serviços
-        Route::get('/estadias', [EstadiaController::class, 'index']);
-        Route::get('/estadias/historico', [EstadiaController::class, 'historico']);
+        // operação: pátio unificado (estadias + lavagens). Entrada e saída são do PDV; as rotas de gravação
+        // de estadia e lavagem abaixo ficam como contingência (sem tela na gestão) até o modo sem internet (8.7)
+        Route::get('/patio', [PatioController::class, 'index']);
+        Route::get('/patio/historico', [PatioController::class, 'historico']);
+        Route::redirect('/estadias', '/patio');
+        Route::redirect('/estadias/historico', '/patio/historico');
         Route::get('/estadias/placa', [EstadiaController::class, 'placa']);
         Route::post('/estadias', [EstadiaController::class, 'store']);
         Route::get('/estadias/{estadia}/calcular', [EstadiaController::class, 'calcular']);
         Route::post('/estadias/{estadia}/saida', [EstadiaController::class, 'saida']);
         Route::post('/estadias/{estadia}/cancelar', [EstadiaController::class, 'cancelar']);
-        Route::get('/lavagens', [LavagemController::class, 'index']);
-        Route::get('/lavagens/nova', [LavagemController::class, 'create']);
+        Route::redirect('/lavagens', '/patio');
+        Route::redirect('/lavagens/nova', '/patio');
         Route::get('/lavagens/placa', [LavagemController::class, 'placa']);
         Route::post('/lavagens', [LavagemController::class, 'store']);
         Route::post('/lavagens/{ordem}/etapa', [LavagemController::class, 'etapa']);
         Route::post('/lavagens/{ordem}/receber', [LavagemController::class, 'receber']);
     });
 
+    Route::middleware('permissao:patio_corrigir')->group(function () {
+        Route::post('/patio/estadias/{estadia}/corrigir', [PatioController::class, 'corrigirEstadia']);
+        Route::post('/patio/estadias/{estadia}/cancelar', [PatioController::class, 'cancelarEstadia']);
+        Route::post('/patio/estadias/{estadia}/encerrar', [PatioController::class, 'encerrarEstadia']);
+        Route::post('/patio/lavagens/{ordem}/corrigir', [PatioController::class, 'corrigirLavagem']);
+        Route::post('/patio/lavagens/{ordem}/cancelar', [PatioController::class, 'cancelarLavagem']);
+        Route::post('/patio/lavagens/{ordem}/entregar', [PatioController::class, 'entregarLavagem']);
+    });
     Route::middleware('permissao:contas_editar')->group(function () {
         Route::put('/ordens/{ordem}', [OrdemController::class, 'update']);
         Route::post('/ordens/{ordem}/cancelar', [OrdemController::class, 'cancelar']);

@@ -25,6 +25,7 @@ class Estadia extends Modelo
         'mensalista' => 'Mensalista',
         'gratis' => 'Sem cobrança (tolerância)',
         'pago_entrada' => 'Diária paga na entrada',
+        'sem_receber' => 'Encerrada sem receber',
     ];
 
     protected static function booted(): void

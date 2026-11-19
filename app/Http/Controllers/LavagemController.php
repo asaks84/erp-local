@@ -2,100 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FormaPagamento;
 use App\Models\OrdemServico;
-use App\Models\Servico;
-use App\Models\TipoVeiculo;
 use App\Servicos\Baixa;
 use App\Servicos\Estadias;
-use App\Servicos\EtapasLavagem;
-use App\Servicos\FormasPagamento;
-use App\Servicos\Ordens;
-use App\Servicos\Precos;
 use App\Servicos\Vendas;
 use App\Support\Formato;
 use App\Support\Placa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
-/** Lavagens e serviços: quadro das etapas (configuráveis em EtapasLavagem), nova venda e recebimento na entrega. */
+/** Lavagens (gravação): venda, etapa e recebimento no balcão. As telas da gestão ficam no Pátio; a venda é do PDV. */
 class LavagemController extends Controller
 {
-    /** um cartão do quadro = uma venda (a ordem principal e seus adicionais) */
-    private static function cartao(OrdemServico $p, $adicionais, array $etapas): array
-    {
-        $todas = collect([$p])->merge($adicionais);
-        $abertas = $todas->where('situacao', 'aberta');
-
-        return [
-            'id' => $p->id,
-            'numero' => $p->numero,
-            'placa' => $p->placa ? Placa::formatar($p->placa) : null,
-            'veiculo' => $p->veiculo_descricao,
-            'tipo' => $p->tipoVeiculo?->nome,
-            'cliente' => $p->cliente?->only(['id', 'nome']),
-            'convenio' => (bool) $p->convenio_id,
-            'celular' => $p->celular,
-            'servicos' => $todas->map(fn ($o) => $o->descricao)->values(),
-            'total' => round((float) $todas->sum('valor'), 2),
-            'em_aberto' => round((float) $abertas->sum('valor'), 2),
-            'pago' => $abertas->isEmpty(),
-            // na conta: cliente cadastrado ou convênio pagam pela cobrança; avulso paga no balcão
-            'paga_no_balcao' => $abertas->isNotEmpty() && $abertas->every(fn ($o) => ! $o->cliente_id),
-            // etapa desativada depois da venda: o cartão aparece na primeira coluna
-            'etapa' => array_key_exists($p->etapa, $etapas) ? $p->etapa : EtapasLavagem::PRIMEIRA,
-            'data' => $p->data->format('Y-m-d'),
-            'criado_em' => $p->criado_em?->format('Y-m-d H:i'),
-        ];
-    }
-
-    public function index(): Response
-    {
-        FormasPagamento::garantirPadrao();
-        // em andamento (qualquer dia) e as entregues de hoje
-        $principais = OrdemServico::with(['cliente:id,nome', 'tipoVeiculo:id,nome'])
-            ->where('tipo', 'servico')->whereNull('principal_id')->whereNotNull('etapa')->where('situacao', '<>', 'cancelada')
-            ->where(fn ($q) => $q->where('etapa', '<>', EtapasLavagem::ULTIMA)->orWhere('atualizado_em', '>=', now()->startOfDay()))
-            ->orderBy('criado_em')->limit(300)->get();
-        $adicionais = OrdemServico::whereIn('principal_id', $principais->pluck('id'))->where('situacao', '<>', 'cancelada')->get()->groupBy('principal_id');
-        $etapas = EtapasLavagem::ativas();
-        $cartoes = $principais->map(fn ($p) => self::cartao($p, $adicionais->get($p->id, collect()), $etapas));
-
-        return Inertia::render('Lavagens/Index', [
-            'cartoes' => $cartoes->values(),
-            'etapas' => $etapas,
-            'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
-        ]);
-    }
-
-    public function create(): Response
-    {
-        FormasPagamento::garantirPadrao();
-        $unidade = Ordens::unidadePadrao();
-        $tipos = TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome']);
-        $servicos = Servico::where('ativo', true)->with(['adicionais' => fn ($q) => $q->where('ativo', true)])->orderBy('nome')->get();
-        $precos = [];
-        foreach ($tipos as $t) {
-            foreach ($servicos as $s) {
-                $precos[$t->id][$s->id] = Precos::servico($s->id, $t->id, $unidade);
-            }
-        }
-
-        return Inertia::render('Lavagens/Nova', [
-            'tipos' => $tipos,
-            'servicos' => $servicos->where('papel', 'principal')->values()->map(fn ($s) => [
-                'id' => $s->id, 'nome' => $s->nome, 'preco_modo' => $s->preco_modo,
-                'adicionais' => $s->adicionais->map(fn ($a) => ['id' => $a->id, 'nome' => $a->nome])->values(),
-            ]),
-            'precos' => $precos,
-            'convenios' => EstadiaController::convenios('servico'),
-            'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
-        ]);
-    }
-
     /** placa digitada na venda: veículo cadastrado ou o último celular usado por esse avulso */
     public function placa(Request $request): JsonResponse
     {
@@ -133,7 +52,7 @@ class LavagemController extends Controller
         ], ['servico_id.required' => 'Escolha o serviço.', 'placa.required' => 'Informe a placa.']);
         [, $msg] = Vendas::vender($d);
 
-        return redirect('/lavagens')->with('sucesso', $msg.'.');
+        return redirect('/patio')->with('sucesso', $msg.'.');
     }
 
     public function etapa(Request $request, OrdemServico $ordem): RedirectResponse

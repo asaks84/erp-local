@@ -4,6 +4,14 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — Pátio unificado na gestão
+
+- **Operação › Pátio** substitui Estadias e Lavagens no menu. Aba **Agora**: estadias e lavagens em andamento numa lista só (estadia com o valor se saísse agora; lavagem com a etapa e "Estadia R$ x" pela regra de Configurações › Etapas, R$ 0 quando não cobra). Aba **Histórico**: as duas juntas por data, com filtro de tipo e situação e os totais.
+- A gestão não dá mais entrada nem saída (é do PDV). **Ações** por linha: receber lavagem a receber e, com a nova permissão **Corrigir no pátio**, corrigir placa/modelo/tamanho, cancelar, encerrar estadia esquecida (sem receber, com o valor registrado para conferência, ou na conta de um cliente) e marcar lavagem como entregue.
+- Os endereços antigos (/estadias, /lavagens) levam ao Pátio.
+- Migração `2026_11_30_000001_patio` (observação da estadia encerrada). 3 testes novos (250).
+- Planejamento da 8.7 (modo sem internet e servidor local) registrado em docs/15-plano-pdv.md, seção 8i.
+
 ## 19/11/2026 — Editor de impressão do PDV
 
 - **Configurações › Impressão (PDV):** editor visual de três papéis: ticket de entrada (estadia e lavagem), recibo de pagamento (estadia, lavagem, contas de cliente: todo pagamento) e fechamento do caixa. Clique numa linha do papel para alinhar, pôr em negrito ou letra grande, subir, descer ou esconder; insira espaço, linha tracejada ou texto livre. "Voltar ao padrão" por papel.

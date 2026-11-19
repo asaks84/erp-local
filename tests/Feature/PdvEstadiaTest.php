@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\EstadiaController;
 use App\Models\Aparelho;
 use App\Models\Convenio;
 use App\Models\Estadia;
@@ -100,7 +101,7 @@ class PdvEstadiaTest extends TestCase
         // ticket já usado
         $this->pdv()->getJson('/api/pdv/estadias/buscar?q='.$e->numero)->assertStatus(404)->assertJsonFragment(['erro' => 'Este ticket já foi finalizado (10/11 14:00).']);
         // aparece na gestão igual
-        $this->actingAs($this->a->admin)->get('/estadias')->assertInertia(fn ($pg) => $pg->where('hoje.0.modelo', 'Gol branco')->where('hoje.0.pdv', true));
+        $this->actingAs($this->a->admin)->get('/patio/historico')->assertInertia(fn ($pg) => $pg->where('linhas.data.0.modelo', 'Gol branco')->where('linhas.data.0.pdv', true));
     }
 
     public function test_diaria_paga_na_entrada_e_excedente_na_saida(): void
@@ -193,7 +194,7 @@ class PdvEstadiaTest extends TestCase
 
     public function test_gestao_entrada_com_diaria_e_convenio_na_saida(): void
     {
-        $this->actingAs($this->a->operador)->get('/estadias')->assertInertia(fn ($p) => $p->where('tipos.0.diarias.0.valor', 40));
+        $this->assertSame(40.0, EstadiaController::tiposComTabela()[0]['diarias'][0]['valor']);
         $this->actingAs($this->a->operador)->post('/estadias', ['placa' => 'GES1T11', 'modelo' => 'HB20', 'tipo_veiculo_id' => $this->a->tipo->id,
             'pacote_id' => $this->diaria->id, 'pagar_agora' => true, 'forma_pagamento_id' => $this->forma('dinheiro'), 'valor_recebido' => 50])->assertSessionHasNoErrors();
         $e = Estadia::first();
@@ -216,12 +217,12 @@ class PdvEstadiaTest extends TestCase
         $this->actingAs($u)->post("/estadias/{$e1->id}/saida", ['destino' => 'pago', 'forma_pagamento_id' => $this->forma('dinheiro')])->assertSessionHasNoErrors(); // 20
         $this->actingAs($this->a->admin)->post('/estadias/'.Estadia::where('placa', 'HIS1A33')->value('id').'/cancelar', ['motivo' => 'engano'])->assertSessionHasNoErrors();
 
-        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30')->assertInertia(fn ($p) => $p->component('Estadias/Historico')
-            ->where('totais.qtd', 3)->where('totais.finalizadas', 1)->where('totais.patio', 1)->where('totais.canceladas', 1)
-            ->where('totais.cobrado', 20)->where('totais.na_hora', 60) // 20 na saída + diária de 40 paga na entrada
-            ->has('estadias.data', 3));
-        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30&situacao=cancelada')->assertInertia(fn ($p) => $p->where('totais.qtd', 1)
-            ->where('estadias.data.0.motivo_cancelamento', 'engano'));
-        $this->actingAs($u)->get('/estadias/historico?de=2026-11-01&ate=2026-11-30&q=gol')->assertInertia(fn ($p) => $p->has('estadias.data', 1)->where('estadias.data.0.modelo', 'Gol'));
+        $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30')->assertInertia(fn ($p) => $p->component('Patio/Historico')
+            ->where('totais.estadias', 3)->where('totais.patio', 1)->where('totais.canceladas', 1)->where('totais.estadias_valor', 20)
+            ->has('linhas.data', 3));
+        $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30&situacao=cancelada')->assertInertia(fn ($p) => $p->where('totais.estadias', 1)
+            ->where('linhas.data.0.obs', 'engano'));
+        $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30&q=gol')->assertInertia(fn ($p) => $p->has('linhas.data', 1)->where('linhas.data.0.modelo', 'Gol'));
+        $this->actingAs($u)->get('/estadias/historico')->assertRedirect('/patio/historico');
     }
 }

@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Convenio;
 use App\Models\Estadia;
-use App\Models\FormaPagamento;
 use App\Models\TipoVeiculo;
 use App\Servicos\Estadias;
-use App\Servicos\FormasPagamento;
 use App\Servicos\Ordens;
 use App\Servicos\Precos;
 use App\Servicos\Vendas;
@@ -19,10 +17,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
-/** Estadias: pátio (quem está dentro), entrada, cálculo, saída e histórico. */
+/**
+ * Estadias (gravação): entrada, cálculo, saída e cancelamento, comuns à gestão e ao PDV. As telas da gestão
+ * ficam no Pátio (PatioController); estas rotas seguem como contingência até o modo sem internet (8.7).
+ */
 class EstadiaController extends Controller
 {
     public static function linha(Estadia $e): array
@@ -62,29 +61,6 @@ class EstadiaController extends Controller
             ->whereHas('regras', fn ($q) => $uso === 'estadia' ? $q->whereNull('servico_id') : $q->whereNotNull('servico_id'))->get()
             ->sortBy(fn ($c) => $c->cliente?->nome)->values()
             ->map(fn ($c) => ['id' => $c->id, 'nome' => $c->cliente?->nome, 'resumo' => $c->resumo()])->all();
-    }
-
-    public function index(Request $request): Response
-    {
-        FormasPagamento::garantirPadrao();
-        $with = ['tipo:id,nome', 'cliente:id,nome', 'convenio.cliente:id,nome', 'pacote:id,nome'];
-        $patio = Estadia::with($with)->where('situacao', 'patio')->orderBy('entrada')->get();
-        $hoje = Estadia::with($with)->where('situacao', '<>', 'patio')
-            ->where(fn ($q) => $q->whereDate('saida', now()->toDateString())->orWhereDate('cancelada_em', now()->toDateString()))
-            ->orderByDesc('atualizado_em')->limit(100)->get();
-
-        return Inertia::render('Estadias/Index', [
-            'patio' => $patio->map(fn ($e) => self::linha($e)),
-            'hoje' => $hoje->map(fn ($e) => self::linha($e)),
-            'resumo_hoje' => [
-                'saidas' => $hoje->where('situacao', 'finalizada')->count(),
-                'recebido' => round((float) $hoje->where('destino', 'pago')->sum('valor_cliente'), 2),
-                'convenio' => round((float) $hoje->sum('valor_convenio'), 2),
-            ],
-            'tipos' => self::tiposComTabela(),
-            'convenios' => self::convenios('estadia'),
-            'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
-        ]);
     }
 
     /** tipos de veículo com o resumo da tabela de estadia que vale hoje (vazio = sem tabela) */
@@ -206,40 +182,5 @@ class EstadiaController extends Controller
         Estadias::cancelar($estadia, $d['motivo']);
 
         return back()->with('sucesso', 'Estadia de '.$estadia->rotulo().' cancelada.');
-    }
-
-    /** Histórico: estadias por data de entrada, com busca, situação e os totais do período (de tudo o que o filtro pega) */
-    public function historico(Request $request): Response
-    {
-        $f = $request->validate(['q' => ['nullable', 'string', 'max:40'], 'de' => ['nullable', 'date_format:Y-m-d'], 'ate' => ['nullable', 'date_format:Y-m-d'],
-            'situacao' => ['nullable', 'in:todas,finalizada,cancelada,patio']]);
-        $de = $f['de'] ?? now()->subDays(30)->toDateString();
-        $ate = $f['ate'] ?? now()->toDateString();
-        if ($ate < $de) {
-            [$de, $ate] = [$ate, $de];
-        }
-        $q = trim((string) ($f['q'] ?? ''));
-        $situacao = $f['situacao'] ?? 'todas';
-        $base = Estadia::query()
-            ->whereBetween('entrada', [$de.' 00:00:00', $ate.' 23:59:59'])
-            ->when($situacao !== 'todas', fn ($w) => $w->where('situacao', $situacao))
-            ->when($q !== '', fn ($w) => $w->where(fn ($w) => $w->where('placa', 'like', '%'.Placa::normalizar($q).'%')
-                ->orWhere('identificacao', 'like', '%'.$q.'%')->orWhere('modelo', 'like', '%'.$q.'%')
-                ->when(ctype_digit($q), fn ($w) => $w->orWhere('numero', (int) $q))));
-        $t = (clone $base)->toBase()->selectRaw("COUNT(*) AS qtd,
-            SUM(situacao = 'finalizada') AS finalizadas, SUM(situacao = 'cancelada') AS canceladas, SUM(situacao = 'patio') AS patio,
-            SUM(CASE WHEN situacao = 'finalizada' THEN COALESCE(valor_calculado, 0) ELSE 0 END) AS cobrado,
-            SUM(CASE WHEN situacao = 'finalizada' AND destino = 'pago' THEN COALESCE(valor_cliente, 0) ELSE 0 END) + SUM(CASE WHEN situacao <> 'cancelada' THEN pago_entrada ELSE 0 END) AS na_hora,
-            SUM(CASE WHEN situacao = 'finalizada' AND destino = 'conta' THEN COALESCE(valor_cliente, 0) ELSE 0 END) AS na_conta,
-            SUM(CASE WHEN situacao = 'finalizada' THEN valor_convenio ELSE 0 END) AS convenio")->first();
-        $lista = (clone $base)->with(['tipo:id,nome', 'cliente:id,nome', 'convenio.cliente:id,nome', 'pacote:id,nome'])
-            ->orderByDesc('entrada')->paginate(50)->withQueryString()->through(fn ($e) => self::linha($e));
-
-        return Inertia::render('Estadias/Historico', [
-            'estadias' => $lista,
-            'filtros' => ['q' => $q, 'de' => $de, 'ate' => $ate, 'situacao' => $situacao],
-            'totais' => ['qtd' => (int) $t->qtd, 'finalizadas' => (int) $t->finalizadas, 'canceladas' => (int) $t->canceladas, 'patio' => (int) $t->patio,
-                'cobrado' => round((float) $t->cobrado, 2), 'na_hora' => round((float) $t->na_hora, 2), 'na_conta' => round((float) $t->na_conta, 2), 'convenio' => round((float) $t->convenio, 2)],
-        ]);
     }
 }
