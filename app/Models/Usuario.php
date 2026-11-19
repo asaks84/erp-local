@@ -18,19 +18,22 @@ class Usuario extends Authenticatable
 
     protected $authPasswordName = 'senha';
 
-    protected $guarded = ['id', 'empresa_id', 'senha', 'remember_token'];
+    protected $guarded = ['id', 'empresa_id', 'senha', 'remember_token', 'pin_hash', 'pin_codigo_hash'];
 
-    protected $hidden = ['senha', 'remember_token'];
+    protected $hidden = ['senha', 'remember_token', 'pin_hash', 'pin_codigo_hash'];
 
     // valores padrão já no objeto (iguais aos do banco)
-    protected $attributes = ['ativo' => true, 'operador_caixa' => false, 'remember_token' => null];
+    // acessa_gestao falso: usuário só do PDV (sem login e sem senha, só o PIN)
+    protected $attributes = ['ativo' => true, 'operador_caixa' => false, 'acessa_gestao' => true, 'remember_token' => null];
 
     protected function casts(): array
     {
         return [
             'ativo' => 'boolean',
             'operador_caixa' => 'boolean',
+            'acessa_gestao' => 'boolean',
             'ultimo_acesso_em' => 'datetime',
+            'pin_codigo_ate' => 'datetime',
         ];
     }
 

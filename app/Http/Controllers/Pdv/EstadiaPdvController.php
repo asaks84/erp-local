@@ -11,6 +11,7 @@ use App\Models\FormaPagamento;
 use App\Models\Pagamento;
 use App\Servicos\Estadias;
 use App\Servicos\FormasPagamento;
+use App\Servicos\Pdv\SemInternet;
 use App\Servicos\Vendas;
 use App\Support\Formato;
 use App\Support\Placa;
@@ -85,9 +86,14 @@ class EstadiaPdvController extends Controller
             'identificacao' => ['nullable', 'string', 'max:40'],
             'tipo_veiculo_id' => ['required', 'integer'],
             'confirmar_mensalista' => ['nullable', 'boolean'],
+            'acao_uuid' => ['nullable', 'uuid'],
+            // código do QR gerado no celular (vale o mesmo se a entrada cair na fila do modo sem internet)
+            'codigo' => ['nullable', 'string', 'size:16'],
         ] + EstadiaController::regrasEntrada(), ['tipo_veiculo_id.required' => 'Escolha o tamanho do veículo.']);
         PdvController::pessoa($r);
-        $e = Estadias::entrar($d);
+        // código da ação (8.7): se a resposta não chegar e o celular mandar de novo pela fila, não duplica
+        $e = Estadias::entrar($d + ['uuid' => $d['acao_uuid'] ?? null]);
+        SemInternet::registrarNaHora($d['acao_uuid'] ?? null, 'estadia_entrada', $e);
 
         return response()->json(['estadia' => EstadiaController::linha(self::achar($e->id)), 'recibo' => self::recibo($e->fresh(), $e->ordem_entrada_id)]);
     }
@@ -106,7 +112,8 @@ class EstadiaPdvController extends Controller
             $e = (clone $base)->where('codigo', mb_strtolower($q))->first();
         }
         if (! $e && ctype_digit($q) && $q !== '') {
-            $e = (clone $base)->where('numero', (int) $q)->first();
+            // número do papel: o definitivo ou o provisório impresso sem internet (8.7)
+            $e = (clone $base)->where('numero', (int) $q)->first() ?? (clone $base)->where('numero_impresso', (int) $q)->first();
         }
         if (! $e && ($p = Placa::normalizar($q))) {
             $e = (clone $base)->where('placa', $p)->first();
@@ -135,13 +142,14 @@ class EstadiaPdvController extends Controller
 
     public function sair(Request $r, int $id): JsonResponse
     {
-        $d = $r->validate(EstadiaController::regrasSaida() + ['saida_calculo' => ['nullable', 'date']]);
+        $d = $r->validate(EstadiaController::regrasSaida() + ['saida_calculo' => ['nullable', 'date'], 'acao_uuid' => ['nullable', 'uuid']]);
         PdvController::pessoa($r);
         // a saída é a hora do cálculo mostrado na tela (o Pix pode levar uns minutos para cair)
         if ($m = PdvController::momento($d['saida_calculo'] ?? null)) {
             $d['saida'] = $m->format('Y-m-d H:i');
         }
         $e = Estadias::sair(self::achar($id), $d);
+        SemInternet::registrarNaHora($d['acao_uuid'] ?? null, 'estadia_saida', $e);
 
         return response()->json(['estadia' => EstadiaController::linha(self::achar($e->id)), 'recibo' => self::recibo($e, $e->ordem_id),
             'mensagem' => 'Saída de '.$e->rotulo().': '.Formato::duracao((int) $e->minutos).' · '.Estadia::DESTINOS[$e->destino].'.']);

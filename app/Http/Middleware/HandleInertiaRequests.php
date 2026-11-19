@@ -2,7 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\CobrancaController;
+use App\Models\AtualizacaoCadastral;
+use App\Models\CadastroPendente;
 use App\Models\Empresa;
+use App\Models\PdvAcao;
 use App\Support\EmpresaAtual;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -32,13 +36,16 @@ class HandleInertiaRequests extends Middleware
                 'agora' => now()->format('Y-m-d H:i:s'),
             ] : null,
             // cadastros esperando aprovação (número no menu)
-            'fila' => fn () => $usuario?->pode('aprovar') ? \App\Models\CadastroPendente::count() : 0,
-            'atualizacoes' => fn () => $usuario?->pode('aprovar') ? \App\Models\AtualizacaoCadastral::where('situacao', 'respondida')->count() : 0,
+            'fila' => fn () => $usuario?->pode('aprovar') ? CadastroPendente::count() : 0,
+            // pendências do PDV sem internet (8.7), na aba do Pátio
+            'pdv_pendencias' => fn () => $usuario ? PdvAcao::where('situacao', 'pendente')->count() : 0,
+            'atualizacoes' => fn () => $usuario?->pode('aprovar') ? AtualizacaoCadastral::where('situacao', 'respondida')->count() : 0,
             'flash' => fn () => [
                 'sucesso' => $request->session()->get('sucesso'),
                 'erro' => $request->session()->get('erro'),
                 'aviso' => $request->session()->get('aviso'),
                 'imprimir' => $request->session()->get('imprimir'),
+                'codigo_pin' => $request->session()->get('codigo_pin'),
             ],
         ];
     }
@@ -53,7 +60,7 @@ class HandleInertiaRequests extends Middleware
             'nome' => $empresa->nome,
             'logo_url' => $empresa->logo ? asset('storage/'.$empresa->logo) : null,
             // Banco Inter ligado: as telas de cobrança oferecem "gerar boleto"
-            'inter' => $id ? \App\Http\Controllers\CobrancaController::interLigado() : false,
+            'inter' => $id ? CobrancaController::interLigado() : false,
         ] : null;
     }
 }

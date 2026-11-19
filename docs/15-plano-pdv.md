@@ -104,7 +104,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 | 8.4 Lavagens | Venda, etapas e entrega pelo celular | Lavagem vendida no celular aparece no quadro da gestão e vice-versa |
 | 8.5 Pix imediato | QR na tela com confirmação automática | Pix real pago no balcão dá baixa sozinho |
 | 8.6 Ticket e impressão | Página `/t/<código>`, impressão na térmica escolhida | Ticket impresso com QR que abre a página certa |
-| 8.7 Modo de emergência | Fila no aparelho, tarifador em JavaScript, envio ao voltar, diferenças para conferir (planejamento detalhado na seção 8i) | Um dia simulado sem internet sobe sem duplicar e com as diferenças apontadas |
+| 8.7 Modo de emergência | Fila no aparelho, tarifador em JavaScript, envio ao voltar, diferenças para conferir (planejamento detalhado na seção 8i) | Um dia simulado sem internet sobe sem duplicar e com as diferenças apontadas. **Estadias sem internet prontas (19/11/2026, seção 8j)**; lavagem e caixa sem internet na segunda entrega |
 | 8.8 Visual do app | Identidade visual do PDV a partir de referências de apps que o Cauê vai escolher: cores, tipografia, botões, ícones, telas de etapa, tema claro/escuro, tela inicial e ícone do app instalado. Só aparência: os fluxos e as regras ficam como estão | Telas do PDV refeitas no visual escolhido, conferidas no celular do balcão |
 
 **Portão da etapa 8:** uma a duas semanas de uso real no balcão, com o caixa de cada turno batendo e nenhuma estadia ou lavagem perdida.
@@ -276,6 +276,21 @@ Conversa com o Cauê antes de executar. O PDV precisa ser **autossuficiente** se
 - Não substitui o modo sem internet do celular: sem luz, roteador e Raspberry desligam (só com nobreak). Cobre o caso "caiu a internet, tem luz".
 - Obstáculo: o PDV abre em https; para os celulares falarem com o Raspberry, ele precisa de endereço próprio com certificado válido (ex.: `balcao.localestacionamento.com.br` apontando para o IP interno). Manutenção: cartão de memória, atualizações junto com o ERP.
 - **Ordem combinada:** primeiro o modo sem internet no celular; a sincronização já desenhada para tentar, em ordem, ERP → servidor local (se existir) → guardar no celular. O servidor local entra quando houver o segundo celular, sem refazer o PDV.
+
+## 8j. Como ficou a parte 8.7, primeira entrega: estadias sem internet (19/11/2026)
+
+- **Abre sem internet:** o service worker (`public/pdv-sw.js`) guarda a página e os arquivos do app pela lista do Vite; a API nunca é guardada. Com internet, sempre pega a versão nova.
+- **Cópia no celular (`GET /api/pdv/pacote`):** tabelas de estadia (regras do tarifador), formas, convênios com a regra da estadia, pátio atual, mensalistas, último número, quem tem PIN e o mesmo `/eu`. Renova a cada 2 minutos e depois de cada entrada/saída.
+- **O que funciona sem internet:** entrada e saída de estadia (por hora, diária, diária paga na entrada, convênio, ticket perdido, mensalista, dinheiro com troco, cartão, Pix pela chave fixa; "na conta" só do dono do veículo, porque a busca de clientes precisa de internet), busca do ticket pelo QR, número ou placa, impressão. Lavagem, caixa (receber conta, sangria, fechamento) e cancelamento pedem internet nesta entrega.
+- **Mesmas telas:** `resources/js/pdv/offline/local.js` responde as rotas de estadia com as mesmas respostas da API; as telas não mudaram. Uma faixa no alto mostra "Sem internet · N para enviar" (tocar tenta enviar).
+- **Tarifador no celular (`offline/tarifador.js`):** cópia do `Tarifador` + diária marcada + convênio. 400 casos sorteados pelo PHP ficam em `tests/js/fixtures/tarifador.json`; o PHP (`TarifadorParidadeTest`) e o JavaScript (`npm run test:js`, também no botão Publicar) conferem contra o mesmo arquivo. Mexeu num, mexe no outro.
+- **PIN sem internet:** o servidor nunca manda PIN. Quando alguém usa o PIN com internet, o celular guarda um hash feito lá (PBKDF2 com sal do aparelho). Sem internet só entra quem já usou o PIN naquele celular; quem saiu ou trocou de PIN some na próxima cópia; 5 erros travam 1 minuto. Limite: 4 dígitos são 10 mil combinações, então quem mexer no celular desbloqueado consegue descobrir PINs guardados (o PBKDF2 só atrasa).
+- **Fila e código único:** cada entrada/saída leva um código (`acao_uuid`) mesmo com internet; a entrada leva também o código do QR, gerado no celular. Se a internet cair no meio, a ação vai para a fila com o mesmo código e o servidor não lança duas vezes (tabela `pdv_acoes`).
+- **Subida (`POST /api/pdv/sincronizar`):** na ordem, cada ação roda na hora em que aconteceu no celular (entrada, saída, recebimento e registro de atividades com a hora do celular). O pagamento cai no caixa aberto. Vale o que o cliente pagou: se o cálculo do servidor der outro valor, lança o cobrado e aponta a diferença.
+- **Pendências:** o que não fecha (ticket já finalizado ou cancelado na gestão, ticket que não subiu, diferença de cálculo, hora no futuro ou com mais de 7 dias, pessoa inativa) vira pendência em Operação › Pátio › Pendências do PDV, com o valor cobrado. O gerente (permissão "Corrigir no pátio") acerta na mão e marca como resolvida com o que fez. A fila nunca trava.
+- **Número:** sem internet o celular continua do último número que conhece; se o definitivo for outro, o impresso fica em `estadias.numero_impresso` e a busca pelo número do papel acha pelos dois.
+- **Hora do celular:** o app avisa se estiver 5 minutos ou mais diferente da do servidor.
+- **Falta (segunda entrega da 8.7):** lavagem e caixa sem internet; QR com os dados da entrada assinados para outro celular cobrar sem ter visto a entrada (só faz falta com o segundo celular); servidor local.
 
 ## 9. Riscos e cuidados
 

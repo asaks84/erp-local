@@ -180,6 +180,17 @@ body.pdv {
     .pdv-tecla-texto { font-size: 1rem; font-weight: 500; }
 }
 
+// ---------- modo sem internet (8.7): faixa no alto da tela (rola junto; não cobre botão nenhum) ----------
+.pdv-rede { position: relative; z-index: 25; display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 16px; border: 0; background: #1f2937; color: #fff; font-weight: 600; font-size: .9375rem;
+    &.pdv-rede-sem { background: #b45309; }
+    &:disabled { opacity: .9; }
+}
+.pdv-rede-ponto { width: 9px; height: 9px; border-radius: 50%; background: #fbbf24; animation: pdv-rede-pisca 1.6s ease-in-out infinite; }
+.pdv-rede-sem .pdv-rede-ponto { background: #fff; }
+@keyframes pdv-rede-pisca { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pdv-rede-ponto { animation: none; } }
+
 // ---------- tema (Este aparelho) ----------
 .pdv-tema { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
     button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 76px; justify-content: center; border-radius: 14px; border: 2px solid var(--pdv-borda); background: var(--pdv-cartao); color: var(--bs-body-color); font: inherit; font-weight: 600; font-size: .875rem; }

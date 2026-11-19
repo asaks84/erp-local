@@ -2,11 +2,12 @@ import { Link, router } from '@inertiajs/react'
 import TituloPagina from '../../Components/TituloPagina'
 import Icone from '../../Components/Icone'
 import { dataHora } from '../../lib/formato'
+import JanelaCodigoPin, { BotaoCodigoPin } from '../../Components/CodigoPin'
 
 export default function UsuariosIndex({ usuarios }) {
     return (
         <div className="pagina">
-            <TituloPagina titulo="Usuários" descricao="Quem entra no sistema e com qual nível de acesso.">
+            <TituloPagina titulo="Usuários" descricao="Quem entra no sistema e com qual nível de acesso. Quem é só do PDV não tem login nem senha: entra no balcão pelo PIN.">
                 <Link href="/usuarios/novo" className="btn btn-primary d-inline-flex align-items-center gap-2">
                     <Icone nome="mais" /> Novo usuário
                 </Link>
@@ -32,17 +33,22 @@ export default function UsuariosIndex({ usuarios }) {
                                 <tr key={u.id}>
                                     <td>
                                         <span className="fw-semibold">{u.nome}</span>
-                                        <span className="d-block d-sm-none text-muted small">{u.login}</span>
+                                        <span className="d-block d-sm-none text-muted small">{u.acessa_gestao ? u.login : 'Só PDV'}</span>
                                     </td>
-                                    <td className="d-none d-sm-table-cell">{u.login}</td>
+                                    <td className="d-none d-sm-table-cell">{u.acessa_gestao ? u.login : <span className="selo selo-info">Só PDV</span>}</td>
                                     <td>{u.nivel}</td>
                                     <td className="d-none d-md-table-cell">{u.unidade || 'Todas'}</td>
-                                    <td className="d-none d-lg-table-cell text-muted">{u.ultimo_acesso_em ? dataHora(u.ultimo_acesso_em) : 'Nunca'}</td>
+                                    <td className="d-none d-lg-table-cell text-muted">{!u.acessa_gestao ? '—' : u.ultimo_acesso_em ? dataHora(u.ultimo_acesso_em) : 'Nunca'}</td>
                                     <td className="d-none d-md-table-cell small">
                                         {u.pin ? (
                                             <span className="d-inline-flex align-items-center gap-2">
                                                 <span className="selo selo-ok">Cadastrado</span>
                                                 <button type="button" className="btn btn-link btn-sm p-0 text-danger" onClick={() => router.post(`/usuarios/${u.id}/apagar-pin`, {}, { preserveScroll: true })}>apagar</button>
+                                            </span>
+                                        ) : u.ativo ? (
+                                            <span className="d-inline-flex flex-wrap align-items-center gap-2">
+                                                <span className={u.acessa_gestao ? 'text-muted' : 'selo selo-aviso'}>{u.codigo_ate ? `Código até ${u.codigo_ate}` : u.acessa_gestao ? 'Não cadastrado' : 'Aguardando PIN'}</span>
+                                                <BotaoCodigoPin usuario={u} className="btn btn-link btn-sm p-0">{u.codigo_ate ? 'novo código' : 'gerar código'}</BotaoCodigoPin>
                                             </span>
                                         ) : <span className="text-muted">Não cadastrado</span>}
                                     </td>
@@ -58,6 +64,7 @@ export default function UsuariosIndex({ usuarios }) {
                     </table>
                 </div>
             </div>
+            <JanelaCodigoPin />
         </div>
     )
 }

@@ -78,17 +78,24 @@ class PdvController extends Controller
         $r->validate(['pin' => ['required', 'string', 'max:8']]);
         $u = self::pessoa($r);
 
-        return response()->json(['usuario' => ['id' => $u->id, 'nome' => $u->nome, 'nivel' => $u->nivel?->nome]]);
+        // gerente e pin_desde: o celular guarda (só o hash do PIN, feito lá) para conferir sem internet (8.7)
+        return response()->json(['usuario' => ['id' => $u->id, 'nome' => $u->nome, 'nivel' => $u->nivel?->nome,
+            'gerente' => $u->pode('pdv_gerente'), 'pin_desde' => $u->pin_definido_em ? Carbon::parse($u->pin_definido_em)->toIso8601String() : null]]);
     }
 
     public function cadastrarPin(Request $r): JsonResponse
     {
+        // com login e senha, ou (usuário só do PDV, sem senha) com o código de cadastro gerado na gestão
         $d = $r->validate([
-            'login' => ['required', 'string', 'max:40'],
-            'senha' => ['required', 'string', 'max:200'],
+            'codigo' => ['nullable', 'string', 'max:12'],
+            'login' => ['required_without:codigo', 'nullable', 'string', 'max:40'],
+            'senha' => ['required_without:codigo', 'nullable', 'string', 'max:200'],
             'pin' => ['required', 'string', 'max:8'],
-        ], ['login.required' => 'Informe o login.', 'senha.required' => 'Informe a senha.', 'pin.required' => 'Escolha o PIN.']);
-        $u = Pins::cadastrar(self::aparelho($r)->empresa_id, $d['login'], $d['senha'], $d['pin']);
+        ], ['login.required_without' => 'Informe o login.', 'senha.required_without' => 'Informe a senha.', 'pin.required' => 'Escolha o PIN.']);
+        $empresa = self::aparelho($r)->empresa_id;
+        $u = ! empty($d['codigo'])
+            ? Pins::cadastrarComCodigo($empresa, $d['codigo'], $d['pin'])
+            : Pins::cadastrar($empresa, $d['login'], $d['senha'], $d['pin']);
 
         return response()->json(['ok' => true, 'mensagem' => 'PIN de '.$u->nome.' cadastrado.']);
     }

@@ -67,6 +67,19 @@ class Estadias
         return $c;
     }
 
+    private static function uuidValido(?string $u): ?string
+    {
+        return $u && Str::isUuid($u) ? mb_strtolower($u) : null;
+    }
+
+    /** código do QR gerado no celular sem internet: aceito se tem o formato e ninguém usa */
+    private static function codigoDoCelular(?string $c): ?string
+    {
+        $c = mb_strtolower(trim((string) $c));
+
+        return preg_match('/^[a-z0-9]{16}$/', $c) && ! ctype_digit($c) && ! Estadia::withoutGlobalScopes()->where('codigo', $c)->exists() ? $c : null;
+    }
+
     /** recebe na hora; em dinheiro, confere o valor recebido e anota o troco no pagamento */
     private static function receber(array $ordens, array $d): Pagamento
     {
@@ -105,6 +118,11 @@ class Estadias
      */
     public static function entrar(array $d): Estadia
     {
+        // código único da ação (PDV): a mesma entrada mandada duas vezes (internet caiu no meio) não duplica
+        $uuid = self::uuidValido($d['uuid'] ?? null);
+        if ($uuid && ($ja = Estadia::where('uuid', $uuid)->first())) {
+            return $ja;
+        }
         $placa = Placa::normalizar($d['placa'] ?? null);
         $ident = trim((string) ($d['identificacao'] ?? '')) ?: null;
         if (! $placa && ! $ident) {
@@ -147,15 +165,17 @@ class Estadias
             self::erro('mensalista', 'Mensalista: '.($veiculo?->cliente?->nome ?? Placa::formatar($placa)).'. Mensalista não registra entrada; confirme só se for preciso (ex.: veículo fora do contrato).');
         }
 
-        return DB::transaction(function () use ($placa, $ident, $veiculo, $tipoId, $entrada, $convenio, $pacote, $pagarAgora, $mensalista, $d) {
+        return DB::transaction(function () use ($uuid, $placa, $ident, $veiculo, $tipoId, $entrada, $convenio, $pacote, $pagarAgora, $mensalista, $d) {
             if ($placa && Estadia::where('situacao', 'patio')->where('placa', $placa)->lockForUpdate()->exists()) {
                 self::erro('placa', Placa::formatar($placa).' já está no pátio.');
             }
             $e = Estadia::create([
                 'unidade_id' => Ordens::unidadePadrao(),
-                'uuid' => (string) Str::uuid(),
-                'numero' => Numeracao::proximo('estadia'),
-                'codigo' => self::novoCodigo(),
+                'uuid' => $uuid ?? (string) Str::uuid(),
+                'numero' => $numero = Numeracao::proximo('estadia'),
+                // sem internet (8.7) o celular gera o código do QR e um número provisório: o código vale; o número impresso fica guardado se mudou
+                'codigo' => self::codigoDoCelular($d['codigo'] ?? null) ?? self::novoCodigo(),
+                'numero_impresso' => ! empty($d['numero_impresso']) && (int) $d['numero_impresso'] !== $numero ? (int) $d['numero_impresso'] : null,
                 'placa' => $placa,
                 'identificacao' => $placa ? null : mb_substr($ident, 0, 40),
                 'modelo' => mb_substr(trim((string) ($d['modelo'] ?? '')), 0, 40) ?: ($veiculo?->modelo ? mb_substr($veiculo->modelo, 0, 40) : null),
@@ -267,6 +287,10 @@ class Estadias
                 ?? self::erro('conta_cliente_id', 'Escolha o cliente que vai pagar (na conta de quem).');
         }
         $cliente = $destino === 'mensalista' ? 0.0 : $c['a_pagar'];
+        // sem internet (8.7): vale o que o celular cobrou do cliente; a diferença para o cálculo daqui vira pendência
+        if ($destino !== 'mensalista' && isset($d['cobrado_no_celular']) && is_numeric($d['cobrado_no_celular'])) {
+            $cliente = round(max(0, (float) $d['cobrado_no_celular']), 2);
+        }
         if ($cliente > 0 && $destino === 'pago' && empty($d['forma_pagamento_id'])) {
             self::erro('forma_pagamento_id', 'Escolha a forma de pagamento.');
         }

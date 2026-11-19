@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Estadia;
 use App\Models\FormaPagamento;
 use App\Models\OrdemServico;
+use App\Models\PdvAcao;
 use App\Models\TipoVeiculo;
 use App\Servicos\Estadias;
 use App\Servicos\FormasPagamento;
 use App\Servicos\Patio;
+use App\Servicos\Pdv\SemInternet;
+use App\Support\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -31,6 +34,40 @@ class PatioController extends Controller
             'tipos' => TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
         ]);
+    }
+
+    /**
+     * Pendências do PDV (8.7): o que foi feito no celular sem internet e não fechou na volta (ticket já finalizado na
+     * gestão, diferença de cálculo, pessoa inativa...). O gerente confere, acerta na mão e marca como resolvida.
+     */
+    public function pendencias(): Response
+    {
+        $linha = fn (PdvAcao $a) => [
+            'id' => $a->id, 'tipo' => PdvAcao::TIPOS[$a->tipo] ?? $a->tipo, 'situacao' => $a->situacao, 'mensagem' => $a->mensagem,
+            'feita_em' => $a->feita_em?->format('d/m/Y H:i'), 'recebida_em' => $a->criado_em?->format('d/m/Y H:i'),
+            'aparelho' => $a->aparelho?->nome, 'pessoa' => $a->usuario?->nome,
+            'placa' => $a->estadia?->rotulo() ?? ($a->dados['rotulo'] ?? $a->dados['placa'] ?? null),
+            'ticket' => $a->estadia?->numero, 'numero_impresso' => $a->dados['numero'] ?? null,
+            'cobrado' => isset($a->dados['cobrado']) && (float) $a->dados['cobrado'] > 0 ? Formato::moeda($a->dados['cobrado']).(($a->dados['forma_nome'] ?? null) ? ' · '.$a->dados['forma_nome'] : '') : null,
+            'observacao' => $a->observacao, 'resolvida_por' => $a->resolvidaPor?->nome, 'resolvida_em' => $a->resolvida_em?->format('d/m/Y H:i'),
+        ];
+        $com = ['aparelho:id,nome', 'usuario:id,nome', 'estadia', 'resolvidaPor:id,nome'];
+
+        return Inertia::render('Patio/Pendencias', [
+            'pendentes' => PdvAcao::with($com)->where('situacao', 'pendente')->orderBy('feita_em')->get()->map($linha),
+            'resolvidas' => PdvAcao::with($com)->where('situacao', 'resolvida')->where('resolvida_em', '>=', now()->subDays(30))->orderByDesc('resolvida_em')->limit(50)->get()->map($linha),
+        ]);
+    }
+
+    public function resolverPendencia(Request $request, PdvAcao $acao): RedirectResponse
+    {
+        $d = $request->validate(['observacao' => ['required', 'string', 'max:300']], ['observacao.required' => 'Conte o que foi feito para resolver.']);
+        if ($acao->situacao !== 'pendente') {
+            return back()->with('erro', 'Esta pendência já foi resolvida.');
+        }
+        SemInternet::resolver($acao, $d['observacao']);
+
+        return back()->with('sucesso', 'Pendência resolvida.');
     }
 
     public function historico(Request $request): Response

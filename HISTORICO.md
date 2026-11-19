@@ -4,6 +4,26 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — Usuário só do PDV (sem login e sem senha)
+
+- Novo no cadastro de usuário: **"Acessa a gestão"** (ligado por padrão). Desligado, a pessoa fica sem login e sem senha, só com o PIN, e não entra na gestão. Quem virar só PDV com a sessão aberta é desconectado; a senha antiga é apagada. Para voltar a acessar a gestão, precisa de login e senha.
+- **Código de cadastro do PIN:** a gestão gera um código de 6 dígitos (vale 24 horas e uma vez; guardado só como hash). No PDV, em Este aparelho › Cadastrar ou trocar meu PIN › **Tenho um código**, a pessoa digita o código e escolhe o próprio PIN, sem o gerente ficar sabendo. Usuário só do PDV criado sem PIN já sai com o código na tela. Na lista de usuários: "Só PDV", "Aguardando PIN" e "gerar código".
+- Ninguém tira o próprio acesso à gestão, e sempre sobra um administrador ativo que entra na gestão.
+- 265 testes.
+- Migração: `2026_12_02_000001_usuarios_so_pdv` (login e senha opcionais, `acessa_gestao`, código do PIN).
+- Arquivos: `app/Models/Usuario.php`, `app/Http/Controllers/UsuarioController.php`, `Auth/LoginController.php`, `Pdv/PdvController.php`, `app/Servicos/Pdv/Pins.php`, `app/Http/Middleware/Permissao.php`, `HandleInertiaRequests.php`, `routes/web.php`, `resources/js/Pages/Usuarios/Index.jsx` e `Form.jsx`, `resources/js/Components/CodigoPin.jsx` (novo), `resources/js/pdv/telas/CadastrarPin.jsx`, `tests/Feature/UsuarioSoPdvTest.php`, docs 12 e 13.
+
+## 19/11/2026 — PDV 8.7, primeira entrega: estadias sem internet
+
+- **O PDV abre e registra estadias sem internet.** Entrada e saída (por hora, diária, diária paga na entrada, convênio, mensalista, ticket perdido, dinheiro com troco, cartão, Pix pela chave fixa), busca do ticket e impressão funcionam sem internet. Lavagem, caixa e cancelamento pedem internet nesta entrega.
+- Faixa no alto: "Sem internet · N para enviar". Quando a internet volta, a fila sobe sozinha, na ordem, com a hora em que cada coisa aconteceu; nada duplica (código único por ação, também com internet).
+- Vale o que o cliente pagou; se o servidor calcular outro valor, a diferença vira pendência. O que não fecha (ticket já finalizado na gestão, etc.) vai para **Operação › Pátio › Pendências do PDV**, onde quem tem "Corrigir no pátio" resolve.
+- PIN sem internet: só de quem já usou o PIN naquele celular com internet (o celular guarda só um hash).
+- Tarifador também no celular, conferido contra 400 casos do PHP (`npm run test:js`, que passa a rodar no Publicar).
+- App do PDV 0.7.0. 258 testes.
+- Migração: `2026_12_01_000001_pdv_sem_internet` (tabela `pdv_acoes`, `estadias.numero_impresso`).
+- Arquivos: `app/Servicos/Pdv/SemInternet.php`, `app/Models/PdvAcao.php`, `app/Http/Controllers/Pdv/SemInternetController.php`, `EstadiaPdvController.php`, `PdvController.php`, `PatioController.php`, `app/Servicos/Estadias.php`, `HandleInertiaRequests.php`, `routes/api.php`, `routes/web.php`, `resources/js/pdv/offline/*` (novos), `api.js`, `App.jsx`, `main.jsx`, `comum.jsx`, `Pages/Patio/Pendencias.jsx`, `Components/AbasPatio.jsx`, `scss/_pdv.scss`, `public/pdv-sw.js`, `package.json`, `.github/workflows/publicar.yml`, testes (`PdvSemInternetTest`, `TarifadorParidadeTest`, `tests/js/`), docs 12, 13 e 15 (seção 8j).
+
 ## 19/11/2026 — PDV: conteúdo não sobe quando as barras do celular aparecem
 
 - O app passa a rolar dentro da própria caixa (`.pdv-app`), não a página. Quando as barras do Android aparecem e a tela muda de tamanho, o conteúdo fica no lugar.

@@ -4,6 +4,7 @@ import { moeda } from './impressao/modelo'
 import { cursorNoFim, deDigitos, paraTela } from '../Components/CampoValor'
 import { imprimir, preferencia, NOMES_VIA } from './impressao/preferencia'
 import { api } from './api'
+import { semInternet } from './offline/estado'
 import { useVoltar } from './voltar'
 import { Icone, iconeForma, sinal } from './visual'
 import Papel from './impressao/Papel'
@@ -61,7 +62,8 @@ export function Troco({ total, value, onChange, erro }) {
 }
 
 /** a forma escolhida é Pix e o Pix com QR do Inter está ligado */
-export const usaPixQr = (eu, forma) => !!eu?.pix_qr && forma?.tipo === 'pix'
+// sem internet (8.7) não há QR do Inter: Pix pela chave fixa ("Recebi no Pix"), conferido depois no extrato
+export const usaPixQr = (eu, forma) => !!eu?.pix_qr && forma?.tipo === 'pix' && !semInternet()
 
 /**
  * Pix com QR (8.5): gera o Pix do valor exato no Inter, mostra o QR e o copia e cola e consulta a cada

@@ -151,6 +151,7 @@ Route::middleware('auth')->group(function () {
         // de estadia e lavagem abaixo ficam como contingência (sem tela na gestão) até o modo sem internet (8.7)
         Route::get('/patio', [PatioController::class, 'index']);
         Route::get('/patio/historico', [PatioController::class, 'historico']);
+        Route::get('/patio/pendencias', [PatioController::class, 'pendencias']);
         Route::redirect('/estadias', '/patio');
         Route::redirect('/estadias/historico', '/patio/historico');
         Route::get('/estadias/placa', [EstadiaController::class, 'placa']);
@@ -173,6 +174,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/patio/lavagens/{ordem}/corrigir', [PatioController::class, 'corrigirLavagem']);
         Route::post('/patio/lavagens/{ordem}/cancelar', [PatioController::class, 'cancelarLavagem']);
         Route::post('/patio/lavagens/{ordem}/entregar', [PatioController::class, 'entregarLavagem']);
+        // pendências do modo sem internet do PDV (8.7)
+        Route::post('/patio/pendencias/{acao}/resolver', [PatioController::class, 'resolverPendencia']);
     });
     Route::middleware('permissao:contas_editar')->group(function () {
         Route::put('/ordens/{ordem}', [OrdemController::class, 'update']);
@@ -372,6 +375,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/usuarios/{usuario}', [UsuarioController::class, 'edit']);
         Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update']);
         Route::post('/usuarios/{usuario}/apagar-pin', [UsuarioController::class, 'apagarPin']);
+        Route::post('/usuarios/{usuario}/codigo-pin', [UsuarioController::class, 'codigoPin']);
 
         Route::get('/atividades', AtividadeController::class);
     });

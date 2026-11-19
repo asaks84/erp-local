@@ -38,7 +38,8 @@ class LoginController extends Controller
             ->first();
 
         // mensagem igual para login inexistente, senha errada e usuário inativo
-        if (! $usuario || ! $usuario->ativo || ! Senha::confere($dados['password'], $usuario->senha)) {
+        // usuário só do PDV (sem acesso à gestão) não entra aqui, mesmo que tenha sobrado uma senha
+        if (! $usuario || ! $usuario->ativo || ! $usuario->acessa_gestao || ! $usuario->senha || ! Senha::confere($dados['password'], $usuario->senha)) {
             if (! $usuario) {
                 // gasta o mesmo tempo de uma senha conferida, para não revelar se o login existe
                 password_verify($dados['password'], '$2y$12$DLhHz7JKSYmQ.k3auFKrNeUXdet5s2BHF98s7Olm.OKd0eWRbDszi');

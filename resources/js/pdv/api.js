@@ -1,39 +1,45 @@
-// Conversa com a API do PDV (/api/pdv). O token do aparelho fica guardado no próprio celular.
-export const VERSAO = '0.6.1'
+import { chamar, ErroApi, token, VERSAO } from './offline/servidor'
+import { marcarSemInternet, novoCodigo, novoUuid, semInternet } from './offline/estado'
+import { agendar, atualizarPacote, pacote } from './offline/fila'
+import { lembrarPin } from './offline/pins'
+import { responder, sabeResponder } from './offline/local'
 
-const CHAVE = 'pdv-token'
+export { ErroApi, token, VERSAO }
 
-export const token = {
-    get() { try { return localStorage.getItem(CHAVE) } catch { return null } },
-    set(v) { try { if (v) localStorage.setItem(CHAVE, v); else localStorage.removeItem(CHAVE) } catch { /* sem armazenamento: pareia de novo */ } },
-}
+/*
+ * Conversa com a API do PDV (/api/pdv). Com internet, vai ao servidor. Sem internet (8.7), as rotas de estadia
+ * são respondidas pelo próprio celular (offline/local.js) e as ações entram numa fila que sobe quando a internet
+ * volta. Cada entrada e saída leva um código único: se a internet cair no meio e a ação for parar também na fila,
+ * o servidor não lança duas vezes. A entrada leva também o código do QR, gerado aqui, para o ticket impresso valer
+ * dos dois jeitos.
+ */
+const ACOES = [/^\/estadias$/, /^\/estadias\/[^/]+\/saida$/]
 
-export class ErroApi extends Error {
-    constructor(mensagem, status, extra = {}) {
-        super(mensagem)
-        this.status = status
-        Object.assign(this, extra)
-    }
-}
+let renovar = null
+const renovarPacote = () => { clearTimeout(renovar); renovar = setTimeout(() => atualizarPacote(), 1500) }
 
 export async function api(metodo, caminho, dados) {
-    const t = token.get()
-    let r
+    const local = sabeResponder(metodo, caminho)
+    const acao = metodo === 'POST' && ACOES.some((r) => r.test(caminho))
+    if (acao) {
+        dados = { ...dados, acao_uuid: dados?.acao_uuid || novoUuid() }
+        if (caminho === '/estadias' && !dados.codigo) dados.codigo = novoCodigo()
+    }
+    // estadia local (feita sem internet e que ainda não subiu): só o celular conhece
+    const soLocal = /\/estadias\/l-/.test(caminho)
+    if (local && pacote() && (semInternet() || soLocal)) return responder(metodo, caminho, dados)
     try {
-        r = await fetch(`/api/pdv${caminho}`, {
-            method: metodo,
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Versao-App': VERSAO, ...(t ? { Authorization: `Bearer ${t}` } : {}) },
-            body: dados ? JSON.stringify(dados) : undefined,
-        })
-    } catch {
-        throw new ErroApi('Sem conexão com o servidor. Confira a internet do celular.', 0, { semInternet: true })
+        const j = await chamar(metodo, caminho, dados)
+        if (caminho === '/pin/conferir') lembrarPin(dados.pin, j.usuario)
+        if (acao) renovarPacote()
+        return j
+    } catch (e) {
+        if (e.semInternet) {
+            marcarSemInternet(true)
+            agendar(20000)
+            if (local && pacote()) return responder(metodo, caminho, dados)
+            throw new ErroApi('Sem internet. Isso precisa de internet; entrada e saída de estadia funcionam sem.', 0, { semInternet: true })
+        }
+        throw e
     }
-    const j = await r.json().catch(() => ({}))
-    if (!r.ok) {
-        const campos = j.errors || {}
-        const msg = r.status === 429 ? 'Muitas tentativas seguidas. Aguarde um minuto.'
-            : j.erro || Object.values(campos)[0]?.[0] || 'Não deu certo. Tente de novo.'
-        throw new ErroApi(msg, r.status, { campos, parear: !!j.parear })
-    }
-    return j
 }

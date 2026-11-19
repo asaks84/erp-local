@@ -12,7 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * PIN de 4 dígitos de cada pessoa (docs/07-pdv.md, "Regras do PIN"):
- * - a pessoa escolhe o próprio PIN (com login e senha); PIN óbvio é recusado;
+ * - a pessoa escolhe o próprio PIN (com login e senha, ou, quem é só do PDV e não tem senha, com um código de cadastro
+ *   de 6 dígitos gerado na gestão, que vale 24 horas); PIN óbvio é recusado;
  * - PIN é único na empresa; quem escolhe um PIN que já é de outra pessoa recebe só "PIN indisponível" e
  *   o PIN antigo é cancelado (acabou de ser descoberto) — o dono cadastra outro;
  * - 5 PINs errados seguidos travam o aparelho por 1 minuto (vai para o registro de atividades).
@@ -50,7 +51,48 @@ class Pins
             }
             throw ValidationException::withMessages(['login' => 'Login ou senha incorretos.']);
         }
+
         return self::definir($u, $pin);
+    }
+
+    public const CODIGO_HORAS = 24;
+
+    private static function hashCodigo(int $empresaId, string $codigo): string
+    {
+        return hash_hmac('sha256', 'cadastro-pin:'.$empresaId.':'.$codigo, (string) config('app.key'));
+    }
+
+    /** a gestão gera um código de cadastro de PIN para a pessoa (mostrado uma vez; guarda só o hash) */
+    public static function gerarCodigo(Usuario $u): string
+    {
+        $empresaId = (int) $u->empresa_id;
+        do {
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $hash = self::hashCodigo($empresaId, $codigo);
+            $repetido = Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $empresaId)->where('pin_codigo_hash', $hash)
+                ->where('pin_codigo_ate', '>', now())->where('id', '<>', $u->id)->exists();
+        } while ($repetido);
+        $u->forceFill(['pin_codigo_hash' => $hash, 'pin_codigo_ate' => now()->addHours(self::CODIGO_HORAS)])->save();
+        Atividades::registrar('pdv_pin_codigo', 'código de cadastro de PIN gerado para '.$u->nome);
+
+        return $codigo;
+    }
+
+    /** a pessoa (sem senha) escolhe o PIN no PDV com o código que recebeu do gerente */
+    public static function cadastrarComCodigo(int $empresaId, string $codigo, string $pin): Usuario
+    {
+        $codigo = preg_replace('/\D/', '', $codigo);
+        $u = strlen($codigo) === 6
+            ? Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $empresaId)->where('pin_codigo_hash', self::hashCodigo($empresaId, $codigo))
+                ->where('pin_codigo_ate', '>', now())->where('ativo', true)->first()
+            : null;
+        if (! $u) {
+            throw ValidationException::withMessages(['codigo' => 'Código inválido ou vencido. Peça um código novo ao gerente.']);
+        }
+        self::definir($u, $pin); // PIN recusado: o código continua valendo para tentar outro
+        $u->forceFill(['pin_codigo_hash' => null, 'pin_codigo_ate' => null])->save();
+
+        return $u;
     }
 
     /**

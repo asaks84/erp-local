@@ -20,6 +20,13 @@ class Permissao
         if (! $usuario) {
             return redirect()->guest('/login');
         }
+        // virou usuário só do PDV com a sessão aberta: sai da gestão
+        if (! $usuario->acessa_gestao) {
+            auth()->logout();
+            $request->session()->invalidate();
+
+            return redirect('/login');
+        }
 
         foreach ($chaves as $chave) {
             if ($usuario->pode($chave)) {
