@@ -22,6 +22,7 @@ return [
         'convenios' => ['Configurar convênios', null],
         'contas_pagar' => ['Contas a pagar', 'Lançar e pagar despesas, folha e holerites'],
         'resultado' => ['Resultado do mês e fluxo de caixa', 'Receitas e despesas da empresa, lado a lado'],
+        'nfse' => ['Notas fiscais (NFS-e)', 'Emitir e cancelar notas e configurar a emissão'],
     ],
     'Sistema' => [
         'configuracoes' => ['Configurações', 'Empresa, unidades, níveis de acesso, preços e serviços'],

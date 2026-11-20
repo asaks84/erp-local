@@ -33,6 +33,7 @@ use App\Http\Controllers\LavagemController;
 use App\Http\Controllers\MensagemController;
 use App\Http\Controllers\MensalidadeController;
 use App\Http\Controllers\MensalistasController;
+use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NivelController;
 use App\Http\Controllers\OrdemController;
 use App\Http\Controllers\PagadorController;
@@ -366,6 +367,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/servicos', [ServicoController::class, 'store']);
         Route::get('/configuracoes/servicos/{servico}', [ServicoController::class, 'edit']);
         Route::put('/configuracoes/servicos/{servico}', [ServicoController::class, 'update']);
+    });
+
+    // NFS-e pelo Sistema Nacional (Emissor Nacional): configuração e emissão por recebimento
+    Route::middleware('permissao:nfse')->group(function () {
+        Route::get('/configuracoes/nfse', [NfseController::class, 'config']);
+        Route::put('/configuracoes/nfse', [NfseController::class, 'salvarConfig']);
+        Route::post('/configuracoes/nfse/certificado', [NfseController::class, 'certificado']);
+        Route::delete('/configuracoes/nfse/certificado', [NfseController::class, 'tirarCertificado']);
+        Route::put('/configuracoes/nfse/ambiente', [NfseController::class, 'ambiente']);
+        Route::post('/configuracoes/nfse/testar', [NfseController::class, 'testar']);
+        Route::get('/notas-fiscais', [NfseController::class, 'index']);
+        Route::put('/notas-fiscais/aliquotas', [NfseController::class, 'aliquotas']);
+        Route::post('/notas-fiscais/emitir/{pagamento}', [NfseController::class, 'emitir']);
+        Route::post('/notas-fiscais/{nota}/conferir', [NfseController::class, 'conferir']);
+        Route::post('/notas-fiscais/{nota}/cancelar', [NfseController::class, 'cancelar']);
+        Route::get('/notas-fiscais/{nota}/xml', [NfseController::class, 'xml']);
+        Route::get('/notas-fiscais/{nota}/pdf', [NfseController::class, 'pdf']);
     });
 
     Route::middleware('permissao:usuarios')->group(function () {

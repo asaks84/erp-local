@@ -4,6 +4,27 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — NFS-e igual ao Emissor Nacional, alíquotas do mês e escolhas por cliente
+
+- **Configurações › Nota fiscal** reorganizada nos passos do Emissor Nacional (Emitente, Serviço, Tributação municipal, Série), com os mesmos nomes e opções. Códigos já preenchidos para o Local: 11.01.01 (nacional), 11.01.01.004 (complementar municipal de Santos) e NBS 106043000; aceita colar o código com pontos, como o Emissor mostra. Código complementar e NBS agora são obrigatórios (o Emissor de Santos pede).
+- **Especificar cada serviço** (Configurações): ligado, cada linha da descrição diz o serviço ("ABC1D23 - Fiat Uno - Lavagem simples - R$ 40,00"); desligado (padrão), só a mensalidade é nomeada e o resto sai "placa - veículo - valor". Para não citar na nota serviço sem CNAE.
+- **Alíquotas do mês** no alto de Gestão › Notas fiscais, por competência: alíquota de ISS e valor aproximado dos tributos, do e-mail da contabilidade. Sem as alíquotas da competência, não emite.
+- **Emitir** abre uma prévia com as escolhas do cliente: declarar ou não os dados dele na nota e ISSQN retido pelo tomador (com alíquota, ISS retido e valor líquido). A próxima nota do mesmo cliente já vem com as mesmas escolhas.
+- **Tributação federal:** em Configurações, a Situação Tributária do PIS/COFINS (00 a 09; no Simples, 00 - Nenhum) e as alíquotas de PIS, COFINS, CSLL, IRRF e previdenciária. A **retenção federal** (tipo de retenção do PIS/COFINS/CSLL, IRRF e previdenciária retidos) é escolhida cliente a cliente na emissão, lembrada para a próxima nota, e entra na prévia do valor líquido.
+- **IBS/CBS:** "Preencher as informações IBS/CBS?" (Sim/Não) em Configurações, com os códigos de situação e de classificação tributária. Com Sim, os códigos ficam guardados, mas a emissão por aqui fica bloqueada até o grupo IBS/CBS ser conferido no leiaute oficial.
+- Migrações `2026_12_05_000001_nfse_aliquotas_retencao` e `2026_12_05_000002_nfse_retencao_federal`.
+- Arquivos: app/Servicos/Nfse/{ConfigNfse,Dps,Notas}.php, NfseController, Models/Nfse, as duas migrações, routes/web.php, Pages/Configuracoes/Nfse.jsx, Pages/NotasFiscais/Index.jsx, tests/Feature/NfseTest.php, docs 12, 13 e 16.
+
+## 19/11/2026 — NFS-e pelo Sistema Nacional (Emissor Nacional)
+
+- **Gestão › Notas fiscais:** recebimentos sem nota ("A emitir", com o botão Emitir) e as notas emitidas, com PDF, XML, "Conferir" (quando o envio ficou sem resposta) e cancelamento com motivo. Uma nota por recebimento; cliente com CPF/CNPJ vai como tomador, sem documento a nota sai para consumidor.
+- **Configurações › Nota fiscal (NFS-e):** certificado A1 (o .pfx é aberto no navegador: a senha não sai do computador; guardado criptografado e conferido contra o CNPJ da empresa), regime (Simples, híbrido com ISS por fora, fora do Simples), códigos do serviço, série da DPS e o botão Testes/Produção. Começa em testes (produção restrita, sem valor fiscal).
+- Nova permissão "Notas fiscais (NFS-e)". Novo pacote `node-forge` (ler o .pfx no navegador).
+- Ainda sem o grupo de IBS/CBS, emissão automática e envio ao cliente (docs/16-nfse.md).
+- 273 testes.
+- Migração: `2026_12_04_000001_create_nfses`.
+- Arquivos: `app/Servicos/Nfse/*` (novos: ConfigNfse, Dps, AssinaturaXml, SefinNacional, SemResposta, Notas), `app/Models/Nfse.php`, `app/Http/Controllers/NfseController.php`, `config/permissoes.php`, `routes/web.php`, `resources/js/lib/menu.js`, `resources/js/Pages/Configuracoes/Nfse.jsx`, `resources/js/Pages/NotasFiscais/Index.jsx`, `package.json`, `package-lock.json`, `tests/Feature/NfseTest.php`, docs 12, 13 e 16 (novo).
+
 ## 19/11/2026 — PDV: PINs da unidade valem sem internet (8.7 encerrada)
 
 - A cópia do sistema que o celular guarda passa a trazer, de quem tem PIN na unidade do aparelho, uma versão do PIN para conferir sem internet (PBKDF2 com o sal da empresa; o PIN em si nunca sai do servidor). Funcionário novo ou PIN trocado já vale sem internet na próxima cópia, sem precisar usar o PIN naquele celular antes. PINs de antes disto ganham a versão no primeiro uso com internet.
