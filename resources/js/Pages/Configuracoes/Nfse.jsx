@@ -3,6 +3,7 @@ import { useState } from 'react'
 import AbasConfiguracoes from '../../Components/AbasConfiguracoes'
 import TituloPagina from '../../Components/TituloPagina'
 import Campo from '../../Components/Campo'
+import CampoValor from '../../Components/CampoValor'
 
 /**
  * Lê o .pfx no navegador (node-forge, carregado só nesta tela) e devolve certificado e chave em PEM. A senha do .pfx
@@ -121,8 +122,10 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
             {Object.entries(mapa).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
         </Campo>
     )
-    const pctCampo = (k, rotulo, extra = {}) => campo(k, rotulo, { inputMode: 'decimal', ...extra, onChange: (ev) => form.setData(k, ev.target.value.replace(',', '.')) })
+    // máscara de maquininha (CampoValor), como os juros do Banco Inter; zerado = em branco
+    const pctCampo = (k, rotulo, extra = {}) => <CampoValor rotulo={rotulo} prefixo="%" opcional value={c[k] === '' ? 0 : Number(c[k])} erro={e[k]} onChange={(v) => form.setData(k, v)} {...extra} />
     const comBase = federal.com_base.includes(c.pis_cofins_cst)
+    const ret = federal.ret[c.tp_ret_pis_cofins] || {}
     const salvar = (ev) => { ev.preventDefault(); form.put('/configuracoes/nfse', { preserveScroll: true }) }
     const trocarAmbiente = (a) => {
         if (a === 'producao' && !window.confirm('Passar para produção? A partir daí as notas valem de verdade (vão para o cliente e para a prefeitura).')) return
@@ -172,7 +175,7 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                             })}</div>
                         )}
                     </div>
-                    <p className="small text-muted mt-2 mb-0">Compras governamentais, destinatário e intermediário vão como no Emissor: “Não” e “não informado”. O tomador é o cliente do recebimento; declarar ou não os dados dele e as retenções (ISSQN e federais) você escolhe cliente a cliente, na hora de emitir.</p>
+                    <p className="small text-muted mt-2 mb-0">Compras governamentais, destinatário e intermediário vão como no Emissor: “Não” e “não informado”. O tomador é o cliente do recebimento; declarar ou não os dados dele, a retenção do ISSQN e a retenção federal você escolhe cliente a cliente, na hora de emitir.</p>
                 </Passo>
 
                 <Passo n="2" nome="Serviço/fornecimento prestado" onde="Serviço">
@@ -212,16 +215,18 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                     <h3 className="fs-6 mt-4 mb-2">Tributação federal</h3>
                     <div className="row g-2">
                         <div className="col-md-6">{lista('pis_cofins_cst', 'Situação Tributária do PIS/COFINS', federal.cst, { ajuda: c.pis_cofins_cst === '00' ? 'No Simples Nacional: 00 - Nenhum (PIS e COFINS vão no DAS).' : comBase ? 'Leva base de cálculo, alíquotas e valores de PIS e COFINS.' : undefined })}</div>
-                        <div className="col-12" />
-                        <div className="col-6 col-md-4">{pctCampo('p_aliq_pis', 'PIS (%)', { ajuda: comBase ? 'Presumido 0,65 · real 1,65' : 'Usada se o cliente retiver PIS (0,65).' })}</div>
-                        <div className="col-6 col-md-4">{pctCampo('p_aliq_cofins', 'COFINS (%)', { ajuda: comBase ? 'Presumido 3,00 · real 7,60' : 'Usada se o cliente retiver COFINS (3,00).' })}</div>
-                        <div className="col-6 col-md-4">{pctCampo('p_ret_csll', 'CSLL (%)', { ajuda: 'Usada se o cliente retiver CSLL (1,00).' })}</div>
-                        <div className="col-6 col-md-4">{pctCampo('p_ret_irrf', 'IRRF (%)', { ajuda: 'Usada se o cliente retiver IRRF (1,50).' })}</div>
-                        <div className="col-6 col-md-4">{pctCampo('p_ret_cp', 'Contribuição previdenciária (%)', { ajuda: 'Usada se o cliente retiver.' })}</div>
+                        <div className="col-md-6">{lista('tp_ret_pis_cofins', 'Tipo de retenção do PIS/COFINS/CSLL', Object.fromEntries(Object.entries(federal.ret).map(([v, r]) => [v, r.nome])), {
+                            ajuda: c.tp_ret_pis_cofins === '0' ? 'No Simples: não retidos (optante do Simples fica fora dessa retenção).' : 'Usado quando o cliente retém (você marca na emissão, cliente a cliente).',
+                        })}</div>
+                        {(comBase || ret.pis) && <div className="col-6 col-md-4">{pctCampo('p_aliq_pis', 'PIS', { ajuda: comBase ? 'Presumido 0,65 · real 1,65' : 'Retenção: 0,65' })}</div>}
+                        {(comBase || ret.cofins) && <div className="col-6 col-md-4">{pctCampo('p_aliq_cofins', 'COFINS', { ajuda: comBase ? 'Presumido 3,00 · real 7,60' : 'Retenção: 3,00' })}</div>}
+                        {ret.csll && <div className="col-6 col-md-4">{pctCampo('p_ret_csll', 'CSLL retida', { ajuda: 'Normalmente 1,00' })}</div>}
+                        <div className="col-6 col-md-4">{pctCampo('p_ret_irrf', 'IRRF retido', { ajuda: 'Em 0,00: não entra na retenção.' })}</div>
+                        <div className="col-6 col-md-4">{pctCampo('p_ret_cp', 'Previdenciária retida', { ajuda: 'Em 0,00: não entra na retenção.' })}</div>
                     </div>
                     <p className="small text-muted mt-2 mb-0">
-                        No Simples: <strong>00 - Nenhum</strong>. As outras situações ficam para se mudar de regime (confirme com a contabilidade).
-                        <strong> Retenção</strong> (PIS/COFINS/CSLL, IRRF, previdenciária) é escolhida cliente a cliente, na hora de emitir; aqui ficam só as alíquotas usadas no cálculo.
+                        Hoje, no Simples: <strong>00 - Nenhum</strong>, <strong>0 - Não Retidos</strong>, IRRF e previdenciária em 0,00. As outras opções ficam para se mudar de regime (confirme com a contabilidade).
+                        Aqui fica <em>como</em> é a retenção; <em>se</em> o cliente retém você marca na emissão (a opção só aparece quando há retenção configurada).
                     </p>
 
                     {c.ibs_cbs && (

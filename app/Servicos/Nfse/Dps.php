@@ -74,16 +74,16 @@ class Dps
         return Str::limit($base.($linhas->isNotEmpty() ? "\n".$linhas->implode("\n") : ''), 2000, '');
     }
 
-    /** competência (AAAA-MM) da nota de um recebimento */
-    public static function competencia(Pagamento $p): string
+    /** competência (AAAA-MM) da nota: o mês da emissão (a data de competência é o dia em que a nota é emitida) */
+    public static function competencia(?Carbon $agora = null): string
     {
-        return $p->recebido_em->copy()->setTimezone('America/Sao_Paulo')->format('Y-m');
+        return ($agora ?? now())->copy()->setTimezone('America/Sao_Paulo')->format('Y-m');
     }
 
     /**
      * @param  array{iss: string, tributos: string}  $aliq  alíquotas da competência
      * @param  bool  $identificar  declarar os dados do cliente (tomador) na nota; false = nota sem tomador
-     * @param  array{tipo?: string, irrf?: bool, cp?: bool}  $fed  retenção federal escolhida para o cliente
+     * @param  array{tipo?: string, irrf?: bool, cp?: bool}  $fed  retenção federal (da configuração)
      * @return array{xml: string, id: string, tomador_documento: ?string, tomador_nome: ?string, descricao: string, valor_iss: ?float}
      */
     public static function montar(Pagamento $p, Empresa $e, array $cfg, string $ambiente, int $numero, array $aliq, bool $retido = false, bool $identificar = true, array $fed = [], ?Carbon $agora = null): array
@@ -110,7 +110,7 @@ class Dps
         self::filho($d, $inf, 'verAplic', 'ERP-Local-1.0');
         self::filho($d, $inf, 'serie', $serie);
         self::filho($d, $inf, 'nDPS', (string) $numero);
-        self::filho($d, $inf, 'dCompet', $p->recebido_em->copy()->setTimezone('America/Sao_Paulo')->format('Y-m-d'));
+        self::filho($d, $inf, 'dCompet', $agora->copy()->setTimezone('America/Sao_Paulo')->format('Y-m-d'));   // competência = dia da emissão
         self::filho($d, $inf, 'tpEmit', '1');
         self::filho($d, $inf, 'cLocEmi', $mun);
 
@@ -134,7 +134,7 @@ class Dps
         }
         $fed = ['tipo' => (string) ($fed['tipo'] ?? '0'), 'irrf' => (bool) ($fed['irrf'] ?? false), 'cp' => (bool) ($fed['cp'] ?? false)];
         if (($fed['tipo'] !== '0' || $fed['irrf'] || $fed['cp']) && ! $tomDoc) {
-            throw ValidationException::withMessages(['nfse' => 'Retenção federal precisa dos dados do cliente na nota.']);
+            throw ValidationException::withMessages(['nfse' => 'A configuração tem retenção federal: a nota precisa dos dados do cliente.']);
         }
         if ($retido && $tomMun !== $mun) {
             throw ValidationException::withMessages(['nfse' => 'ISS retido: o cadastro do cliente precisa do endereço completo (CEP, rua, número, bairro) no município da prestação, como pede o Emissor Nacional.']);
@@ -184,9 +184,8 @@ class Dps
     }
 
     /**
-     * Tributação federal (tribFed). PIS/COFINS: CST (configuração) e tipo de retenção (escolhido para o cliente)
-     * sempre, como no Emissor; base, alíquotas e valores só com CST de 01 a 07. Retidos (NT 007): vRetCSLL leva a
-     * soma de PIS, COFINS e CSLL retidos; IRRF e contribuição previdenciária quando o cliente retém.
+     * Tributação federal (tribFed). PIS/COFINS: CST e tipo de retenção (configuração) sempre, como no Emissor; base, alíquotas e valores só com CST de 01 a 07. Retidos (NT 007): vRetCSLL leva a
+     * soma de PIS, COFINS e CSLL retidos; IRRF e contribuição previdenciária quando configurados.
      *
      * @return float total retido de tributos federais
      */

@@ -30,12 +30,13 @@ class ConfigNfse
         'especificar_servicos' => false,  // nome do serviço (estadia, lavagem) em cada linha; mensalidade sempre vai
         // tributação federal (como no Emissor: "00 - Nenhum" e "0 - Não retidos" para quem está no Simples)
         'pis_cofins_cst' => '00',
-        // alíquotas: valem para a base (CST 01 a 07) e para quando o cliente retém (escolha na emissão)
+        'tp_ret_pis_cofins' => '0',      // tipo de retenção quando o cliente retém (no Simples: 0, não há retenção)
+        // alíquotas: valem para a base (CST 01 a 07) e para as retenções
         'p_aliq_pis' => '',              // % (lucro presumido 0,65 / real 1,65; retenção 0,65)
         'p_aliq_cofins' => '',           // % (presumido 3,00 / real 7,60; retenção 3,00)
         'p_ret_csll' => '1.00',          // % da CSLL quando retida
-        'p_ret_irrf' => '1.50',          // % do IRRF quando retido
-        'p_ret_cp' => '',                // % da contribuição previdenciária quando retida
+        'p_ret_irrf' => '',              // % do IRRF quando o cliente retém (em branco = não entra)
+        'p_ret_cp' => '',                // % da previdenciária quando o cliente retém (em branco = não entra)
         // IBS/CBS ("Preencher as informações IBS/CBS?" no Emissor)
         'ibs_cbs' => false,
         'ibs_cbs_cst' => '',
@@ -88,13 +89,21 @@ class ConfigNfse
         '9' => ['9 - PIS/CSLL Retidos, COFINS Não Retido', true, false, true],
     ];
 
-    /** % do valor retido em tributos federais, para a prévia: tipo de retenção do cliente + IRRF e previdenciária */
-    public static function retencaoFederal(array $c, string $tipo = '0', bool $irrf = false, bool $cp = false): float
+    /** retenção federal da configuração: tipo do PIS/COFINS/CSLL e se retém IRRF e previdenciária (percentual preenchido) */
+    public static function retencaoConfigurada(array $c): array
     {
         $n = fn ($k) => (float) str_replace(',', '.', (string) ($c[$k] ?? 0));
-        $r = self::RET_PIS_COFINS[$tipo] ?? self::RET_PIS_COFINS['0'];
 
-        return ($r[1] ? $n('p_aliq_pis') : 0) + ($r[2] ? $n('p_aliq_cofins') : 0) + ($r[3] ? $n('p_ret_csll') : 0) + ($irrf ? $n('p_ret_irrf') : 0) + ($cp ? $n('p_ret_cp') : 0);
+        return ['tipo' => (string) ($c['tp_ret_pis_cofins'] ?? '0'), 'irrf' => $n('p_ret_irrf') > 0, 'cp' => $n('p_ret_cp') > 0];
+    }
+
+    /** % do valor retido em tributos federais, para a prévia */
+    public static function retencaoFederal(array $c): float
+    {
+        $n = fn ($k) => (float) str_replace(',', '.', (string) ($c[$k] ?? 0));
+        $r = self::RET_PIS_COFINS[(string) ($c['tp_ret_pis_cofins'] ?? '0')] ?? self::RET_PIS_COFINS['0'];
+
+        return round(($r[1] ? $n('p_aliq_pis') : 0) + ($r[2] ? $n('p_aliq_cofins') : 0) + ($r[3] ? $n('p_ret_csll') : 0) + $n('p_ret_irrf') + $n('p_ret_cp'), 2);
     }
 
     /** nomes dos códigos mais prováveis, para mostrar ao lado do número */

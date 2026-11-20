@@ -41,9 +41,9 @@ class Notas
     /**
      * @param  bool  $retido  ISS retido pelo tomador (cliente que recolhe o ISS no lugar do Local)
      * @param  bool  $identificar  declarar os dados do cliente na nota (false: nota sem tomador)
-     * @param  array{tipo?: string, irrf?: bool, cp?: bool}  $fed  retenção federal do cliente
+     * @param  bool  $retemFederal  o cliente retém os tributos federais (tipo e alíquotas da configuração)
      */
-    public static function emitir(Pagamento $p, bool $retido = false, bool $identificar = true, array $fed = []): Nfse
+    public static function emitir(Pagamento $p, bool $retido = false, bool $identificar = true, bool $retemFederal = false): Nfse
     {
         $empresa = Empresa::atual();
         $cfg = ConfigNfse::ler($empresa);
@@ -57,8 +57,9 @@ class Notas
             // o grupo IBS/CBS da DPS entra quando for conferido no leiaute oficial em vigor (docs/16-nfse.md)
             throw ValidationException::withMessages(['nfse' => 'Com "Preencher as informações IBS/CBS" em Sim, a emissão por aqui ainda não está pronta. Emita pelo Emissor Nacional ou volte para Não.']);
         }
-        $fed = ['tipo' => (string) ($fed['tipo'] ?? '0'), 'irrf' => (bool) ($fed['irrf'] ?? false), 'cp' => (bool) ($fed['cp'] ?? false)];
-        $competencia = Dps::competencia($p);
+        // retenção federal: o cliente diz se retém; o tipo e as alíquotas são os da configuração da empresa
+        $fed = $retemFederal ? ConfigNfse::retencaoConfigurada($cfg) : ['tipo' => '0', 'irrf' => false, 'cp' => false];
+        $competencia = Dps::competencia();
         $aliq = ConfigNfse::aliquotas($competencia, $empresa);
         if (! $aliq) {
             throw ValidationException::withMessages(['nfse' => 'Falta informar as alíquotas de '.Carbon::parse($competencia.'-01')->format('m/Y').' (do e-mail da contabilidade), no alto da página Notas fiscais.']);

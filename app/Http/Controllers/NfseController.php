@@ -39,13 +39,15 @@ class NfseController extends Controller
             'faltando' => ConfigNfse::faltando(),
             'opcoes' => ['op_simples' => ConfigNfse::OP_SIMPLES, 'reg_ap' => ConfigNfse::REG_AP, 'reg_esp' => ConfigNfse::REG_ESP],
             'nomes' => ConfigNfse::NOMES,
-            'federal' => ['cst' => ConfigNfse::CST_PIS_COFINS, 'com_base' => ConfigNfse::CST_COM_BASE],
+            'federal' => ['cst' => ConfigNfse::CST_PIS_COFINS, 'com_base' => ConfigNfse::CST_COM_BASE,
+                'ret' => array_map(fn ($r) => ['nome' => $r[0], 'pis' => $r[1], 'cofins' => $r[2], 'csll' => $r[3]], ConfigNfse::RET_PIS_COFINS)],
         ]);
     }
 
     public function salvarConfig(Request $r): RedirectResponse
     {
         $r->merge(ConfigNfse::normalizar($r->only(['c_trib_nac', 'c_trib_mun', 'c_nbs', 'im', 'municipio_ibge'])));
+        $r->merge(array_map(fn ($v) => is_string($v) ? str_replace(',', '.', $v) : $v, $r->only(['p_aliq_pis', 'p_aliq_cofins', 'p_ret_csll', 'p_ret_irrf', 'p_ret_cp'])));
         $d = $r->validate([
             'im' => ['nullable', 'string', 'max:15'],
             'municipio_ibge' => ['required', 'digits:7'],
@@ -59,17 +61,19 @@ class NfseController extends Controller
             'descricao' => ['required', 'string', 'max:300'],
             'especificar_servicos' => ['boolean'],
             'pis_cofins_cst' => ['required', Rule::in(array_keys(ConfigNfse::CST_PIS_COFINS))],
-            'p_aliq_pis' => [Rule::requiredIf(fn () => in_array($r->input('pis_cofins_cst'), ConfigNfse::CST_COM_BASE, true)), 'nullable', 'numeric', 'min:0', 'max:100'],
-            'p_aliq_cofins' => [Rule::requiredIf(fn () => in_array($r->input('pis_cofins_cst'), ConfigNfse::CST_COM_BASE, true)), 'nullable', 'numeric', 'min:0', 'max:100'],
-            'p_ret_csll' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tp_ret_pis_cofins' => ['required', Rule::in(array_keys(ConfigNfse::RET_PIS_COFINS))],
+            'p_aliq_pis' => [Rule::requiredIf(fn () => in_array($r->input('pis_cofins_cst'), ConfigNfse::CST_COM_BASE, true) || (ConfigNfse::RET_PIS_COFINS[$r->input('tp_ret_pis_cofins')][1] ?? false)), 'nullable', 'numeric', 'min:0', 'max:100'],
+            'p_aliq_cofins' => [Rule::requiredIf(fn () => in_array($r->input('pis_cofins_cst'), ConfigNfse::CST_COM_BASE, true) || (ConfigNfse::RET_PIS_COFINS[$r->input('tp_ret_pis_cofins')][2] ?? false)), 'nullable', 'numeric', 'min:0', 'max:100'],
+            'p_ret_csll' => [Rule::requiredIf(fn () => ConfigNfse::RET_PIS_COFINS[$r->input('tp_ret_pis_cofins')][3] ?? false), 'nullable', 'numeric', 'min:0', 'max:100'],
             'p_ret_irrf' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'p_ret_cp' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'ibs_cbs' => ['boolean'],
             'ibs_cbs_cst' => ['nullable', 'required_if:ibs_cbs,true,1', 'digits:3'],
             'ibs_cbs_class' => ['nullable', 'required_if:ibs_cbs,true,1', 'digits:6'],
         ], [
-            'p_aliq_pis.required' => 'Essa situação tributária pede a alíquota do PIS.',
-            'p_aliq_cofins.required' => 'Essa situação tributária pede a alíquota da COFINS.',
+            'p_aliq_pis.required' => 'Essa situação tributária ou retenção pede a alíquota do PIS.',
+            'p_aliq_cofins.required' => 'Essa situação tributária ou retenção pede a alíquota da COFINS.',
+            'p_ret_csll.required' => 'A retenção escolhida pede a alíquota da CSLL.',
             'ibs_cbs_cst.digits' => 'O código de situação tributária do IBS/CBS tem 3 números.',
             'ibs_cbs_class.digits' => 'O código de classificação tributária tem 6 números.',
             'c_trib_nac.digits' => 'Copie do Emissor Nacional: 11.01.01 (6 números).',
@@ -152,13 +156,13 @@ class NfseController extends Controller
             ->orderByDesc('recebido_em')->limit(300)->get()
             ->map(fn (Pagamento $p) => ['id' => $p->id, 'recebido_em' => $p->recebido_em->format('d/m/Y H:i'), 'valor' => (float) $p->valor,
                 'cliente' => $p->cliente?->nome, 'documento' => Documento::valido($p->cliente?->documento) ? Documento::formatar($p->cliente->documento) : null,
-                'forma' => $p->forma?->nome, 'origem' => $p->origem, 'competencia' => Dps::competencia($p),
+                'forma' => $p->forma?->nome, 'origem' => $p->origem,
                 'pode_identificar' => Documento::valido($p->cliente?->documento),
                 'pode_reter' => Documento::valido($p->cliente?->documento) && Dps::municipioDoCliente($p->cliente) === $mun,
                 'retido_antes' => (bool) $ultima->get($p->cliente_id)?->iss_retido,
                 'identificar_antes' => $ultima->get($p->cliente_id)?->tomador_identificado ?? true,
-                'federal_antes' => ['tipo' => $ultima->get($p->cliente_id)?->ret_federal ?? '0', 'irrf' => (bool) $ultima->get($p->cliente_id)?->ret_irrf, 'cp' => (bool) $ultima->get($p->cliente_id)?->ret_cp]]);
-        $atual = now()->setTimezone('America/Sao_Paulo')->format('Y-m');
+                'federal_antes' => ($u = $ultima->get($p->cliente_id)) ? ($u->ret_federal !== '0' || $u->ret_irrf || $u->ret_cp) : false]);
+        $atual = Dps::competencia();
         $aliquotas = collect(ConfigNfse::ler()['aliquotas'])->map(fn ($a, $c) => ['competencia' => $c] + $a)->values();
         $notas = Nfse::with('pagamento:id,recebido_em', 'cliente:id,nome')->orderByDesc('id')->paginate(30)->withQueryString()
             ->through(fn (Nfse $n) => ['id' => $n->id, 'situacao' => $n->situacao, 'ambiente' => $n->ambiente, 'numero' => $n->numero_nfse, 'dps' => $n->serie.'-'.$n->numero_dps,
@@ -170,30 +174,19 @@ class NfseController extends Controller
         return Inertia::render('NotasFiscais/Index', [
             'aEmitir' => $aEmitir, 'notas' => $notas, 'filtros' => ['de' => $de, 'ate' => $ate],
             'faltando' => ConfigNfse::faltando(), 'ambiente' => ConfigNfse::ambiente(),
-            'aliquotas' => $aliquotas, 'competenciaAtual' => $atual, 'federal' => self::federalParaEmissao(),
+            'aliquotas' => $aliquotas, 'competenciaAtual' => $atual, 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
         ]);
-    }
-
-    /** opções de retenção federal e as alíquotas da configuração, para a escolha e a prévia na emissão */
-    private static function federalParaEmissao(): array
-    {
-        $c = ConfigNfse::ler();
-        $n = fn ($k) => (float) str_replace(',', '.', (string) $c[$k]);
-
-        return [
-            'tipos' => array_map(fn ($r) => ['nome' => $r[0], 'pis' => $r[1], 'cofins' => $r[2], 'csll' => $r[3]], ConfigNfse::RET_PIS_COFINS),
-            'pct' => ['pis' => $n('p_aliq_pis'), 'cofins' => $n('p_aliq_cofins'), 'csll' => $n('p_ret_csll'), 'irrf' => $n('p_ret_irrf'), 'cp' => $n('p_ret_cp')],
-        ];
     }
 
     /** alíquotas do mês (e-mail da contabilidade) */
     public function aliquotas(Request $r): RedirectResponse
     {
+        $r->merge(array_map(fn ($v) => is_string($v) ? str_replace(',', '.', $v) : $v, $r->only(['iss', 'tributos'])));
         $d = $r->validate([
             'competencia' => ['required', 'date_format:Y-m'],
-            'iss' => ['required', 'numeric', 'min:0', 'max:5'],
-            'tributos' => ['required', 'numeric', 'min:0', 'max:100'],
-        ], ['iss.max' => 'O ISS vai até 5%.'], ['iss' => 'alíquota de ISS', 'tributos' => 'valor aproximado dos tributos']);
+            'iss' => ['required', 'numeric', 'gt:0', 'max:5'],
+            'tributos' => ['required', 'numeric', 'gt:0', 'max:100'],
+        ], ['iss.max' => 'O ISS vai até 5%.', 'iss.gt' => 'Informe a alíquota de ISS do e-mail.', 'tributos.gt' => 'Informe o valor aproximado dos tributos do e-mail.'], ['iss' => 'alíquota de ISS', 'tributos' => 'valor aproximado dos tributos']);
         $fmt = fn ($v) => number_format((float) $v, 2, '.', '');
         ConfigNfse::gravarAliquotas($d['competencia'], $fmt($d['iss']), $fmt($d['tributos']));
         $mes = Carbon::parse($d['competencia'].'-01')->format('m/Y');
@@ -205,8 +198,7 @@ class NfseController extends Controller
     public function emitir(Request $r, Pagamento $pagamento): RedirectResponse
     {
         try {
-            $fed = ['tipo' => (string) $r->input('ret_federal', '0'), 'irrf' => $r->boolean('ret_irrf'), 'cp' => $r->boolean('ret_cp')];
-            $n = Notas::emitir($pagamento, $r->boolean('retido'), $r->boolean('identificar', true), $fed);
+            $n = Notas::emitir($pagamento, $r->boolean('retido'), $r->boolean('identificar', true), $r->boolean('retem_federal'));
         } catch (\RuntimeException $e) {
             return back()->with('erro', $e->getMessage());
         }

@@ -40,6 +40,7 @@ class NfseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->travelTo(Carbon::parse('2026-11-19 12:00:00', 'America/Sao_Paulo'));   // competência = mês da emissão: 11/2026
         $this->a = $this->criarEmpresa('a');
         app(EmpresaAtual::class)->definir($this->a->empresa->id);
         $this->a->empresa->update(['documento' => self::CNPJ, 'razao_social' => 'LOCAL ESTACIONAMENTO LTDA']);
@@ -128,6 +129,7 @@ class NfseTest extends TestCase
         $this->assertStringNotContainsString('<pAliq>', $enviado);   // Simples sem retenção não informa alíquota
         $this->assertStringContainsString('</tribMun><tribFed><piscofins><CST>00</CST><tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed><totTrib>', $enviado);
         $this->assertSame('2026-11', $n->competencia);
+        $this->assertSame('2026-11-19', $v('dCompet'));   // competência = dia da emissão
         $this->assertSame("Serviço de estacionamento\nABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00", $v('xDescServ'));
 
         // o mesmo recebimento não ganha segunda nota
@@ -139,13 +141,13 @@ class NfseTest extends TestCase
     {
         $this->configurar();
         $p = $this->recebimento();
-        $p->update(['recebido_em' => '2026-12-02 10:00:00']);
+        $this->travel(13)->days();   // emissão em 02/12: competência 12/2026
         Http::fake();
         $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHasErrors(['nfse' => 'Falta informar as alíquotas de 12/2026 (do e-mail da contabilidade), no alto da página Notas fiscais.']);
         Http::assertNothingSent();
 
-        $this->actingAs($this->a->admin)->put('/notas-fiscais/aliquotas', ['competencia' => '2026-12', 'iss' => '6', 'tributos' => '17,5'])->assertSessionHasErrors(['iss', 'tributos']);
-        $this->actingAs($this->a->admin)->put('/notas-fiscais/aliquotas', ['competencia' => '2026-12', 'iss' => '2.5', 'tributos' => '17.5'])->assertSessionHas('sucesso');
+        $this->actingAs($this->a->admin)->put('/notas-fiscais/aliquotas', ['competencia' => '2026-12', 'iss' => '6', 'tributos' => 'x'])->assertSessionHasErrors(['iss', 'tributos']);
+        $this->actingAs($this->a->admin)->put('/notas-fiscais/aliquotas', ['competencia' => '2026-12', 'iss' => '2,5', 'tributos' => '17,5'])->assertSessionHas('sucesso');
         $this->assertSame(['iss' => '2.50', 'tributos' => '17.50'], ConfigNfse::aliquotas('2026-12'));
         $this->assertSame(['iss' => '2.01', 'tributos' => '17.62'], ConfigNfse::aliquotas('2026-11'));
     }
@@ -213,41 +215,44 @@ class NfseTest extends TestCase
         $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p2->id}", ['identificar' => false, 'retido' => true])->assertSessionHasErrors('nfse');
     }
 
-    public function test_tributacao_federal_de_outro_regime_e_retencao_do_cliente(): void
+    public function test_tributacao_federal_de_outro_regime_com_retencao_na_configuracao(): void
     {
         $this->configurar();
         $adm = $this->actingAs($this->a->admin);
         $base = ['municipio_ibge' => '3548500', 'op_simples' => '1', 'reg_ap_trib_sn' => '1', 'reg_esp_trib' => '0', 'c_trib_nac' => '110101', 'c_trib_mun' => '004',
-            'c_nbs' => '106043000', 'serie' => '7', 'descricao' => 'Estacionamento', 'pis_cofins_cst' => '01'];
-        $adm->put('/configuracoes/nfse', $base)->assertSessionHasErrors(['p_aliq_pis', 'p_aliq_cofins']);
-        $adm->put('/configuracoes/nfse', $base + ['p_aliq_pis' => '0,65', 'p_aliq_cofins' => '3', 'p_ret_csll' => '1', 'p_ret_irrf' => '1.5'])->assertSessionHasErrors('p_aliq_pis');
-        $adm->put('/configuracoes/nfse', $base + ['p_aliq_pis' => '0.65', 'p_aliq_cofins' => '3', 'p_ret_csll' => '1', 'p_ret_irrf' => '1.5'])->assertSessionHas('sucesso');
+            'c_nbs' => '106043000', 'serie' => '7', 'descricao' => 'Estacionamento', 'pis_cofins_cst' => '01', 'tp_ret_pis_cofins' => '3'];
+        $adm->put('/configuracoes/nfse', $base)->assertSessionHasErrors(['p_aliq_pis', 'p_aliq_cofins', 'p_ret_csll']);
+        $adm->put('/configuracoes/nfse', $base + ['p_aliq_pis' => '0,65', 'p_aliq_cofins' => '3', 'p_ret_csll' => '1', 'p_ret_irrf' => '1,5'])->assertSessionHas('sucesso');   // aceita vírgula
+        $this->assertSame(6.15, ConfigNfse::retencaoFederal(ConfigNfse::ler()));
 
         $p = $this->recebimento('11444777000161');   // R$ 180
         $enviado = null;
-        Http::fake(function (Request $r) use (&$enviado) {
+        $k = 0;
+        Http::fake(function (Request $r) use (&$enviado, &$k) {
             $enviado = gzdecode(base64_decode($r['dpsXmlGZipB64']));
 
-            return Http::response($this->nfseFalsa(), 201);
+            return Http::response($this->nfseFalsa('3548500221122233300018100000000000012611000000000'.++$k), 201);
         });
-        // previdenciária sem alíquota configurada: não deixa
-        $adm->post("/notas-fiscais/emitir/{$p->id}", ['ret_federal' => '3', 'ret_irrf' => true, 'ret_cp' => true])->assertSessionHasErrors('nfse');
-        $adm->post("/notas-fiscais/emitir/{$p->id}", ['ret_federal' => '3', 'ret_irrf' => true])->assertSessionHas('sucesso');
+        // o cliente retém: precisa dos dados dele na nota
+        $adm->post("/notas-fiscais/emitir/{$p->id}", ['identificar' => false, 'retem_federal' => true])->assertSessionHasErrors('nfse');
+        $adm->post("/notas-fiscais/emitir/{$p->id}", ['retem_federal' => true])->assertSessionHas('sucesso');
         $this->assertStringContainsString('<tribFed><piscofins><CST>01</CST><vBCPisCofins>180.00</vBCPisCofins><pAliqPis>0.65</pAliqPis><pAliqCofins>3.00</pAliqCofins>'
             .'<vPis>1.17</vPis><vCofins>5.40</vCofins><tpRetPisCofins>3</tpRetPisCofins></piscofins><vRetIRRF>2.70</vRetIRRF><vRetCSLL>8.37</vRetCSLL></tribFed>', $enviado);
-        $n = Nfse::first();
+        $n = Nfse::where('situacao', 'emitida')->first();
         $this->assertSame(['3', true, false, '11.07'], [$n->ret_federal, $n->ret_irrf, $n->ret_cp, $n->valor_ret_federal]);
 
-        // a próxima nota do cliente já vem com a mesma retenção
+        // a próxima nota do cliente já vem marcada; cliente que não retém: só CST, sem retenção
         $p2 = Baixa::receberNaHora([Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $p->cliente_id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20])], FormaPagamento::where('tipo', 'pix')->value('id'));
-        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aEmitir.0.id', $p2->id)->where('aEmitir.0.federal_antes', ['tipo' => '3', 'irrf' => true, 'cp' => false]));
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aEmitir.0.id', $p2->id)->where('aEmitir.0.federal_antes', true));
+        $adm->post("/notas-fiscais/emitir/{$p2->id}")->assertSessionHas('sucesso');
+        $this->assertStringContainsString('<tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed>', $enviado);
     }
 
     public function test_ibs_cbs_sim_guarda_os_codigos_mas_nao_emite_ainda(): void
     {
         $this->configurar();
         $base = ['municipio_ibge' => '3548500', 'op_simples' => '3', 'reg_ap_trib_sn' => '1', 'reg_esp_trib' => '0', 'c_trib_nac' => '110101', 'c_trib_mun' => '004',
-            'c_nbs' => '106043000', 'serie' => '7', 'descricao' => 'Estacionamento', 'pis_cofins_cst' => '00', 'ibs_cbs' => true];
+            'c_nbs' => '106043000', 'serie' => '7', 'descricao' => 'Estacionamento', 'pis_cofins_cst' => '00', 'tp_ret_pis_cofins' => '0', 'ibs_cbs' => true];
         $this->actingAs($this->a->admin)->put('/configuracoes/nfse', $base)->assertSessionHasErrors(['ibs_cbs_cst', 'ibs_cbs_class']);
         $this->actingAs($this->a->admin)->put('/configuracoes/nfse', $base + ['ibs_cbs_cst' => '000', 'ibs_cbs_class' => '000001'])->assertSessionHas('sucesso');
         $p = $this->recebimento();
@@ -261,7 +266,7 @@ class NfseTest extends TestCase
         $this->actingAs($this->a->admin)->put('/configuracoes/nfse', [
             'municipio_ibge' => '3548500', 'op_simples' => '3', 'reg_ap_trib_sn' => '1', 'reg_esp_trib' => '0',
             'c_trib_nac' => '11.01.01', 'c_trib_mun' => '11.01.01.004', 'c_nbs' => '1.0604.30.00', 'serie' => '7', 'descricao' => 'Estacionamento',
-            'pis_cofins_cst' => '00',
+            'pis_cofins_cst' => '00', 'tp_ret_pis_cofins' => '0',
         ])->assertSessionHas('sucesso');
         $c = ConfigNfse::ler();
         $this->assertSame(['110101', '004', '106043000'], [$c['c_trib_nac'], $c['c_trib_mun'], $c['c_nbs']]);

@@ -5,6 +5,7 @@ import Paginacao from '../../Components/Paginacao'
 import CampoData from '../../Components/CampoData'
 import Janela from '../../Components/Janela'
 import Campo from '../../Components/Campo'
+import CampoValor from '../../Components/CampoValor'
 import { moeda } from '../../lib/formato'
 
 const SELO = { emitida: 'selo-ok', enviando: 'selo-aviso', rejeitada: 'selo-erro', cancelada: '' }
@@ -33,8 +34,10 @@ const pct = (v) => `${String(v).replace('.', ',')}%`
 function Aliquotas({ aliquotas, competenciaAtual, faltam }) {
     const deMes = (c) => aliquotas.find((a) => a.competencia === c)
     const inicial = faltam[0] || competenciaAtual
-    const form = useForm({ competencia: inicial, iss: deMes(inicial)?.iss || '', tributos: deMes(inicial)?.tributos || '' })
-    const trocarMes = (c) => form.setData({ competencia: c, iss: deMes(c)?.iss || '', tributos: deMes(c)?.tributos || '' })
+    // máscara de maquininha (CampoValor), como os juros do Banco Inter: 0,00 e os números entram pelos centavos
+    const doMes = (c) => ({ competencia: c, iss: Number(deMes(c)?.iss) || 0, tributos: Number(deMes(c)?.tributos) || 0 })
+    const form = useForm(doMes(inicial))
+    const trocarMes = (c) => form.setData(doMes(c))
     const salvo = deMes(form.data.competencia)
     return (
         <div className={`card mb-3${faltam.length ? ' border-warning' : ''}`}>
@@ -46,8 +49,8 @@ function Aliquotas({ aliquotas, competenciaAtual, faltam }) {
             <div className="card-body">
                 <form className="row g-2 align-items-start" noValidate onSubmit={(e) => { e.preventDefault(); form.put('/notas-fiscais/aliquotas', { preserveScroll: true }) }}>
                     <div className="col-6 col-md-3"><Campo rotulo="Competência" type="month" value={form.data.competencia} erro={form.errors.competencia} onChange={(e) => trocarMes(e.target.value)} /></div>
-                    <div className="col-6 col-md-3"><Campo rotulo="Alíquota de ISS (%)" inputMode="decimal" placeholder="2,01" value={form.data.iss} erro={form.errors.iss} onChange={(e) => form.setData('iss', e.target.value.replace(',', '.'))} ajuda="Só entra em nota com ISS retido." /></div>
-                    <div className="col-6 col-md-3"><Campo rotulo="Tributos aproximados (%)" inputMode="decimal" placeholder="17,62" value={form.data.tributos} erro={form.errors.tributos} onChange={(e) => form.setData('tributos', e.target.value.replace(',', '.'))} ajuda="O “valor aproximado dos tributos” do e-mail." /></div>
+                    <div className="col-6 col-md-3"><CampoValor rotulo="Alíquota de ISS" prefixo="%" value={form.data.iss} erro={form.errors.iss} onChange={(v) => form.setData('iss', v)} ajuda="Só entra em nota com ISS retido." /></div>
+                    <div className="col-6 col-md-3"><CampoValor rotulo="Tributos aprox." prefixo="%" value={form.data.tributos} erro={form.errors.tributos} onChange={(v) => form.setData('tributos', v)} ajuda="O “valor aproximado dos tributos” do e-mail." /></div>
                     <div className="col-6 col-md-3 d-flex flex-column">
                         <button type="submit" className="btn btn-outline-primary mt-md-4" disabled={form.processing}>{salvo ? 'Atualizar' : 'Salvar'}</button>
                         {salvo && <span className="small text-muted mt-1">{mesAno(salvo.competencia)}: ISS {pct(salvo.iss)} · tributos {pct(salvo.tributos)}</span>}
@@ -59,15 +62,10 @@ function Aliquotas({ aliquotas, competenciaAtual, faltam }) {
 }
 
 /** prévia da nota antes de emitir, como a "Prévia dos valores" do Emissor */
-function Emitir({ pagamento: p, aliquota, federal, onFechar }) {
+function Emitir({ pagamento: p, competencia, aliquota, retFederal, onFechar }) {
     const declara = p.pode_identificar && p.identificar_antes
-    const form = useForm({
-        identificar: declara, retido: p.pode_reter && declara && p.retido_antes,
-        ret_federal: declara ? p.federal_antes.tipo : '0', ret_irrf: declara && p.federal_antes.irrf, ret_cp: declara && p.federal_antes.cp,
-    })
-    const tipo = federal.tipos[form.data.ret_federal] || {}
-    const pctFed = (tipo.pis ? federal.pct.pis : 0) + (tipo.cofins ? federal.pct.cofins : 0) + (tipo.csll ? federal.pct.csll : 0)
-        + (form.data.ret_irrf ? federal.pct.irrf : 0) + (form.data.ret_cp ? federal.pct.cp : 0)
+    const form = useForm({ identificar: declara, retido: p.pode_reter && declara && p.retido_antes, retem_federal: retFederal > 0 && declara && p.federal_antes })
+    const pctFed = form.data.retem_federal ? retFederal : 0   // tipo e alíquotas: da configuração
     const iss = form.data.retido && aliquota ? Math.round(p.valor * parseFloat(aliquota.iss)) / 100 : 0
     const fed = Math.round(p.valor * pctFed) / 100
     const linha = (r, v, forte) => <div className={`d-flex justify-content-between border-bottom py-1${forte ? ' fw-semibold' : ''}`}><span>{r}</span><span>{v}</span></div>
@@ -76,14 +74,14 @@ function Emitir({ pagamento: p, aliquota, federal, onFechar }) {
             onEnviar={() => form.post(`/notas-fiscais/emitir/${p.id}`, { preserveScroll: true, onSuccess: onFechar })}>
             <div className="small mb-3">
                 {linha('Cliente', p.cliente ? `${p.cliente}${p.documento ? ` · ${p.documento}` : ''}` : 'Consumidor (sem cadastro)')}
-                {linha('Competência', mesAno(p.competencia))}
+                {linha('Competência', `${mesAno(competencia)} (data da emissão)`)}
                 {linha('Serviço prestado', moeda(p.valor))}
                 {linha('Tributos aproximados (Simples)', aliquota ? pct(aliquota.tributos) : '—')}
             </div>
             <p className="small text-muted mb-2">Escolhas deste cliente (a próxima nota dele já vem igual):</p>
             <div className="form-check mb-2">
                 <input className="form-check-input" type="checkbox" id="identificar" checked={form.data.identificar} disabled={!p.pode_identificar}
-                    onChange={(e) => form.setData(e.target.checked ? { ...form.data, identificar: true } : { identificar: false, retido: false, ret_federal: '0', ret_irrf: false, ret_cp: false })} />
+                    onChange={(e) => form.setData({ identificar: e.target.checked, retido: e.target.checked && form.data.retido, retem_federal: e.target.checked && form.data.retem_federal })} />
                 <label className="form-check-label" htmlFor="identificar">Declarar os dados do cliente na nota</label>
                 <div className="form-text">{p.pode_identificar ? 'Desmarcado, a nota sai sem tomador (“Tomador/Adquirente não informado”).' : 'Sem CPF/CNPJ válido no cadastro: a nota sai sem tomador.'}</div>
             </div>
@@ -95,15 +93,13 @@ function Emitir({ pagamento: p, aliquota, federal, onFechar }) {
                         : 'Marque quando o cliente (normalmente empresa) recolhe o ISS no lugar do Local e desconta do pagamento.'}
                 </div>
             </div>
-            <div className="row g-2 mb-2">
-                <div className="col-12">
-                    <Campo as="select" rotulo="Retenção do PIS/COFINS/CSLL" value={form.data.ret_federal} disabled={!form.data.identificar} onChange={(e) => form.setData('ret_federal', e.target.value)}>
-                        {Object.entries(federal.tipos).map(([v, t]) => <option key={v} value={v}>{t.nome}</option>)}
-                    </Campo>
+            {retFederal > 0 && (
+                <div className="form-check mb-2">
+                    <input className="form-check-input" type="checkbox" id="federal" checked={form.data.retem_federal} disabled={!form.data.identificar} onChange={(e) => form.setData('retem_federal', e.target.checked)} />
+                    <label className="form-check-label" htmlFor="federal">Retenção de tributos federais</label>
+                    <div className="form-text">Tipo e alíquotas da configuração ({pct(retFederal.toFixed(2))}). Marque quando este cliente é obrigado a reter.</div>
                 </div>
-                <div className="col-6"><div className="form-check"><input className="form-check-input" type="checkbox" id="irrf" checked={form.data.ret_irrf} disabled={!form.data.identificar} onChange={(e) => form.setData('ret_irrf', e.target.checked)} /><label className="form-check-label" htmlFor="irrf">IRRF retido</label></div></div>
-                <div className="col-6"><div className="form-check"><input className="form-check-input" type="checkbox" id="cp" checked={form.data.ret_cp} disabled={!form.data.identificar} onChange={(e) => form.setData('ret_cp', e.target.checked)} /><label className="form-check-label" htmlFor="cp">Previdenciária retida</label></div></div>
-            </div>
+            )}
             {(form.data.retido || fed > 0) && (
                 <div className="small">
                     {form.data.retido && linha(`ISSQN retido (${pct(aliquota.iss)})`, moeda(iss))}
@@ -117,14 +113,16 @@ function Emitir({ pagamento: p, aliquota, federal, onFechar }) {
 }
 
 /** Gestão › Notas fiscais: recebimentos sem nota (emitir) e as notas emitidas pelo Sistema Nacional. */
-export default function NotasFiscais({ aEmitir, notas, filtros, faltando, ambiente, aliquotas, competenciaAtual, federal }) {
+export default function NotasFiscais({ aEmitir, notas, filtros, faltando, ambiente, aliquotas, competenciaAtual, retFederal }) {
     const [aba, setAba] = useState(aEmitir.length ? 'emitir' : 'notas')
     const [emitindo, setEmitindo] = useState(null)
     const [cancelar, setCancelar] = useState(null)
     const filtrar = (k, v) => router.get('/notas-fiscais', { ...filtros, [k]: v }, { preserveState: true, replace: true })
     const aliquotaDe = (c) => aliquotas.find((a) => a.competencia === c)
     // meses com recebimento a emitir e sem as alíquotas informadas (e o mês atual)
-    const faltam = [...new Set([competenciaAtual, ...aEmitir.map((p) => p.competencia)])].filter((c) => !aliquotaDe(c)).sort().reverse()
+    // a competência é o mês da emissão: só faltam as alíquotas do mês atual
+    const aliquotaAtual = aliquotaDe(competenciaAtual)
+    const faltam = aliquotaAtual ? [] : [competenciaAtual]
 
     return (
         <div className="pagina">
@@ -154,13 +152,13 @@ export default function NotasFiscais({ aEmitir, notas, filtros, faltando, ambien
                                     {aEmitir.map((p) => (
                                         <tr key={p.id}>
                                             <td className="text-nowrap">{p.recebido_em}{p.origem === 'pdv' && <span className="selo selo-info ms-1">PDV</span>}</td>
-                                            <td>{p.cliente || <span className="text-muted">Consumidor</span>}<div className="small text-muted">{p.documento || 'sem CPF/CNPJ: nota sem tomador'}{p.documento && !p.identificar_antes && ' · sem dados na nota'}{p.retido_antes && p.identificar_antes && ' · ISS retido'}{p.identificar_antes && (p.federal_antes.tipo !== '0' || p.federal_antes.irrf || p.federal_antes.cp) && ' · retenção federal'}</div></td>
+                                            <td>{p.cliente || <span className="text-muted">Consumidor</span>}<div className="small text-muted">{p.documento || 'sem CPF/CNPJ: nota sem tomador'}{p.documento && !p.identificar_antes && ' · sem dados na nota'}{p.retido_antes && p.identificar_antes && ' · ISS retido'}{retFederal > 0 && p.federal_antes && p.identificar_antes && ' · retenção federal'}</div></td>
                                             <td className="d-none d-md-table-cell">{p.forma}</td>
                                             <td className="text-end text-nowrap">{moeda(p.valor)}</td>
                                             <td className="text-end">
-                                                {aliquotaDe(p.competencia)
+                                                {aliquotaAtual
                                                     ? <button type="button" className="btn btn-sm btn-primary" disabled={faltando.length > 0} onClick={() => setEmitindo(p)}>Emitir</button>
-                                                    : <span className="small text-muted text-nowrap">sem alíquota {mesAno(p.competencia)}</span>}
+                                                    : <span className="small text-muted text-nowrap">sem alíquota {mesAno(competenciaAtual)}</span>}
                                             </td>
                                         </tr>
                                     ))}
@@ -203,7 +201,7 @@ export default function NotasFiscais({ aEmitir, notas, filtros, faltando, ambien
                     <Paginacao pagina={notas} />
                 </>
             )}
-            {emitindo && <Emitir pagamento={emitindo} aliquota={aliquotaDe(emitindo.competencia)} federal={federal} onFechar={() => setEmitindo(null)} />}
+            {emitindo && <Emitir pagamento={emitindo} competencia={competenciaAtual} aliquota={aliquotaAtual} retFederal={retFederal} onFechar={() => setEmitindo(null)} />}
             {cancelar && <Cancelar nota={cancelar} onFechar={() => setCancelar(null)} />}
         </div>
     )

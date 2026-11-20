@@ -4,8 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-// NFS-e: retenção federal escolhida cliente a cliente na emissão (tipo de retenção do PIS/COFINS/CSLL, IRRF e
-// contribuição previdenciária), lembrada para a próxima nota do mesmo cliente.
+// NFS-e: retenção federal usada em cada nota (tipo de retenção do PIS/COFINS/CSLL, IRRF e contribuição
+// previdenciária, da configuração da empresa) e o valor retido.
 return new class extends Migration
 {
     public function up(): void
