@@ -68,7 +68,7 @@ class EstadiaController extends Controller
     {
         $unidade = Ordens::unidadePadrao();
 
-        return TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome'])->map(function ($t) use ($unidade) {
+        return TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome'])->map(function ($t) use ($unidade) {
             $tarifa = Precos::tarifa($t->id, $unidade);
 
             return ['id' => $t->id, 'nome' => $t->nome, 'tabela' => $tarifa ? $tarifa->nome.' · '.$tarifa->resumo() : null,

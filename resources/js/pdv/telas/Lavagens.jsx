@@ -73,7 +73,7 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
             if (!vivo) return
             setInfo(j)
             const s = j.veiculo || j.ultima
-            if (s?.modelo) setModelo((m) => m || s.modelo)
+            if (s?.modelo) setModelo((m) => m || s.modelo.toUpperCase())
             if (s?.tipo_id && opcoes.tipos.some((t) => t.id === s.tipo_id)) setTipo(s.tipo_id)
             if (j.ultima?.celular) setCelular((c) => c || j.ultima.celular)
         }).catch(() => {})
@@ -176,7 +176,7 @@ function Nova({ eu, opcoes, onVoltar, onFeito }) {
                 <div className="mt-2">
                     <label className="form-label fw-semibold mb-1" htmlFor="modelo">Modelo</label>
                     <input id="modelo" className="form-control form-control-lg mb-3" value={modelo} maxLength={60} autoFocus enterKeyHint="done" onFocus={(e) => cursorNoFim(e.target)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }} onChange={(e) => setModelo(e.target.value)} placeholder="Ex.: Gol branco" />
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }} autoCapitalize="characters" onChange={(e) => setModelo(e.target.value.toUpperCase())} placeholder="Ex.: ONIX" />
                     <div className="fw-semibold mb-1">Tamanho</div>
                     <div className="pdv-opcoes">
                         {opcoes.tipos.map((t) => <button key={t.id} type="button" className={`btn btn-lg ${tipo === t.id ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { setTipo(t.id); setServico(null); setAdicionais([]) }}>{t.nome}</button>)}

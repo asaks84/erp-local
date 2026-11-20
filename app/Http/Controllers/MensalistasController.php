@@ -81,7 +81,7 @@ class MensalistasController extends Controller
 
         // tipos com quantos mensalistas cada um tem (filtro)
         $porTipo = $todos->countBy(fn ($c) => $c->veiculo->tipo_veiculo_id);
-        $tipos = TipoVeiculo::orderBy('id')->get(['id', 'nome'])->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'qtd' => $porTipo[$t->id] ?? 0]);
+        $tipos = TipoVeiculo::ordenados()->get(['id', 'nome'])->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'qtd' => $porTipo[$t->id] ?? 0]);
         $escolhidos = array_values(array_intersect(array_map('intval', $f['tipos'] ?? []), $tipos->pluck('id')->all()));
         if (count($escolhidos) === $tipos->count()) {
             $escolhidos = [];   // todos marcados = todos

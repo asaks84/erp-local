@@ -43,7 +43,7 @@ class CadastroPublicoController extends Controller
         return Inertia::render('Cadastro/Publico', [
             'codigo' => $codigo,
             'empresa_publica' => ['nome' => $empresa->nome],
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'detalhe']),
+            'tipos' => TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome', 'detalhe']),
         ]);
     }
 

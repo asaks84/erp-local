@@ -4,6 +4,13 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 20/11/2026 — PDV: dados do veículo em maiúsculas e botões com fundo; ordem dos tamanhos
+
+- **Maiúsculas:** marca, modelo, cor e identificação do veículo gravam sempre em maiúsculas (veículos, estadias, ordens de serviço e cadastros do link público), venha do PDV, do ERP ou da importação. No PDV o campo já mostra em maiúsculas enquanto digita. A migração passa os dados já gravados para maiúsculas. O exemplo do campo Modelo deixou de sugerir cor ("Ex.: ONIX").
+- **Botões de tamanho no PDV:** botões contornados ganharam o fundo de cartão; o desenho do fundo da tela não aparece mais por dentro deles.
+- **Ordem dos tamanhos:** em Configurações › Tipos de veículo, setas sobem e descem cada tipo ativo. A ordem vale para o PDV (estadia e lavagem), cadastro de veículo, link público, pendentes, pátio, tabelas de estadia, serviços e mensalistas. Tipo novo entra no fim. O campo numérico "ordem" saiu da tela.
+- Migração `2026_12_07_000001_veiculos_maiusculas_ordem_tipos`. Arquivos: app/Models/{Concerns/Maiusculas,Veiculo,Estadia,OrdemServico,CadastroPendente,TipoVeiculo,Tarifa}.php, TipoVeiculoController e os controllers que listam tipos (Tarifa, Patio, Servico, Mensalistas, Veiculo, CadastroPublico, Estadia, Pendente, Pdv/LavagemPdv), routes/web.php, Pages/Configuracoes/Tipos.jsx, Components/Icone.jsx, pdv/telas/{EstadiaEntrada,Lavagens}.jsx, scss/_pdv.scss, testes (Configuracoes, Patio, PdvEstadia, PdvLavagem), docs 12 e 13.
+
 ## 19/11/2026 — NFS-e: cidade do tomador pelo CEP e data na descrição
 
 - **Cidade do tomador pelo CEP:** a nota pede o código IBGE da cidade; quando a cidade não está na lista da Baixada, o ERP consulta o CEP do cliente no ViaCEP na emissão e guarda o código no cadastro (com o CEP usado; se o CEP mudar, consulta de novo). Antes, cliente de cidade fora da lista saía sem endereço na nota.

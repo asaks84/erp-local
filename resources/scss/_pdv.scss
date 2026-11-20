@@ -135,6 +135,9 @@ body.pdv {
 .pdv-opcoes { display: flex; flex-wrap: wrap; gap: 8px;
     > .btn { flex: 1 1 auto; min-width: 30%; min-height: 52px; border-radius: 14px; font-weight: 600; }
 }
+// botões contornados com fundo de cartão: o fundo da tela (prédios) não aparece por dentro deles
+body.pdv .btn[class*="btn-outline-"] { --bs-btn-bg: var(--pdv-cartao); }
+body.pdv .pdv-opcoes > .btn-outline-secondary { --bs-btn-border-color: var(--pdv-borda); --bs-btn-color: var(--bs-body-color); box-shadow: var(--pdv-sombra); }
 // formas de pagamento: grade de botões grandes com ícone
 .pdv-formas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .pdv-forma { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 10px; min-height: 96px; padding: 14px; border-radius: 18px; border: 2px solid var(--pdv-borda); background: var(--pdv-cartao); color: var(--bs-body-color); font: inherit; font-size: 1.0625rem; font-weight: 700; text-align: left;

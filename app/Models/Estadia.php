@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Maiusculas;
 use App\Models\Concerns\PertenceAEmpresa;
 use App\Support\Placa;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Estadia extends Modelo
 {
-    use PertenceAEmpresa;
+    use Maiusculas, PertenceAEmpresa;
+
+    /** @var list<string> sempre em maiúsculas (Concerns\Maiusculas) */
+    protected array $maiusculas = ['modelo', 'identificacao'];
 
     protected $table = 'estadias';
 

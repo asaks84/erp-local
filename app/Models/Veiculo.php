@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Maiusculas;
 use App\Models\Concerns\PertenceAEmpresa;
 use App\Support\Placa;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -10,7 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Veiculo extends Modelo
 {
-    use PertenceAEmpresa;
+    use Maiusculas, PertenceAEmpresa;
+
+    /** @var list<string> sempre em maiúsculas (Concerns\Maiusculas) */
+    protected array $maiusculas = ['marca', 'modelo', 'cor', 'identificacao'];
 
     protected $table = 'veiculos';
 

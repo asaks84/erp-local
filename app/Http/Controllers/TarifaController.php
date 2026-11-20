@@ -51,7 +51,7 @@ class TarifaController extends Controller
     private function opcoes(): array
     {
         return [
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome']),
+            'tipos' => TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome']),
             'unidades' => Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
         ];
     }

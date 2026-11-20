@@ -87,7 +87,7 @@ class PdvLavagemTest extends TestCase
         $v = $this->vender('LAV1A11', ['celular' => '(13) 99999-0000']);
         $this->assertSame('Lavagem simples + Cera', $v['recibo']['servico']);
         $p = OrdemServico::find($v['lavagem']['id']);
-        $this->assertSame(['pdv', 'Gol', 'aguardando', '13999990000'], [$p->origem, $p->veiculo_descricao, $p->etapa, $p->celular]);
+        $this->assertSame(['pdv', 'GOL', 'aguardando', '13999990000'], [$p->origem, $p->veiculo_descricao, $p->etapa, $p->celular]);
         $this->pdv()->getJson('/api/pdv/lavagens/andamento')->assertJsonCount(1)->assertJsonPath('0.proxima.chave', 'pronta'); // "lavando" vem desativada
 
         // um toque: próxima etapa; na pronta não avança (entregar é pela entrega)
@@ -187,11 +187,11 @@ class PdvLavagemTest extends TestCase
     public function test_dados_do_carro_passam_da_lavagem_para_a_estadia_e_vice_versa(): void
     {
         $this->vender('VIS1T22', ['modelo' => 'Onix prata', 'celular' => '13988887777']);
-        $this->pdv()->getJson('/api/pdv/estadias/placa/VIS1T22')->assertJsonPath('ultima.modelo', 'Onix prata')
+        $this->pdv()->getJson('/api/pdv/estadias/placa/VIS1T22')->assertJsonPath('ultima.modelo', 'ONIX PRATA')
             ->assertJsonPath('ultima.tipo_id', $this->a->tipo->id)->assertJsonPath('ultima.celular', '13988887777');
         Carbon::setTestNow('2026-11-11 09:00:00');
         $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'VIS2T33', 'modelo' => 'HB20 azul', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])->assertOk();
-        $this->pdv()->getJson('/api/pdv/lavagens/placa/VIS2T33')->assertJsonPath('ultima.modelo', 'HB20 azul')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
+        $this->pdv()->getJson('/api/pdv/lavagens/placa/VIS2T33')->assertJsonPath('ultima.modelo', 'HB20 AZUL')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
     }
 
     /** 8.8: números do Início e a saída que aceita qualquer ticket */

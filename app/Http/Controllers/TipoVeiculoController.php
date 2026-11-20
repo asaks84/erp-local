@@ -18,7 +18,7 @@ class TipoVeiculoController extends Controller
     public function index(): Response
     {
         return Inertia::render('Configuracoes/Tipos', [
-            'tipos' => TipoVeiculo::orderByDesc('ativo')->orderBy('ordem')->orderBy('nome')->get()->map(fn ($t) => [
+            'tipos' => TipoVeiculo::orderByDesc('ativo')->ordenados()->get()->map(fn ($t) => [
                 ...$t->only(['id', 'nome', 'detalhe', 'ordem', 'ativo']),
                 'veiculos' => Veiculo::where('tipo_veiculo_id', $t->id)->where('ativo', true)->count(),
             ]),
@@ -27,7 +27,8 @@ class TipoVeiculoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $t = TipoVeiculo::create($this->validar($request));
+        // novo tipo entra no fim da lista; depois é só subir com as setas
+        $t = TipoVeiculo::create(['ordem' => (int) TipoVeiculo::max('ordem') + 1] + $this->validar($request));
         Atividades::registrar('tipo_veiculo_criado', $t->nome);
 
         return back()->with('sucesso', 'Tipo de veículo criado. Lembre de colocar o preço dele nos serviços e na tabela de estadia.');
@@ -39,6 +40,21 @@ class TipoVeiculoController extends Controller
         Atividades::registrar('tipo_veiculo_alterado', $tipo->nome);
 
         return back()->with('sucesso', 'Tipo de veículo salvo.');
+    }
+
+    /** nova ordem de exibição: ids na ordem da tela (setas subir/descer em Configurações › Tipos) */
+    public function ordenar(Request $request): RedirectResponse
+    {
+        $d = $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['integer']]);
+        DB::transaction(function () use ($d) {
+            $tipos = TipoVeiculo::whereIn('id', $d['ids'])->get()->keyBy('id');
+            foreach (array_values(array_unique($d['ids'])) as $i => $id) {
+                $tipos[$id]?->update(['ordem' => $i + 1]);
+            }
+        });
+        Atividades::registrar('tipo_veiculo_ordem', 'Ordem dos tipos de veículo');
+
+        return back()->with('sucesso', 'Ordem salva. Vale para o PDV, os cadastros e as listas de tamanho.');
     }
 
     public function destroy(TipoVeiculo $tipo): RedirectResponse
@@ -60,8 +76,7 @@ class TipoVeiculoController extends Controller
         return $request->validate([
             'nome' => ['required', 'string', 'max:30', Rule::unique('tipos_veiculo')->where('empresa_id', app(EmpresaAtual::class)->id())->ignore($tipo?->id)],
             'detalhe' => ['nullable', 'string', 'max:80'],
-            'ordem' => ['nullable', 'integer', 'min:0', 'max:999'],
             'ativo' => ['boolean'],
-        ]) + ['ordem' => 0];
+        ]);
     }
 }

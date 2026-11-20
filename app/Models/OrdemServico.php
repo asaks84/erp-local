@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Maiusculas;
 use App\Models\Concerns\PertenceAEmpresa;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class OrdemServico extends Modelo
 {
-    use PertenceAEmpresa;
+    use Maiusculas, PertenceAEmpresa;
+
+    /** @var list<string> sempre em maiúsculas (Concerns\Maiusculas) */
+    protected array $maiusculas = ['veiculo_descricao'];
 
     protected $table = 'ordens_servico';
 

@@ -6,6 +6,7 @@ use App\Models\Convenio;
 use App\Models\Servico;
 use App\Models\ServicoPreco;
 use App\Models\Tarifa;
+use App\Models\TipoVeiculo;
 use App\Models\Unidade;
 use App\Servicos\Precos;
 use App\Support\EmpresaAtual;
@@ -94,6 +95,28 @@ class ConfiguracoesTest extends TestCase
         $this->criarCliente($a);
         $this->actingAs($a->admin)->delete("/configuracoes/tipos/{$a->tipo->id}")->assertSessionHas('erro');
         $this->actingAs($a->admin)->delete("/configuracoes/tipos/{$a->moto->id}")->assertSessionHas('sucesso');
+    }
+
+    public function test_ordem_dos_tipos_vale_no_pdv_e_nos_cadastros(): void
+    {
+        $a = $this->criarEmpresa('a');
+        $this->actingAs($a->admin)->post('/configuracoes/tipos', ['nome' => 'Van', 'ativo' => true])->assertSessionHas('sucesso');
+        app(EmpresaAtual::class)->definir($a->empresa->id);
+        $van = TipoVeiculo::where('nome', 'Van')->firstOrFail();
+        $this->assertGreaterThan($a->moto->fresh()->ordem, $van->ordem); // novo entra no fim
+
+        $this->actingAs($a->admin)->put('/configuracoes/tipos-ordem', ['ids' => [$van->id, $a->moto->id, $a->tipo->id]])->assertSessionHas('sucesso');
+        $this->assertSame(['Van', 'Moto', 'Carro'], TipoVeiculo::where('ativo', true)->ordenados()->pluck('nome')->all());
+        $this->actingAs($a->admin)->get('/configuracoes/tipos')->assertInertia(fn ($p) => $p->where('tipos.0.nome', 'Van')->where('tipos.2.nome', 'Carro'));
+    }
+
+    public function test_dados_do_veiculo_gravam_em_maiusculas(): void
+    {
+        $a = $this->criarEmpresa('a');
+        app(EmpresaAtual::class)->definir($a->empresa->id);
+        $x = $this->criarCliente($a, 'JOAO', 'XYZ1A23');
+        $x->veiculo->update(['marca' => 'chevrolet', 'modelo' => ' onix plus ', 'cor' => 'prata']);
+        $this->assertSame(['CHEVROLET', 'ONIX PLUS', 'PRATA'], [$x->veiculo->fresh()->marca, $x->veiculo->fresh()->modelo, $x->veiculo->fresh()->cor]);
     }
 
     public function test_convenio(): void

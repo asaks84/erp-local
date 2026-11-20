@@ -56,7 +56,7 @@ class LavagemPdvController extends Controller
     {
         FormasPagamento::garantirPadrao();
         $unidade = Ordens::unidadePadrao();
-        $tipos = TipoVeiculo::where('ativo', true)->orderByDesc('ativo')->orderBy('ordem')->get(['id', 'nome']);
+        $tipos = TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome']);
         $servicos = Servico::where('ativo', true)->where('papel', 'principal')->with(['adicionais' => fn ($q) => $q->where('ativo', true)])->orderBy('nome')->get();
         $preco = function ($sid) use ($tipos, $unidade) {
             $r = [];

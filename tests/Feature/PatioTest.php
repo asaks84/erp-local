@@ -89,7 +89,7 @@ class PatioTest extends TestCase
         $moto = TipoVeiculo::firstOrCreate(['nome' => 'Moto'], ['ativo' => true]);
 
         $adm->post("/patio/estadias/{$e->id}/corrigir", ['placa' => 'CER-1A22', 'modelo' => 'Onix', 'tipo_veiculo_id' => $moto->id])->assertSessionHasNoErrors();
-        $this->assertSame(['CER1A22', 'Onix', $moto->id], [$e->fresh()->placa, $e->fresh()->modelo, $e->fresh()->tipo_veiculo_id]);
+        $this->assertSame(['CER1A22', 'ONIX', $moto->id], [$e->fresh()->placa, $e->fresh()->modelo, $e->fresh()->tipo_veiculo_id]);
         $adm->post("/patio/estadias/{$e->id}/corrigir", ['tipo_veiculo_id' => $this->a->tipo->id])->assertSessionHasNoErrors();
 
         // encerrar esquecida sem receber: hora informada, valor registrado, nenhuma conta
@@ -123,7 +123,7 @@ class PatioTest extends TestCase
         $l = $this->lavagem('LAV1A11');
         $adm = $this->actingAs($this->a->admin);
         $adm->post("/patio/lavagens/{$l->id}/corrigir", ['placa' => 'LAV1A99', 'modelo' => 'Civic'])->assertSessionHasNoErrors();
-        $this->assertSame(['LAV1A99', 'Civic'], [$l->fresh()->placa, $l->fresh()->veiculo_descricao]);
+        $this->assertSame(['LAV1A99', 'CIVIC'], [$l->fresh()->placa, $l->fresh()->veiculo_descricao]);
         $adm->post("/patio/lavagens/{$l->id}/entregar", ['motivo' => 'já foi embora'])->assertSessionHasNoErrors();
         $this->assertSame('entregue', $l->fresh()->etapa);
         $this->assertSame('aberta', $l->fresh()->situacao); // continua a receber

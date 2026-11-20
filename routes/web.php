@@ -351,6 +351,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/configuracoes/tipos', [TipoVeiculoController::class, 'index']);
         Route::post('/configuracoes/tipos', [TipoVeiculoController::class, 'store']);
+        Route::put('/configuracoes/tipos-ordem', [TipoVeiculoController::class, 'ordenar']);
         Route::put('/configuracoes/tipos/{tipo}', [TipoVeiculoController::class, 'update']);
         Route::delete('/configuracoes/tipos/{tipo}', [TipoVeiculoController::class, 'destroy']);
 

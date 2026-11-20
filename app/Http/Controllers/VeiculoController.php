@@ -23,7 +23,7 @@ class VeiculoController extends Controller
     private function opcoes(): array
     {
         return [
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'detalhe']),
+            'tipos' => TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome', 'detalhe']),
             'unidades' => Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
             'periodos' => Empresa::atual()->config('periodos'),
         ];

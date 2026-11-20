@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Maiusculas;
 use App\Models\Concerns\PertenceAEmpresa;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Cadastro enviado pelo formulário público, esperando aprovação. Aprovado ou recusado, é apagado. */
 class CadastroPendente extends Modelo
 {
-    use PertenceAEmpresa;
+    use Maiusculas, PertenceAEmpresa;
+
+    /** @var list<string> sempre em maiúsculas (Concerns\Maiusculas) */
+    protected array $maiusculas = ['marca', 'modelo', 'cor'];
 
     protected $table = 'cadastros_pendentes';
 

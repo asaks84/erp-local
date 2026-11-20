@@ -34,7 +34,7 @@ class Tarifa extends Modelo
 
     public function tipos(): BelongsToMany
     {
-        return $this->belongsToMany(TipoVeiculo::class, 'tarifa_tipos', 'tarifa_id', 'tipo_veiculo_id');
+        return $this->belongsToMany(TipoVeiculo::class, 'tarifa_tipos', 'tarifa_id', 'tipo_veiculo_id')->orderBy('tipos_veiculo.ordem')->orderBy('tipos_veiculo.nome');
     }
 
     public function unidade(): BelongsTo

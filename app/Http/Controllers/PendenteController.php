@@ -12,6 +12,7 @@ use App\Servicos\Contratos;
 use App\Support\Atividades;
 use App\Support\Documento;
 use App\Support\EmpresaAtual;
+use App\Support\Placa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ class PendenteController extends Controller
                 'do_sistema_atual' => (bool) $pendente->legado_id,
             ],
             'existente' => $existente ? ['id' => $existente->id, 'nome' => $existente->nome] : null,
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome']),
+            'tipos' => TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome']),
             'unidades' => Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
             'periodos' => Empresa::atual()->config('periodos'),
             'dia_padrao' => Empresa::atual()->config('dia_vencimento_padrao'),
@@ -97,7 +98,7 @@ class PendenteController extends Controller
                 $cliente = Cliente::create($dados + ['criado_por' => $request->user()->id, 'origem' => 'cadastro_publico']);
             }
 
-            $placa = \App\Support\Placa::normalizar($mensal['placa']);
+            $placa = Placa::normalizar($mensal['placa']);
             if (Veiculo::where('placa', $placa)->where('ativo', true)->exists()) {
                 throw ValidationException::withMessages(['placa' => 'Esta placa já está em outro veículo ativo.']);
             }

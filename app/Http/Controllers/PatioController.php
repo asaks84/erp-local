@@ -31,7 +31,7 @@ class PatioController extends Controller
             'totais' => ['estadias' => $linhas->where('tipo', 'estadia')->count(), 'lavagens' => $linhas->where('tipo', 'lavagem')->count(),
                 'estadias_valor' => round((float) $linhas->where('tipo', 'estadia')->sum('valor'), 2),
                 'lavagens_valor' => round((float) $linhas->where('tipo', 'lavagem')->sum('valor') + (float) $linhas->where('tipo', 'lavagem')->sum('estadia'), 2)],
-            'tipos' => TipoVeiculo::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'tipos' => TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome']),
             'formas' => FormaPagamento::where('ativa', true)->orderBy('ordem')->get(['id', 'nome', 'tipo', 'parcelas_max']),
         ]);
     }

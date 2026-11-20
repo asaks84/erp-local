@@ -74,7 +74,7 @@ class PdvEstadiaTest extends TestCase
         // sem PIN não entra
         $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'avu1a23', 'tipo_veiculo_id' => $this->a->tipo->id])->assertStatus(422);
         $r = $this->pdv()->postJson('/api/pdv/estadias', ['placa' => 'avu1a23', 'modelo' => 'Gol branco', 'tipo_veiculo_id' => $this->a->tipo->id, 'pin' => '4831'])
-            ->assertOk()->assertJsonPath('recibo.placa', 'AVU1A23')->assertJsonPath('recibo.modelo', 'Gol branco');
+            ->assertOk()->assertJsonPath('recibo.placa', 'AVU1A23')->assertJsonPath('recibo.modelo', 'GOL BRANCO');
         $e = Estadia::first();
         $this->assertSame(16, strlen($e->codigo));
         $this->assertNotNull($e->aparelho_id);
@@ -101,7 +101,7 @@ class PdvEstadiaTest extends TestCase
         // ticket já usado
         $this->pdv()->getJson('/api/pdv/estadias/buscar?q='.$e->numero)->assertStatus(404)->assertJsonFragment(['erro' => 'Este ticket já foi finalizado (10/11 14:00).']);
         // aparece na gestão igual
-        $this->actingAs($this->a->admin)->get('/patio/historico')->assertInertia(fn ($pg) => $pg->where('linhas.data.0.modelo', 'Gol branco')->where('linhas.data.0.pdv', true));
+        $this->actingAs($this->a->admin)->get('/patio/historico')->assertInertia(fn ($pg) => $pg->where('linhas.data.0.modelo', 'GOL BRANCO')->where('linhas.data.0.pdv', true));
     }
 
     public function test_diaria_paga_na_entrada_e_excedente_na_saida(): void
@@ -189,7 +189,7 @@ class PdvEstadiaTest extends TestCase
         $v = Estadia::where('placa', 'VIS1T11')->first();
         Carbon::setTestNow('2026-11-10 12:05:00');
         $this->pdv()->postJson("/api/pdv/estadias/{$v->id}/saida", ['destino' => 'pago', 'pin' => '4831'])->assertOk(); // tolerância: sem forma
-        $this->pdv()->getJson('/api/pdv/estadias/placa/vis1t11')->assertJsonPath('ultima.modelo', 'Onix prata')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
+        $this->pdv()->getJson('/api/pdv/estadias/placa/vis1t11')->assertJsonPath('ultima.modelo', 'ONIX PRATA')->assertJsonPath('ultima.tipo_id', $this->a->tipo->id);
     }
 
     public function test_gestao_entrada_com_diaria_e_convenio_na_saida(): void
@@ -222,7 +222,7 @@ class PdvEstadiaTest extends TestCase
             ->has('linhas.data', 3));
         $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30&situacao=cancelada')->assertInertia(fn ($p) => $p->where('totais.estadias', 1)
             ->where('linhas.data.0.obs', 'engano'));
-        $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30&q=gol')->assertInertia(fn ($p) => $p->has('linhas.data', 1)->where('linhas.data.0.modelo', 'Gol'));
+        $this->actingAs($u)->get('/patio/historico?de=2026-11-01&ate=2026-11-30&q=gol')->assertInertia(fn ($p) => $p->has('linhas.data', 1)->where('linhas.data.0.modelo', 'GOL'));
         $this->actingAs($u)->get('/estadias/historico')->assertRedirect('/patio/historico');
     }
 }

@@ -22,7 +22,7 @@ class ServicoController extends Controller
 {
     private function tipos()
     {
-        return TipoVeiculo::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['id', 'nome']);
+        return TipoVeiculo::where('ativo', true)->ordenados()->get(['id', 'nome']);
     }
 
     /** preços que valem na data, por tipo: [tipo_id => valor] */
