@@ -139,53 +139,65 @@ function EmitirAvulso({ servico: o, faltando, retFederal, aliquota, onFechar }) 
     )
 }
 
-/** aba Clientes: serviços sem nota no período, por cliente; marque e vá para conferir e emitir */
-function Clientes({ clientes, filtros }) {
-    const [marcados, setMarcados] = useState(() => new Set(clientes.filter((c) => c.sugerido).map((c) => c.id)))
+const SELO_COB = { aberta: 'selo-aviso', parcial: 'selo-aviso', paga: 'selo-ok' }
+const dataBr = (v) => (v ? v.split('-').reverse().join('/') : '')
+
+/**
+ * aba Cobranças: as que vencem no mês com serviços sem nota; marque e vá para conferir e emitir (uma nota por cliente).
+ * O valor é o dos serviços ainda sem nota: o que já entrou em nota (até por outra cobrança) não conta de novo.
+ */
+function Cobrancas({ cobrancas, comNota, filtros }) {
+    const [marcados, setMarcados] = useState(() => new Set(cobrancas.filter((c) => c.sugerido).map((c) => c.id)))
     const [busca, setBusca] = useState('')
-    const filtrar = (k, v) => router.get('/notas-fiscais', { aba: 'clientes', de: filtros.de, ate: filtros.ate, [k]: v }, { preserveState: false, replace: true })
+    const trocarMes = (mes) => router.get('/notas-fiscais', { aba: 'cobrancas', mes }, { preserveState: false, replace: true })
     const visiveis = useMemo(() => {
         const b = busca.trim().toLowerCase()
-        return b ? clientes.filter((c) => `${c.nome} ${c.documento || ''}`.toLowerCase().includes(b)) : clientes
-    }, [clientes, busca])
+        return b ? cobrancas.filter((c) => `${c.nome} ${c.documento || ''} ${c.numero}`.toLowerCase().includes(b)) : cobrancas
+    }, [cobrancas, busca])
     const alternar = (id) => setMarcados((m) => { const n = new Set(m); n.has(id) ? n.delete(id) : n.add(id); return n })
     const todosVisiveis = visiveis.length > 0 && visiveis.every((c) => marcados.has(c.id))
     const marcarVisiveis = () => setMarcados((m) => { const n = new Set(m); visiveis.forEach((c) => (todosVisiveis ? n.delete(c.id) : n.add(c.id))); return n })
-    const sel = clientes.filter((c) => marcados.has(c.id))
-    const total = sel.reduce((s, c) => s + c.total, 0)
-    const continuar = () => router.get('/notas-fiscais/conferir', { clientes: sel.map((c) => c.id).join(','), de: filtros.de, ate: filtros.ate })
+    const sel = cobrancas.filter((c) => marcados.has(c.id))
+    // um serviço levado de uma cobrança para outra conta uma vez só
+    const servicos = new Map(sel.flatMap((c) => c.servicos.map((s) => [s.id, s.valor])))
+    const total = [...servicos.values()].reduce((t, v) => t + v, 0)
+    const notas = new Set(sel.map((c) => c.cliente_id)).size
+    const continuar = () => router.get('/notas-fiscais/conferir', { cobrancas: sel.map((c) => c.id).join(','), mes: filtros.mes })
     return (
         <>
             <div className="row g-2 mb-1">
-                <div className="col-6 col-md-3"><CampoData rotulo="Serviços de" value={filtros.de} onChange={(v) => v && filtrar('de', v)} /></div>
-                <div className="col-6 col-md-3"><CampoData rotulo="Até" value={filtros.ate} onChange={(v) => v && filtrar('ate', v)} /></div>
-                <div className="col-md-6"><Campo rotulo="Buscar cliente" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
+                <div className="col-6 col-md-3"><CampoData mes rotulo="Vencimento em" value={filtros.mes} onChange={(v) => v && trocarMes(v)} /></div>
+                <div className="col-md-6"><Campo rotulo="Buscar cliente ou nº da cobrança" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
             </div>
             <div className="card">
                 <div className="table-responsive">
                     <table className="table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style={{ width: 40 }}><input className="form-check-input" type="checkbox" aria-label="Marcar todos" checked={todosVisiveis} onChange={marcarVisiveis} /></th>
-                                <th>Cliente</th><th className="text-end">Serviços sem nota</th><th className="text-end">Total</th>
+                                <th style={{ width: 40 }}><input className="form-check-input" type="checkbox" aria-label="Marcar todas" checked={todosVisiveis} onChange={marcarVisiveis} /></th>
+                                <th>Cliente</th><th>Cobrança</th><th className="text-end">Sem nota</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {visiveis.length === 0 && <tr><td colSpan="4" className="text-center text-muted py-4">Nenhum serviço sem nota no período.</td></tr>}
+                            {visiveis.length === 0 && <tr><td colSpan="4" className="text-center text-muted py-4">Nenhuma cobrança com vencimento em {mesAno(filtros.mes)} com serviços sem nota.</td></tr>}
                             {visiveis.map((c) => (
                                 <tr key={c.id} onClick={() => alternar(c.id)} style={{ cursor: 'pointer' }} className={marcados.has(c.id) ? 'table-active' : undefined}>
-                                    <td><input className="form-check-input" type="checkbox" checked={marcados.has(c.id)} onChange={() => alternar(c.id)} onClick={(e) => e.stopPropagation()} aria-label={`Marcar ${c.nome}`} /></td>
+                                    <td><input className="form-check-input" type="checkbox" checked={marcados.has(c.id)} onChange={() => alternar(c.id)} onClick={(e) => e.stopPropagation()} aria-label={`Marcar a cobrança ${c.numero}`} /></td>
                                     <td>{c.nome}<div className="small text-muted">{c.documento || 'sem CPF/CNPJ'}{c.sugerido && ' · teve nota no mês passado'}</div></td>
-                                    <td className="text-end">{c.qtd}</td>
-                                    <td className="text-end text-nowrap">{moeda(c.total)}</td>
+                                    <td className="text-nowrap">
+                                        <Link href={`/cobrancas/${c.id}`} onClick={(e) => e.stopPropagation()}>Nº {c.numero}</Link> <span className={`selo ${SELO_COB[c.situacao] || ''}`}>{c.situacao_nome}</span>
+                                        <div className="small text-muted">vence {dataBr(c.vencimento)} · {moeda(c.total)}{c.desconto > 0 && ` (desconto ${moeda(c.desconto)})`}</div>
+                                    </td>
+                                    <td className="text-end text-nowrap">{moeda(c.valor)}<div className="small text-muted">{c.qtd} serviço{c.qtd > 1 ? 's' : ''}</div></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
+            {comNota > 0 && <p className="small text-muted mt-2 mb-0">{comNota} cobrança{comNota > 1 ? 's' : ''} de {mesAno(filtros.mes)} já {comNota > 1 ? 'estão' : 'está'} com todos os serviços em nota.</p>}
             <div className="barra-acoes d-flex flex-wrap align-items-center gap-2 mt-3 p-3 border rounded bg-body sticky-bottom">
-                <span><strong>{sel.length}</strong> cliente{sel.length === 1 ? '' : 's'} · <strong>{moeda(total)}</strong> em notas</span>
+                <span><strong>{sel.length}</strong> cobrança{sel.length === 1 ? '' : 's'} · <strong>{notas}</strong> nota{notas === 1 ? '' : 's'} · <strong>{moeda(total)}</strong></span>
                 <button type="button" className="btn btn-primary ms-auto" disabled={!sel.length} onClick={continuar}>Conferir e emitir</button>
             </div>
         </>
@@ -193,15 +205,15 @@ function Clientes({ clientes, filtros }) {
 }
 
 /** Gestão › Notas fiscais: Clientes (marcar e emitir), Avulsos (busca) e Notas (emitidas). */
-export default function NotasFiscais({ aba, clientes, avulsos, notas, filtros, faltando, ambiente, aliquotas, competenciaAtual, retFederal }) {
+export default function NotasFiscais({ aba, cobrancas, comNota, avulsos, notas, filtros, faltando, ambiente, aliquotas, competenciaAtual, retFederal }) {
     const [cancelar, setCancelar] = useState(null)
     const aliquotaAtual = aliquotas.find((a) => a.competencia === competenciaAtual)
-    const irPara = (a) => router.get('/notas-fiscais', a === 'clientes' ? { aba: a, de: filtros.de, ate: filtros.ate } : { aba: a })
-    const abas = [['clientes', 'Clientes'], ['avulsos', 'Avulsos'], ['notas', 'Notas']]
+    const irPara = (a) => router.get('/notas-fiscais', a === 'cobrancas' ? { aba: a, mes: filtros.mes } : { aba: a })
+    const abas = [['cobrancas', 'Cobranças'], ['avulsos', 'Avulsos'], ['notas', 'Notas']]
 
     return (
         <div className="pagina">
-            <TituloPagina titulo="Notas fiscais" descricao="NFS-e pelo Sistema Nacional, a partir dos serviços sem nota (pagos ou não)." />
+            <TituloPagina titulo="Notas fiscais" descricao="NFS-e pelo Sistema Nacional, a partir das cobranças do mês (pagas ou não) e dos serviços avulsos." />
             {faltando.length > 0 && <div className="alert alert-warning">Para emitir, falta: {faltando.join(', ')}. <Link href="/configuracoes/nfse">Configurar</Link></div>}
             {!faltando.length && ambiente !== 'producao' && <div className="alert alert-info py-2">Em <strong>testes</strong>: as notas saem sem valor fiscal. Passe para produção em <Link href="/configuracoes/nfse">Configurações › Nota fiscal</Link>.</div>}
 
@@ -211,13 +223,13 @@ export default function NotasFiscais({ aba, clientes, avulsos, notas, filtros, f
                 {abas.map(([k, r]) => (
                     <li className="nav-item" key={k}>
                         <button type="button" className={`nav-link${aba === k ? ' active' : ''}`} onClick={() => irPara(k)}>
-                            {r}{k === 'clientes' && aba === 'clientes' && <span className="badge text-bg-secondary ms-1">{clientes.length}</span>}
+                            {r}{k === 'cobrancas' && aba === 'cobrancas' && <span className="badge text-bg-secondary ms-1">{cobrancas.length}</span>}
                         </button>
                     </li>
                 ))}
             </ul>
 
-            {aba === 'clientes' && <Clientes clientes={clientes} filtros={filtros} />}
+            {aba === 'cobrancas' && <Cobrancas cobrancas={cobrancas} comNota={comNota} filtros={filtros} />}
             {aba === 'avulsos' && <Avulsos avulsos={avulsos} filtros={filtros} faltando={faltando} retFederal={retFederal} aliquota={aliquotaAtual} />}
 
             {aba === 'notas' && notas && (

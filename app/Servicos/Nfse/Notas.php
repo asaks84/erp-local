@@ -3,6 +3,8 @@
 namespace App\Servicos\Nfse;
 
 use App\Models\Cliente;
+use App\Models\Cobranca;
+use App\Models\CobrancaItem;
 use App\Models\Empresa;
 use App\Models\Integracao;
 use App\Models\Nfse;
@@ -36,18 +38,32 @@ class Notas
             ->whereIn('tipo', self::TIPOS)->where('valor', '>', 0);
     }
 
-    /** período padrão da lista de clientes: do início do mês anterior ao fim do mês atual */
-    public static function periodoPadrao(?Carbon $agora = null): array
+    /** mês padrão da lista de cobranças: o atual ("2026-11") */
+    public static function mesPadrao(?Carbon $agora = null): string
     {
-        $agora = ($agora ?? now())->copy()->setTimezone('America/Sao_Paulo');
-
-        return [$agora->copy()->subMonthNoOverflow()->startOfMonth()->toDateString(), $agora->copy()->endOfMonth()->toDateString()];
+        return ($agora ?? now())->copy()->setTimezone('America/Sao_Paulo')->format('Y-m');
     }
 
-    /** serviços sem nota dos clientes no período (pela data do serviço) */
-    public static function semNotaDosClientes(string $de, string $ate): Builder
+    /**
+     * Cobranças da lista do mês: vencendo no mês, nem canceladas nem levadas (os itens de uma levada estão na
+     * cobrança seguinte, que entra na lista do mês dela).
+     */
+    public static function cobrancasDoMes(string $mes): Builder
     {
-        return self::semNota()->whereNotNull('cliente_id')->whereBetween('data', [$de, $ate]);
+        $ini = Carbon::parse($mes.'-01');
+
+        return Cobranca::query()->whereIn('situacao', ['aberta', 'parcial', 'paga'])
+            ->whereBetween('vencimento', [$ini->toDateString(), $ini->copy()->endOfMonth()->toDateString()]);
+    }
+
+    /**
+     * Serviços sem nota das cobranças (os que cada uma copiou, saldo anterior incluído). A nota continua por serviço:
+     * o que já entrou em nota, por esta cobrança ou por outra, não volta.
+     */
+    public static function semNotaDasCobrancas(Collection|array $ids): Builder
+    {
+        return self::semNota()->whereNotNull('cliente_id')
+            ->whereIn('id', CobrancaItem::whereIn('cobranca_id', $ids)->whereNotNull('ordem_id')->select('ordem_id'));
     }
 
     /**

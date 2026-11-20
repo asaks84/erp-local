@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AtualizacaoCadastral;
 use App\Models\Boleto;
 use App\Models\Cliente;
 use App\Models\Cobranca;
@@ -11,11 +12,14 @@ use App\Models\OrdemServico;
 use App\Servicos\Cobrancas;
 use App\Servicos\Inter\Boletos;
 use App\Servicos\Mensalidades;
+use App\Servicos\Nfse\Notas;
+use App\Servicos\Pontualidade;
 use App\Support\Documento;
 use App\Support\Placa;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -77,7 +81,7 @@ class CobrancaController extends Controller
         $linhas = Cobrancas::previa($mes);
         if (self::interLigado()) {
             // quem tem a primeira mensalidade (ou proporcional) recebe o boleto sem as regras
-            $primeiras = \App\Models\OrdemServico::abertas()->whereIn('cliente_id', $linhas->pluck('cliente_id'))->where('tipo', 'mensalidade')->get()->groupBy('cliente_id');
+            $primeiras = OrdemServico::abertas()->whereIn('cliente_id', $linhas->pluck('cliente_id'))->where('tipo', 'mensalidade')->get()->groupBy('cliente_id');
             $linhas = $linhas->map(fn ($l) => $l + ['boleto_sem_regras' => Boletos::temPrimeiraMensalidade($primeiras[$l['cliente_id']] ?? [])]);
         }
 
@@ -114,12 +118,12 @@ class CobrancaController extends Controller
             'desconto' => ['nullable', 'numeric', 'min:0', 'max:99999'], 'desconto_motivo' => ['nullable', 'string', 'max:120']]);
         $desconto = round((float) ($d['desconto'] ?? 0), 2);
         if ($desconto > 0 && ! $request->user()->pode('desconto')) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['desconto' => 'Seu nível de acesso não permite dar desconto.']);
+            throw ValidationException::withMessages(['desconto' => 'Seu nível de acesso não permite dar desconto.']);
         }
         if ($desconto > 0 && ! trim((string) ($d['desconto_motivo'] ?? ''))) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['desconto_motivo' => 'Informe o motivo do desconto (ex.: negociado com o cliente).']);
+            throw ValidationException::withMessages(['desconto_motivo' => 'Informe o motivo do desconto (ex.: negociado com o cliente).']);
         }
-        $c = \Illuminate\Support\Facades\DB::transaction(function () use ($cliente, $d, $desconto) {
+        $c = DB::transaction(function () use ($cliente, $d, $desconto) {
             $c = Cobrancas::emitir($cliente, $d['mes'], $d['vencimento'] ?? null);
             if ($desconto > 0) {
                 Cobrancas::definirDesconto($c, $desconto, $d['desconto_motivo'] ?? null);
@@ -179,7 +183,7 @@ class CobrancaController extends Controller
         return Inertia::render('Cobrancas/Show', [
             'inter' => self::interLigado(),
             'boleto_vencimento' => Boletos::vencimentoSugerido($cobranca)->format('Y-m-d'),
-            'pontualidade' => \App\Servicos\Pontualidade::resumo($cobranca),
+            'pontualidade' => Pontualidade::resumo($cobranca),
             'regras_sugerido' => Boletos::aplicarRegrasSugerido($cobranca),
             'em_aberto' => Boletos::valorEmAberto($cobranca),
             'falta_cadastro' => Boletos::faltaNoCadastro($cobranca->cliente),
@@ -195,6 +199,8 @@ class CobrancaController extends Controller
             ]),
             'cobranca' => self::resumo($cobranca),
             'cliente' => $cobranca->cliente->only(['id', 'nome']),
+            // serviços desta cobrança ainda sem NFS-e (botão "Emitir nota")
+            'sem_nota' => $cobranca->situacao === 'cancelada' ? 0 : Notas::semNotaDasCobrancas([$cobranca->id])->count(),
             'itens' => $cobranca->itens->map(fn ($i) => [
                 'grupo' => $i->grupo,
                 'numero' => $i->numero,
@@ -220,7 +226,7 @@ class CobrancaController extends Controller
         $empresa = Empresa::atual();
         $cobrancas = Cobranca::with(['cliente', 'itens.ordem:id,competencia,veiculo_descricao'])->whereIn('id', $ids)->get()->sortBy(fn ($c) => $c->cliente->nome)->values();
         // atualização cadastral pendente: o QR Code sai no pé da cobrança
-        $atualizacoes = \App\Models\AtualizacaoCadastral::whereIn('cliente_id', $cobrancas->pluck('cliente_id'))->where('situacao', 'aberta')
+        $atualizacoes = AtualizacaoCadastral::whereIn('cliente_id', $cobrancas->pluck('cliente_id'))->where('situacao', 'aberta')
             ->where('expira_em', '>', now())->get()->keyBy('cliente_id');
 
         return Inertia::render('Cobrancas/Imprimir', [
@@ -234,7 +240,7 @@ class CobrancaController extends Controller
             'cobrancas' => $cobrancas->map(fn (Cobranca $c) => self::resumo($c) + [
                 'cliente' => ['id' => $c->cliente->id, 'nome' => $c->cliente->nome, 'documento' => Documento::formatar($c->cliente->documento)],
                 'atualizacao_link' => isset($atualizacoes[$c->cliente_id]) ? $atualizacoes[$c->cliente_id]->link() : null,
-                'pontualidade' => \App\Servicos\Pontualidade::resumo($c),
+                'pontualidade' => Pontualidade::resumo($c),
                 'mes' => Carbon::parse($c->competencia.'-01')->format('m/Y'),
                 'itens' => $c->itens->map(fn ($i) => [
                     'grupo' => $i->grupo, 'numero' => $i->numero, 'descricao' => $i->descricao,

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Cobranca;
+use App\Models\CobrancaItem;
 use App\Models\Empresa;
 use App\Models\Integracao;
 use App\Models\Nfse;
@@ -148,32 +150,23 @@ class NfseController extends Controller
     // ---------- Gestão › Notas fiscais ----------
 
     /**
-     * Notas fiscais: abas Clientes (serviços sem nota no período, por cliente, para marcar), Avulsos (busca por OS,
+     * Notas fiscais: abas Cobranças (as que vencem no mês, com serviços sem nota, para marcar), Avulsos (busca por OS,
      * ticket ou placa) e Notas (as emitidas).
      */
     public function index(Request $r): Response
     {
-        $aba = in_array($r->query('aba'), ['clientes', 'avulsos', 'notas'], true) ? $r->query('aba') : 'clientes';
-        [$de, $ate] = $this->periodo($r);
+        $aba = in_array($r->query('aba'), ['cobrancas', 'avulsos', 'notas'], true) ? $r->query('aba') : 'cobrancas';
+        $mes = $this->mes($r);
         $props = [
-            'aba' => $aba, 'filtros' => ['de' => $de, 'ate' => $ate, 'q' => (string) $r->query('q', '')],
+            'aba' => $aba, 'filtros' => ['mes' => $mes, 'q' => (string) $r->query('q', '')],
             'faltando' => ConfigNfse::faltando(), 'ambiente' => ConfigNfse::ambiente(),
             'aliquotas' => collect(ConfigNfse::ler()['aliquotas'])->map(fn ($a, $c) => ['competencia' => $c] + $a)->values(),
             'competenciaAtual' => Dps::competencia(), 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
-            'clientes' => [], 'avulsos' => [], 'notas' => null,
+            'cobrancas' => [], 'comNota' => 0, 'avulsos' => [], 'notas' => null,
         ];
 
-        if ($aba === 'clientes') {
-            // quem teve nota no mês passado já vem marcado
-            $mesPassado = now()->setTimezone('America/Sao_Paulo')->subMonthNoOverflow();
-            $sugeridos = Nfse::whereIn('situacao', ['emitida', 'enviando'])->whereNotNull('cliente_id')
-                ->whereBetween('criado_em', [$mesPassado->copy()->startOfMonth(), $mesPassado->copy()->endOfMonth()])->pluck('cliente_id')->flip();
-            $props['clientes'] = Notas::semNotaDosClientes($de, $ate)
-                ->selectRaw('cliente_id, count(*) as qtd, sum(valor) as total')->groupBy('cliente_id')->get()
-                ->load('cliente:id,nome,documento')
-                ->map(fn ($l) => ['id' => $l->cliente_id, 'nome' => $l->cliente?->nome, 'documento' => Documento::valido($l->cliente?->documento) ? Documento::formatar($l->cliente->documento) : null,
-                    'qtd' => (int) $l->qtd, 'total' => round((float) $l->total, 2), 'sugerido' => isset($sugeridos[$l->cliente_id])])
-                ->sortBy(fn ($c) => mb_strtolower((string) $c['nome']))->values();
+        if ($aba === 'cobrancas') {
+            [$props['cobrancas'], $props['comNota']] = $this->cobrancasDoMes($mes);
         } elseif ($aba === 'avulsos') {
             $props['avulsos'] = $this->buscarAvulsos((string) $r->query('q', ''));
         } else {
@@ -188,13 +181,41 @@ class NfseController extends Controller
         return Inertia::render('NotasFiscais/Index', $props);
     }
 
-    /** período De/Até da lista de clientes (padrão: início do mês anterior ao fim do mês atual) */
-    private function periodo(Request $r): array
+    /** mês da lista de cobranças ("2026-11"; padrão: o atual) */
+    private function mes(Request $r): string
     {
-        [$de, $ate] = Notas::periodoPadrao();
-        $ok = fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
+        $m = $r->query('mes');
 
-        return [$ok($r->query('de')) ? $r->query('de') : $de, $ok($r->query('ate')) ? $r->query('ate') : $ate];
+        return is_string($m) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m) ? $m : Notas::mesPadrao();
+    }
+
+    /**
+     * Cobranças que vencem no mês e ainda têm serviço sem nota, e quantas do mês já estão todas com nota.
+     * Quem teve nota no mês passado já vem marcado.
+     */
+    private function cobrancasDoMes(string $mes): array
+    {
+        $cobs = Notas::cobrancasDoMes($mes)->with('cliente:id,nome,documento')->orderBy('vencimento')->orderBy('numero')->get();
+        $porCobranca = CobrancaItem::whereIn('cobranca_id', $cobs->pluck('id'))->whereNotNull('ordem_id')->get(['cobranca_id', 'ordem_id'])->groupBy('cobranca_id');
+        $valores = Notas::semNota()->whereIn('id', $porCobranca->flatten()->pluck('ordem_id'))->pluck('valor', 'id');
+
+        $mesPassado = now()->setTimezone('America/Sao_Paulo')->subMonthNoOverflow();
+        $sugeridos = Nfse::whereIn('situacao', ['emitida', 'enviando'])->whereNotNull('cliente_id')
+            ->whereBetween('criado_em', [$mesPassado->copy()->startOfMonth(), $mesPassado->copy()->endOfMonth()])->pluck('cliente_id')->flip();
+
+        $lista = $cobs->map(function (Cobranca $c) use ($porCobranca, $valores, $sugeridos) {
+            $servicos = ($porCobranca[$c->id] ?? collect())->pluck('ordem_id')->unique()->filter(fn ($id) => isset($valores[$id]))
+                ->map(fn ($id) => ['id' => $id, 'valor' => round((float) $valores[$id], 2)])->values();
+
+            return ['id' => $c->id, 'numero' => $c->numero, 'cliente_id' => $c->cliente_id, 'nome' => $c->cliente?->nome,
+                'documento' => Documento::valido($c->cliente?->documento) ? Documento::formatar($c->cliente->documento) : null,
+                'vencimento' => $c->vencimento->format('Y-m-d'), 'situacao' => $c->situacao, 'situacao_nome' => Cobranca::SITUACOES[$c->situacao] ?? $c->situacao,
+                'total' => (float) $c->total, 'desconto' => (float) $c->desconto,
+                'servicos' => $servicos, 'qtd' => $servicos->count(), 'valor' => round($servicos->sum('valor'), 2),
+                'sugerido' => isset($sugeridos[$c->cliente_id])];
+        });
+
+        return [$lista->filter(fn ($c) => $c['qtd'] > 0)->sortBy(fn ($c) => mb_strtolower((string) $c['nome']))->values(), $lista->where('qtd', 0)->count()];
     }
 
     /** busca de serviços sem nota por número da OS, número do ticket ou placa (qualquer data) */
@@ -239,21 +260,27 @@ class NfseController extends Controller
             'federal' => $doc && $c->nf_tomador && $c->nf_retem_federal];
     }
 
-    /** conferir e emitir: os clientes marcados, com os serviços sem nota do período */
+    /**
+     * Conferir e emitir: os serviços sem nota das cobranças marcadas, um bloco por cliente (duas cobranças do mesmo
+     * cliente viram uma nota só). Vem da lista do mês ou do botão "Emitir nota" da cobrança.
+     */
     public function conferirClientes(Request $r): Response|RedirectResponse
     {
-        [$de, $ate] = $this->periodo($r);
-        $ids = collect(explode(',', (string) $r->query('clientes')))->map(fn ($v) => (int) $v)->filter()->unique();
-        if ($ids->isEmpty()) {
-            return redirect('/notas-fiscais')->with('aviso', 'Marque ao menos um cliente.');
+        $pedidas = collect(explode(',', (string) $r->query('cobrancas')))->map(fn ($v) => (int) $v)->filter()->unique();
+        $cobs = Cobranca::whereIn('id', $pedidas->all() ?: [0])->orderBy('numero')->get(['id', 'numero']);
+        if ($cobs->isEmpty()) {
+            return redirect('/notas-fiscais')->with('aviso', 'Marque ao menos uma cobrança.');
         }
-        $ordens = Notas::semNotaDosClientes($de, $ate)->whereIn('cliente_id', $ids)->with('cliente:id,nome,documento,cidade,cep,logradouro,bairro,cidade_ibge,cidade_ibge_cep,nf_tomador,nf_iss_retido,nf_retem_federal', 'estadia:id,numero,numero_impresso')
+        $ordens = Notas::semNotaDasCobrancas($cobs->pluck('id'))->with('cliente:id,nome,documento,cidade,cep,logradouro,bairro,cidade_ibge,cidade_ibge_cep,nf_tomador,nf_iss_retido,nf_retem_federal', 'estadia:id,numero,numero_impresso')
             ->orderBy('data')->orderBy('id')->get()->groupBy('cliente_id');
+        if ($ordens->isEmpty()) {
+            return redirect('/notas-fiscais?mes='.$this->mes($r))->with('aviso', 'Os serviços dessas cobranças já estão em nota.');
+        }
         $clientes = $ordens->map(fn ($lista) => $this->dadosCliente($lista->first()->cliente) + ['servicos' => $lista->map(fn ($o) => $this->servico($o))->values()])
             ->sortBy(fn ($c) => mb_strtolower((string) $c['nome']))->values();
 
         return Inertia::render('NotasFiscais/Conferir', [
-            'clientes' => $clientes, 'filtros' => ['de' => $de, 'ate' => $ate],
+            'clientes' => $clientes, 'filtros' => ['mes' => $this->mes($r)], 'cobrancas' => $cobs->pluck('numero'),
             'faltando' => ConfigNfse::faltando(), 'ambiente' => ConfigNfse::ambiente(), 'competenciaAtual' => Dps::competencia(),
             'aliquota' => ConfigNfse::aliquotas(Dps::competencia()), 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
         ]);

@@ -9,14 +9,13 @@ import { postarJson } from '../../lib/json'
 
 // "Mensalidade · Mensalidade Diurno" vira "Mensalidade Diurno"
 const nomeServico = (s) => (s.descricao?.toLowerCase().startsWith(s.tipo.split('/')[0].toLowerCase()) ? s.descricao : `${s.tipo} · ${s.descricao}`)
-const dataBr = (v) => (v ? v.split('-').reverse().join('/') : '')
 
 /**
- * Notas fiscais › conferir e emitir: os clientes marcados, cada um com os serviços sem nota do período (dá para tirar
+ * Notas fiscais › conferir e emitir: os clientes das cobranças marcadas, cada um com os serviços sem nota delas (dá para tirar
  * um serviço) e as escolhas dele. Emite um cliente (botão na linha) ou em lote: a tela manda uma nota de cada vez,
  * com progresso; recusada fica marcada com o motivo e as outras seguem.
  */
-export default function Conferir({ clientes, filtros, faltando, ambiente, competenciaAtual, aliquota, retFederal }) {
+export default function Conferir({ clientes, filtros, cobrancas = [], faltando, ambiente, competenciaAtual, aliquota, retFederal }) {
     const [linhas, setLinhas] = useState(() => clientes.map((c) => ({
         ...c, incluir: true, marcados: new Set(c.servicos.map((s) => s.id)), estado: null,
         esc: { identificar: c.identificar, retido: c.retido && c.pode_reter, retem_federal: retFederal > 0 && c.federal && c.identificar },
@@ -54,8 +53,8 @@ export default function Conferir({ clientes, filtros, faltando, ambiente, compet
 
     return (
         <div className="pagina">
-            <Link href={`/notas-fiscais?aba=clientes&de=${filtros.de}&ate=${filtros.ate}`} className="small d-inline-block mb-2">‹ Voltar para a lista de clientes</Link>
-            <TituloPagina titulo="Conferir e emitir" descricao={`Serviços sem nota de ${dataBr(filtros.de)} a ${dataBr(filtros.ate)}. Competência ${competenciaAtual.slice(5)}/${competenciaAtual.slice(0, 4)} (data da emissão).`} />
+            <Link href={`/notas-fiscais?aba=cobrancas&mes=${filtros.mes}`} className="small d-inline-block mb-2">‹ Voltar para as cobranças</Link>
+            <TituloPagina titulo="Conferir e emitir" descricao={`Serviços sem nota ${cobrancas.length === 1 ? `da cobrança ${cobrancas[0]}` : `de ${cobrancas.length} cobranças`}. Competência ${competenciaAtual.slice(5)}/${competenciaAtual.slice(0, 4)} (data da emissão).`} />
             {faltando.length > 0 && <div className="alert alert-warning">Para emitir, falta: {faltando.join(', ')}. <Link href="/configuracoes/nfse">Configurar</Link></div>}
             {!aliquota && <div className="alert alert-warning">Falta informar as alíquotas do mês, no alto de <Link href="/notas-fiscais">Notas fiscais</Link>.</div>}
             {!faltando.length && ambiente !== 'producao' && <div className="alert alert-info py-2">Em <strong>testes</strong>: as notas saem sem valor fiscal.</div>}

@@ -9,6 +9,7 @@ use App\Models\OrdemServico;
 use App\Models\TipoVeiculo;
 use App\Models\Veiculo;
 use App\Servicos\Baixa;
+use App\Servicos\Cobrancas;
 use App\Servicos\FormasPagamento;
 use App\Servicos\Nfse\AssinaturaXml;
 use App\Servicos\Nfse\ConfigNfse;
@@ -86,6 +87,14 @@ class NfseTest extends TestCase
         $ids = is_array($ordens) ? array_map(fn ($o) => $o->id, $ordens) : [$ordens->id];
 
         return $this->actingAs($this->a->admin)->postJson('/notas-fiscais/emitir', ['ordens' => $ids] + $op);
+    }
+
+    /** cobrança extra (novembro) com as contas em aberto do cliente e a tela de conferir dela */
+    private function conferirCobranca(int $clienteId): TestResponse
+    {
+        $cob = Cobrancas::emitir(Cliente::find($clienteId), '2026-11', '2026-11-20', true);
+
+        return $this->actingAs($this->a->admin)->get('/notas-fiscais/conferir?cobrancas='.$cob->id);
     }
 
     private function nfseFalsa(string $chave = '35485002211222333000181000000000000126110000000001'): array
@@ -184,7 +193,7 @@ class NfseTest extends TestCase
         // o padrão vem do cadastro do cliente
         $p->cliente->update(['nf_tomador' => true, 'nf_iss_retido' => true]);
         $p2 = Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $p->cliente_id, 'descricao' => 'Mensalidade', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 180]);
-        $this->actingAs($this->a->admin)->get('/notas-fiscais/conferir?clientes='.$p->cliente_id)->assertInertia(fn ($pg) => $pg->component('NotasFiscais/Conferir')->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.retido', true)->where('clientes.0.pode_reter', true));
+        $this->conferirCobranca($p->cliente_id)->assertInertia(fn ($pg) => $pg->component('NotasFiscais/Conferir')->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.retido', true)->where('clientes.0.pode_reter', true));
 
         // sem endereço completo no município: não deixa reter
         $p2->cliente->update(['cidade' => 'Campinas']);
@@ -235,7 +244,7 @@ class NfseTest extends TestCase
         $this->assertSame($c->id, $n->cliente_id);
         // padrão do cadastro: tudo desligado (sem dados do tomador)
         $p2 = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20]);
-        $this->actingAs($this->a->admin)->get('/notas-fiscais/conferir?clientes='.$c->id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.identificar', false)->where('clientes.0.retido', false));
+        $this->conferirCobranca($c->id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.identificar', false)->where('clientes.0.retido', false));
         // ISS retido sem os dados do cliente na nota: não pode
         $this->emitir($p2, ['identificar' => false, 'retido' => true])->assertStatus(422);
     }
@@ -269,7 +278,7 @@ class NfseTest extends TestCase
         // padrão do cadastro do cliente; cliente que não retém: só CST, sem retenção
         $p->cliente->update(['nf_tomador' => true, 'nf_retem_federal' => true]);
         $p2 = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $p->cliente_id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20]);
-        $adm->get('/notas-fiscais/conferir?clientes='.$p->cliente_id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.federal', true));
+        $this->conferirCobranca($p->cliente_id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.federal', true));
         $this->emitir($p2)->assertJson(['situacao' => 'emitida']);
         $this->assertStringContainsString('<tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed>', $enviado);
     }
@@ -287,29 +296,43 @@ class NfseTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_lista_de_clientes_por_periodo_conferir_e_avulsos(): void
+    public function test_lista_de_cobrancas_do_mes_conferir_e_avulsos(): void
     {
         $this->configurar();
         $adm = $this->actingAs($this->a->admin);
-        $pago = $this->servico();                                    // Maria: mensalidade 05/11 paga
+        $pago = $this->servico();                                    // Maria: mensalidade 05/11 paga, sem cobrança
         $c = Cliente::create(['nome' => 'Ana Empresa', 'documento' => '11444777000161']);
         $aberta = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-10-25', 'vencimento' => '2026-10-25', 'valor' => 30]);
         $velha = Ordens::lancar(['tipo' => 'servico', 'cliente_id' => $c->id, 'descricao' => 'Lavagem', 'data' => '2026-09-10', 'vencimento' => '2026-09-10', 'valor' => 50]);
-        Ordens::lancar(['tipo' => 'credito', 'cliente_id' => $c->id, 'descricao' => 'Crédito', 'data' => '2026-11-01', 'valor' => 10]);   // ajuste: não entra
+        $outubro = Cobrancas::emitir($c, '2026-10', '2026-10-30');
+        // novembro leva o saldo de outubro (que fica "levada") e soma a estadia nova; o crédito é ajuste, não entra
+        $nova = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-11-05', 'vencimento' => '2026-11-05', 'valor' => 40]);
+        Ordens::lancar(['tipo' => 'credito', 'cliente_id' => $c->id, 'descricao' => 'Crédito', 'data' => '2026-11-01', 'valor' => 10]);
+        $novembro = Cobrancas::emitir($c, '2026-11', '2026-11-20');
+        $this->assertSame('levada', $outubro->fresh()->situacao);
+        // cancelada e de outro mês não entram
+        $b = Cliente::create(['nome' => 'Bruno']);
+        Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $b->id, 'descricao' => 'Estadia', 'data' => '2026-11-02', 'vencimento' => '2026-11-02', 'valor' => 25]);
+        Cobrancas::cancelar(Cobrancas::emitir($b, '2026-11', '2026-11-10'), 'errada');
+        Cobrancas::emitir($b, '2026-12', '2026-12-10');
         $sem = Ordens::lancar(['tipo' => 'estadia', 'descricao' => 'Estadia avulsa', 'data' => '2026-11-10', 'vencimento' => '2026-11-10', 'valor' => 15]);
         $sem->update(['placa' => 'XYZ9A88']);
 
-        // padrão: do início do mês anterior ao fim do mês atual (01/10 a 30/11); pago ou não, sem nota
-        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('filtros.de', '2026-10-01')->where('filtros.ate', '2026-11-30')
-            ->has('clientes', 2)->where('clientes.0.nome', 'Ana Empresa')->where('clientes.0.total', 30)->where('clientes.1.total', 180));
-        // De/Até alcança o serviço antigo
-        $adm->get('/notas-fiscais?aba=clientes&de=2026-09-01&ate=2026-11-30')->assertInertia(fn ($pg) => $pg->where('clientes.0.qtd', 2)->where('clientes.0.total', 80));
+        // padrão: cobranças vencendo no mês atual, com o valor dos serviços sem nota
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aba', 'cobrancas')->where('filtros.mes', '2026-11')->has('cobrancas', 1)
+            ->where('cobrancas.0.id', $novembro->id)->where('cobrancas.0.qtd', 3)->where('cobrancas.0.valor', 120)->where('cobrancas.0.total', 110));
+        $adm->get('/notas-fiscais?mes=2026-10')->assertInertia(fn ($pg) => $pg->has('cobrancas', 0));          // outubro foi levada
+        $adm->get('/notas-fiscais?mes=2026-12')->assertInertia(fn ($pg) => $pg->has('cobrancas', 1)->where('cobrancas.0.nome', 'Bruno'));
 
-        // conferir: só os marcados, com os serviços do período
-        $adm->get('/notas-fiscais/conferir?clientes='.$c->id)->assertInertia(fn ($pg) => $pg->has('clientes', 1)->has('clientes.0.servicos', 1)->where('clientes.0.servicos.0.pago', false));
+        // conferir: os serviços sem nota da cobrança, saldo anterior incluído; cobrança de outra empresa ou nenhuma volta
+        $adm->get('/notas-fiscais/conferir?cobrancas='.$novembro->id.'&mes=2026-11')->assertInertia(fn ($pg) => $pg->where('filtros.mes', '2026-11')
+            ->where('cobrancas', [$novembro->numero])->has('clientes', 1)->has('clientes.0.servicos', 3)->where('clientes.0.servicos.0.id', $velha->id));
+        $adm->get('/notas-fiscais/conferir?cobrancas=999999')->assertRedirect('/notas-fiscais');
+        $adm->get('/cobrancas/'.$novembro->id)->assertInertia(fn ($pg) => $pg->where('sem_nota', 3));
 
         // emitir serviço em aberto (antes do pagamento) e rejeição devolve os serviços
         Http::fakeSequence()->push(['erros' => [['codigo' => 'E1', 'descricao' => 'Recusada.']]], 400)->push($this->nfseFalsa(), 201)
+            ->push($this->nfseFalsa('35485002211222333000181000000000000126110000000010'), 201)
             ->push($this->nfseFalsa('35485002211222333000181000000000000126110000000009'), 201);
         $this->emitir($aberta)->assertJson(['situacao' => 'rejeitada']);
         $this->assertNull($aberta->fresh()->nfse_id);
@@ -317,10 +340,14 @@ class NfseTest extends TestCase
         $this->assertNotNull($aberta->fresh()->nfse_id);
         $this->emitir($aberta)->assertStatus(422);                    // já tem nota
         $this->emitir([$pago, $velha])->assertStatus(422)->assertJson(['mensagem' => 'Uma nota é de um cliente só.']);
-        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->has('clientes', 1));   // Ana saiu da lista
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('cobrancas.0.qtd', 2)->where('cobrancas.0.valor', 90));   // o que já tem nota sai
+        $this->emitir([$velha, $nova])->assertJson(['situacao' => 'emitida']);
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->has('cobrancas', 0)->where('comNota', 1));
+        $adm->get('/notas-fiscais/conferir?cobrancas='.$novembro->id)->assertRedirect('/notas-fiscais?mes=2026-11');
+        $adm->get('/cobrancas/'.$novembro->id)->assertInertia(fn ($pg) => $pg->where('sem_nota', 0));
 
         // avulsos: pela OS, pela placa; sem cadastro com tomador digitado
-        $adm->get('/notas-fiscais?aba=avulsos&q='.$velha->numero)->assertInertia(fn ($pg) => $pg->has('avulsos', 1)->where('avulsos.0.id', $velha->id));
+        $adm->get('/notas-fiscais?aba=avulsos&q='.$pago->numero)->assertInertia(fn ($pg) => $pg->has('avulsos', 1)->where('avulsos.0.id', $pago->id));
         $adm->get('/notas-fiscais?aba=avulsos&q=xyz9a88')->assertInertia(fn ($pg) => $pg->has('avulsos', 1)->where('avulsos.0.cliente', null));
         $this->emitir($sem, ['avulso_documento' => '529.982.247-25', 'avulso_nome' => ''])->assertStatus(422);
         $this->emitir($sem, ['avulso_documento' => '529.982.247-25', 'avulso_nome' => 'João Balcão'])->assertJson(['situacao' => 'emitida']);

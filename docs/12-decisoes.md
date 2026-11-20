@@ -6,6 +6,7 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 20/11/2026 | Notas fiscais: a lista do mês é por cobrança (vencimento no mês escolhido; sem canceladas e levadas), não por período de serviços; a nota segue por serviço (cobrança só escolhe os serviços sem nota) e duas cobranças do mesmo cliente dão uma nota; botão "Emitir nota" na cobrança; desconto da cobrança fora da nota até a contabilidade definir | Pedido do Cauê (a nota acompanha o que o cliente recebe e paga) |
 | 20/11/2026 | Dados do veículo (marca, modelo, cor, identificação) sempre em maiúsculas, forçado no modelo (vale para PDV, ERP, link público e importação); PDV pede só o modelo, sem cor. Ordem dos tipos de veículo escolhida por setas em Configurações e usada em todas as escolhas de tamanho | Pedido do Cauê |
 | 19/11/2026 | NFS-e: código IBGE da cidade do tomador pelo CEP (ViaCEP no servidor, guardado no cliente com o CEP usado); data na frente das linhas de estadia e serviço avulso; descrição base opcional e em branco por padrão | Pedido do Cauê (notas reais para tomador de fora de Santos) |
 | 19/11/2026 | Opções de NFS-e no cadastro do cliente (dados do tomador, ISS retido, retenção federal), tudo desligado por padrão, como padrão da emissão (muda só para a nota na hora); no lugar de lembrar a última nota | Pedido do Cauê |

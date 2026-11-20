@@ -32,7 +32,7 @@ function Grupo({ titulo, itens }) {
     )
 }
 
-export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_vencimento: boletoVencimento, pontualidade = null }) {
+export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], inter = false, em_aberto: emAberto = 0, falta_cadastro: faltaCadastro = [], regras_sugerido: regrasSugerido = true, boleto_vencimento: boletoVencimento, pontualidade = null, sem_nota: semNota = 0 }) {
     const pode = usePode()
     const [cancelar, setCancelar] = useState(false)
     const form = useForm({ motivo: '' })
@@ -41,6 +41,7 @@ export default function CobrancaShow({ cobranca, cliente, itens, boletos = [], i
         <div className="pagina">
             <TituloPagina titulo={`Cobrança ${cobranca.numero}`} descricao={`${cliente.nome} · ${competencia(cobranca.competencia)}`}>
                 <a href={`/cobrancas/imprimir?ids[]=${cobranca.id}`} target="_blank" rel="noopener" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2"><Icone nome="impressora" tamanho={16} /> Imprimir</a>
+                {pode('nfse') && semNota > 0 && <Link href={`/notas-fiscais/conferir?cobrancas=${cobranca.id}&mes=${cobranca.vencimento.slice(0, 7)}`} className="btn btn-outline-primary d-inline-flex align-items-center gap-2"><Icone nome="documento" tamanho={16} /> Emitir nota</Link>}
                 {pode('contas_editar') && cobranca.situacao === 'aberta' && <button type="button" className="btn btn-outline-danger" onClick={() => setCancelar(true)}>Cancelar</button>}
             </TituloPagina>
             <div className="d-flex flex-wrap gap-3 mb-3 align-items-center">

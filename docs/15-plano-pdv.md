@@ -115,6 +115,7 @@ Cada parte fica utilizável antes da próxima. Testes automáticos em todas, com
 
 1. **Celular:** Android. Um Samsung de entrada (Galaxy A07 ou parecido), ainda a comprar. Os testes rodam no Galaxy A56 do Cauê.
 2. **Impressora:** ainda a comprar, provavelmente bobina de **80 mm**. Como ainda não foi comprada, a escolha segue a seção 6: comprar depois do teste de impressão (parte 8.6 antecipada para o começo) ou um modelo que já se saiba que funciona por um dos caminhos.
+   - **Atualização (20/11/2026):** testado no balcão. A impressora imprime por **Bluetooth** e o **leitor de QR Code** do PDV (câmera, na saída) funciona perfeitamente.
 3. **Hoje no balcão:** tudo manual (papel): tickets de estadia e de serviços, fluxo de caixa e fila da lavagem. O sistema atual não tem os avulsos. Consequências: não há histórico de avulsos para migrar; o caixa por turno e o registro no celular são hábito novo para a equipe (precisa de treino antes de valer).
 4. **Quando entra:** junto da virada. Até lá, o PDV é testado sem valer (ambiente local ou unidade de teste). Cuidado registrado: virada e PDV no mesmo dia são duas mudanças grandes juntas; por isso a equipe treina no PDV antes, com dados de teste, e a virada só acontece com o PDV já testado no balcão.
 

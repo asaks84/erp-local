@@ -4,6 +4,19 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 20/11/2026 — Registro: impressora Bluetooth e leitor de QR testados
+
+- Teste do Cauê no balcão: a impressora térmica imprime por Bluetooth e o leitor de QR Code do PDV funciona perfeitamente. Registrado na decisão 2 de docs/15-plano-pdv.md. Sem mudança de código.
+
+## 20/11/2026 — Notas fiscais: lista pelas cobranças do mês; "Emitir nota" na cobrança
+
+- **Aba Cobranças** (era Clientes): no lugar de De/Até, escolhe o mês e a lista mostra as cobranças que vencem nele (em aberto, parciais ou pagas; canceladas e levadas para a seguinte ficam fora), com cliente, nº, situação, vencimento, total e o valor dos serviços ainda sem nota. Cobrança com tudo em nota sai da lista (o rodapé conta quantas). Quem teve nota no mês passado vem marcado. O total da seleção conta uma vez o serviço que está em duas cobranças.
+- O controle continua por serviço: a cobrança só escolhe quais serviços vão para a tela de conferir. O que já entrou em nota, por esta cobrança ou por outra, não aparece de novo. A tela de conferir e emitir não mudou (duas cobranças do mesmo cliente viram uma nota).
+- **Cobrança › Emitir nota:** botão na tela da cobrança (com permissão de NFS-e) quando ela tem serviços sem nota; abre o conferir só com ela.
+- Desconto da cobrança ainda não entra na nota (vai o valor dos serviços); depende da contabilidade e da revisão dos descontos.
+- Avulsos sem mudança.
+- Arquivos: app/Servicos/Nfse/Notas.php, NfseController, CobrancaController, Pages/NotasFiscais/{Index,Conferir}.jsx, Pages/Cobrancas/Show.jsx, tests/Feature/NfseTest.php, docs 12 e 16.
+
 ## 20/11/2026 — PDV: dados do veículo em maiúsculas e botões com fundo; ordem dos tamanhos
 
 - **Maiúsculas:** marca, modelo, cor e identificação do veículo gravam sempre em maiúsculas (veículos, estadias, ordens de serviço e cadastros do link público), venha do PDV, do ERP ou da importação. No PDV o campo já mostra em maiúsculas enquanto digita. A migração passa os dados já gravados para maiúsculas. O exemplo do campo Modelo deixou de sugerir cor ("Ex.: ONIX").
