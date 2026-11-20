@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Cliente;
 use App\Models\FormaPagamento;
 use App\Models\Nfse;
-use App\Models\Pagamento;
+use App\Models\OrdemServico;
+use App\Models\TipoVeiculo;
+use App\Models\Veiculo;
 use App\Servicos\Baixa;
 use App\Servicos\FormasPagamento;
 use App\Servicos\Nfse\AssinaturaXml;
@@ -19,6 +21,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -67,13 +70,22 @@ class NfseTest extends TestCase
         Notas::guardarCertificado($this->cert, $this->chave);
     }
 
-    private function recebimento(?string $documento = '52998224725'): Pagamento
+    /** mensalidade de um cliente (paga), sem nota */
+    private function servico(?string $documento = '52998224725'): OrdemServico
     {
         $c = Cliente::create(['nome' => 'Maria da Silva', 'documento' => $documento, 'cidade' => 'Santos', 'cep' => '11010000', 'logradouro' => 'Rua XV de Novembro', 'numero' => '10', 'bairro' => 'Centro']);
         $o = Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $c->id, 'descricao' => 'Mensalidade Diurno', 'data' => '2026-11-05', 'vencimento' => '2026-11-05', 'competencia' => '2026-11', 'valor' => 180]);
         $o->update(['placa' => 'ABC1D23']);
+        Baixa::receberNaHora([$o], FormaPagamento::where('tipo', 'pix')->value('id'));
 
-        return Baixa::receberNaHora([$o], FormaPagamento::where('tipo', 'pix')->value('id'));
+        return $o->fresh();
+    }
+
+    private function emitir(OrdemServico|array $ordens, array $op = []): TestResponse
+    {
+        $ids = is_array($ordens) ? array_map(fn ($o) => $o->id, $ordens) : [$ordens->id];
+
+        return $this->actingAs($this->a->admin)->postJson('/notas-fiscais/emitir', ['ordens' => $ids] + $op);
     }
 
     private function nfseFalsa(string $chave = '35485002211222333000181000000000000126110000000001'): array
@@ -85,15 +97,15 @@ class NfseTest extends TestCase
 
     public function test_falta_configurar_antes_de_emitir(): void
     {
-        $p = $this->recebimento();
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHasErrors('nfse');
+        $p = $this->servico();
+        $this->emitir($p)->assertStatus(422);
         $this->assertSame(0, Nfse::count());
     }
 
     public function test_emite_com_dps_assinada_e_guarda_a_nota(): void
     {
         $this->configurar();
-        $p = $this->recebimento();
+        $p = $this->servico();
         $enviado = null;
         Http::fake(function (Request $r) use (&$enviado) {
             $this->assertSame('https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nfse', $r->url());
@@ -102,7 +114,7 @@ class NfseTest extends TestCase
             return Http::response($this->nfseFalsa(), 201);
         });
 
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHas('sucesso');
+        $this->emitir($p)->assertJson(['situacao' => 'emitida']);
 
         $n = Nfse::first();
         $this->assertSame('emitida', $n->situacao);
@@ -130,20 +142,20 @@ class NfseTest extends TestCase
         $this->assertStringContainsString('</tribMun><tribFed><piscofins><CST>00</CST><tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed><totTrib>', $enviado);
         $this->assertSame('2026-11', $n->competencia);
         $this->assertSame('2026-11-19', $v('dCompet'));   // competência = dia da emissão
-        $this->assertSame("Serviço de estacionamento\nABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00", $v('xDescServ'));
+        $this->assertSame('ABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00', $v('xDescServ'));
 
         // o mesmo recebimento não ganha segunda nota
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHasErrors('nfse');
+        $this->emitir($p)->assertStatus(422);
         $this->assertSame(1, Nfse::count());
     }
 
     public function test_sem_aliquotas_do_mes_nao_emite(): void
     {
         $this->configurar();
-        $p = $this->recebimento();
+        $p = $this->servico();
         $this->travel(13)->days();   // emissão em 02/12: competência 12/2026
         Http::fake();
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHasErrors(['nfse' => 'Falta informar as alíquotas de 12/2026 (do e-mail da contabilidade), no alto da página Notas fiscais.']);
+        $this->emitir($p)->assertStatus(422)->assertJson(['mensagem' => 'Falta informar as alíquotas de 12/2026 (do e-mail da contabilidade), no alto da página Notas fiscais.']);
         Http::assertNothingSent();
 
         $this->actingAs($this->a->admin)->put('/notas-fiscais/aliquotas', ['competencia' => '2026-12', 'iss' => '6', 'tributos' => 'x'])->assertSessionHasErrors(['iss', 'tributos']);
@@ -155,27 +167,28 @@ class NfseTest extends TestCase
     public function test_iss_retido_pelo_tomador(): void
     {
         $this->configurar();
-        $p = $this->recebimento('11444777000161');
+        $p = $this->servico('11444777000161');
         $enviado = null;
         Http::fake(function (Request $r) use (&$enviado) {
             $enviado = gzdecode(base64_decode($r['dpsXmlGZipB64']));
 
             return Http::response($this->nfseFalsa(), 201);
         });
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}", ['retido' => true])->assertSessionHas('sucesso');
+        $this->emitir($p, ['retido' => true])->assertJson(['situacao' => 'emitida']);
         $this->assertStringContainsString('<tpRetISSQN>2</tpRetISSQN><pAliq>2.01</pAliq>', $enviado);
         $this->assertStringContainsString('<cMun>3548500</cMun>', $enviado);   // endereço do tomador no município
         $n = Nfse::first();
         $this->assertTrue($n->iss_retido);
         $this->assertSame('3.62', $n->valor_iss);   // 180 x 2,01%
 
-        // a próxima nota do mesmo cliente já vem marcada
-        $p2 = Baixa::receberNaHora([Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $p->cliente_id, 'descricao' => 'Mensalidade', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 180])], FormaPagamento::where('tipo', 'pix')->value('id'));
-        $this->actingAs($this->a->admin)->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aEmitir.0.id', $p2->id)->where('aEmitir.0.retido_antes', true)->where('aEmitir.0.pode_reter', true));
+        // o padrão vem do cadastro do cliente
+        $p->cliente->update(['nf_tomador' => true, 'nf_iss_retido' => true]);
+        $p2 = Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $p->cliente_id, 'descricao' => 'Mensalidade', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 180]);
+        $this->actingAs($this->a->admin)->get('/notas-fiscais/conferir?clientes='.$p->cliente_id)->assertInertia(fn ($pg) => $pg->component('NotasFiscais/Conferir')->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.retido', true)->where('clientes.0.pode_reter', true));
 
         // sem endereço completo no município: não deixa reter
         $p2->cliente->update(['cidade' => 'Campinas']);
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p2->id}", ['retido' => true])->assertSessionHasErrors('nfse');
+        $this->emitir($p2, ['retido' => true])->assertStatus(422);
     }
 
     public function test_descricao_especificada_ou_nao_e_nota_sem_dados_do_cliente(): void
@@ -190,11 +203,22 @@ class NfseTest extends TestCase
         foreach ($ordens as $o) {
             $o->update(['placa' => 'ABC1D23']);
         }
-        $p = Baixa::receberNaHora($ordens, FormaPagamento::where('tipo', 'pix')->value('id'));
+        $v = Veiculo::create(['cliente_id' => $c->id, 'tipo_veiculo_id' => TipoVeiculo::value('id'), 'placa' => 'ABC1D23', 'marca' => 'VW', 'modelo' => 'POLO']);
+        foreach ($ordens as $o) {
+            $o->update(['veiculo_id' => $v->id]);
+        }
+        $lista = collect($ordens)->map->fresh();
+        // carro fora do cadastro (o da esposa) lançado na conta do cliente: modelo digitado e placa da ordem
+        $esposa = Ordens::lancar(['tipo' => 'servico', 'cliente_id' => $c->id, 'descricao' => 'Lavagem', 'data' => '2026-11-12', 'vencimento' => '2026-11-12', 'valor' => 40]);
+        $esposa->update(['placa' => 'XYZ9A88', 'veiculo_descricao' => 'HB20']);
+        $this->assertSame('12/11 - HB20 - XYZ9A88 - R$ 40,00', Dps::descricao(collect([$esposa->fresh()]), ConfigNfse::ler()));
+        $esposa->update(['veiculo_descricao' => null, 'tipo_veiculo_id' => TipoVeiculo::value('id')]);
+        $this->assertSame('12/11 - '.TipoVeiculo::value('nome').' - XYZ9A88 - R$ 40,00', Dps::descricao(collect([$esposa->fresh()]), ConfigNfse::ler()));
+        $esposa->delete();
 
-        $this->assertSame("Serviço de estacionamento\nABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00\nABC1D23 - R$ 25,00\nABC1D23 - R$ 40,00", Dps::descricao($p, ConfigNfse::ler()));
-        ConfigNfse::gravar(['especificar_servicos' => true]);
-        $this->assertSame("Serviço de estacionamento\nABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00\nABC1D23 - Estadia - R$ 25,00\nABC1D23 - Lavagem simples - R$ 40,00", Dps::descricao($p, ConfigNfse::ler()));
+        $this->assertSame("POLO - ABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00\n05/11 - POLO - ABC1D23 - R$ 25,00\n05/11 - POLO - ABC1D23 - R$ 40,00", Dps::descricao($lista, ConfigNfse::ler()));
+        ConfigNfse::gravar(['especificar_servicos' => true, 'descricao' => 'Serviço de estacionamento']);
+        $this->assertSame("Serviço de estacionamento\nPOLO - ABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00\n05/11 - POLO - ABC1D23 - Estadia - R$ 25,00\n05/11 - POLO - ABC1D23 - Lavagem simples - R$ 40,00", Dps::descricao($lista, ConfigNfse::ler()));
 
         // sem os dados do cliente na nota (mesmo tendo CNPJ)
         $enviado = null;
@@ -203,16 +227,17 @@ class NfseTest extends TestCase
 
             return Http::response($this->nfseFalsa(), 201);
         });
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}", ['identificar' => false])->assertSessionHas('sucesso');
+        $this->emitir($ordens, ['identificar' => false])->assertJson(['situacao' => 'emitida']);
         $this->assertStringNotContainsString('<toma>', $enviado);
+        $this->assertSame('245.00', Nfse::first()->valor);   // uma nota com os três serviços
         $n = Nfse::first();
         $this->assertFalse($n->tomador_identificado);
         $this->assertSame($c->id, $n->cliente_id);
-        // a próxima nota do cliente já vem sem os dados dele
-        $p2 = Baixa::receberNaHora([Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20])], FormaPagamento::where('tipo', 'pix')->value('id'));
-        $this->actingAs($this->a->admin)->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aEmitir.0.id', $p2->id)->where('aEmitir.0.identificar_antes', false));
+        // padrão do cadastro: tudo desligado (sem dados do tomador)
+        $p2 = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20]);
+        $this->actingAs($this->a->admin)->get('/notas-fiscais/conferir?clientes='.$c->id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.identificar', false)->where('clientes.0.retido', false));
         // ISS retido sem os dados do cliente na nota: não pode
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p2->id}", ['identificar' => false, 'retido' => true])->assertSessionHasErrors('nfse');
+        $this->emitir($p2, ['identificar' => false, 'retido' => true])->assertStatus(422);
     }
 
     public function test_tributacao_federal_de_outro_regime_com_retencao_na_configuracao(): void
@@ -225,7 +250,7 @@ class NfseTest extends TestCase
         $adm->put('/configuracoes/nfse', $base + ['p_aliq_pis' => '0,65', 'p_aliq_cofins' => '3', 'p_ret_csll' => '1', 'p_ret_irrf' => '1,5'])->assertSessionHas('sucesso');   // aceita vírgula
         $this->assertSame(6.15, ConfigNfse::retencaoFederal(ConfigNfse::ler()));
 
-        $p = $this->recebimento('11444777000161');   // R$ 180
+        $p = $this->servico('11444777000161');   // R$ 180
         $enviado = null;
         $k = 0;
         Http::fake(function (Request $r) use (&$enviado, &$k) {
@@ -234,17 +259,18 @@ class NfseTest extends TestCase
             return Http::response($this->nfseFalsa('3548500221122233300018100000000000012611000000000'.++$k), 201);
         });
         // o cliente retém: precisa dos dados dele na nota
-        $adm->post("/notas-fiscais/emitir/{$p->id}", ['identificar' => false, 'retem_federal' => true])->assertSessionHasErrors('nfse');
-        $adm->post("/notas-fiscais/emitir/{$p->id}", ['retem_federal' => true])->assertSessionHas('sucesso');
+        $this->emitir($p, ['identificar' => false, 'retem_federal' => true])->assertStatus(422);
+        $this->emitir($p, ['retem_federal' => true])->assertJson(['situacao' => 'emitida']);
         $this->assertStringContainsString('<tribFed><piscofins><CST>01</CST><vBCPisCofins>180.00</vBCPisCofins><pAliqPis>0.65</pAliqPis><pAliqCofins>3.00</pAliqCofins>'
             .'<vPis>1.17</vPis><vCofins>5.40</vCofins><tpRetPisCofins>3</tpRetPisCofins></piscofins><vRetIRRF>2.70</vRetIRRF><vRetCSLL>8.37</vRetCSLL></tribFed>', $enviado);
         $n = Nfse::where('situacao', 'emitida')->first();
         $this->assertSame(['3', true, false, '11.07'], [$n->ret_federal, $n->ret_irrf, $n->ret_cp, $n->valor_ret_federal]);
 
-        // a próxima nota do cliente já vem marcada; cliente que não retém: só CST, sem retenção
-        $p2 = Baixa::receberNaHora([Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $p->cliente_id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20])], FormaPagamento::where('tipo', 'pix')->value('id'));
-        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('aEmitir.0.id', $p2->id)->where('aEmitir.0.federal_antes', true));
-        $adm->post("/notas-fiscais/emitir/{$p2->id}")->assertSessionHas('sucesso');
+        // padrão do cadastro do cliente; cliente que não retém: só CST, sem retenção
+        $p->cliente->update(['nf_tomador' => true, 'nf_retem_federal' => true]);
+        $p2 = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $p->cliente_id, 'descricao' => 'Estadia', 'data' => '2026-11-06', 'vencimento' => '2026-11-06', 'valor' => 20]);
+        $adm->get('/notas-fiscais/conferir?clientes='.$p->cliente_id)->assertInertia(fn ($pg) => $pg->where('clientes.0.servicos.0.id', $p2->id)->where('clientes.0.federal', true));
+        $this->emitir($p2)->assertJson(['situacao' => 'emitida']);
         $this->assertStringContainsString('<tpRetPisCofins>0</tpRetPisCofins></piscofins></tribFed>', $enviado);
     }
 
@@ -255,10 +281,137 @@ class NfseTest extends TestCase
             'c_nbs' => '106043000', 'serie' => '7', 'descricao' => 'Estacionamento', 'pis_cofins_cst' => '00', 'tp_ret_pis_cofins' => '0', 'ibs_cbs' => true];
         $this->actingAs($this->a->admin)->put('/configuracoes/nfse', $base)->assertSessionHasErrors(['ibs_cbs_cst', 'ibs_cbs_class']);
         $this->actingAs($this->a->admin)->put('/configuracoes/nfse', $base + ['ibs_cbs_cst' => '000', 'ibs_cbs_class' => '000001'])->assertSessionHas('sucesso');
-        $p = $this->recebimento();
+        $p = $this->servico();
         Http::fake();
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHasErrors('nfse');
+        $this->emitir($p)->assertStatus(422);
         Http::assertNothingSent();
+    }
+
+    public function test_lista_de_clientes_por_periodo_conferir_e_avulsos(): void
+    {
+        $this->configurar();
+        $adm = $this->actingAs($this->a->admin);
+        $pago = $this->servico();                                    // Maria: mensalidade 05/11 paga
+        $c = Cliente::create(['nome' => 'Ana Empresa', 'documento' => '11444777000161']);
+        $aberta = Ordens::lancar(['tipo' => 'estadia', 'cliente_id' => $c->id, 'descricao' => 'Estadia', 'data' => '2026-10-25', 'vencimento' => '2026-10-25', 'valor' => 30]);
+        $velha = Ordens::lancar(['tipo' => 'servico', 'cliente_id' => $c->id, 'descricao' => 'Lavagem', 'data' => '2026-09-10', 'vencimento' => '2026-09-10', 'valor' => 50]);
+        Ordens::lancar(['tipo' => 'credito', 'cliente_id' => $c->id, 'descricao' => 'Crédito', 'data' => '2026-11-01', 'valor' => 10]);   // ajuste: não entra
+        $sem = Ordens::lancar(['tipo' => 'estadia', 'descricao' => 'Estadia avulsa', 'data' => '2026-11-10', 'vencimento' => '2026-11-10', 'valor' => 15]);
+        $sem->update(['placa' => 'XYZ9A88']);
+
+        // padrão: do início do mês anterior ao fim do mês atual (01/10 a 30/11); pago ou não, sem nota
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->where('filtros.de', '2026-10-01')->where('filtros.ate', '2026-11-30')
+            ->has('clientes', 2)->where('clientes.0.nome', 'Ana Empresa')->where('clientes.0.total', 30)->where('clientes.1.total', 180));
+        // De/Até alcança o serviço antigo
+        $adm->get('/notas-fiscais?aba=clientes&de=2026-09-01&ate=2026-11-30')->assertInertia(fn ($pg) => $pg->where('clientes.0.qtd', 2)->where('clientes.0.total', 80));
+
+        // conferir: só os marcados, com os serviços do período
+        $adm->get('/notas-fiscais/conferir?clientes='.$c->id)->assertInertia(fn ($pg) => $pg->has('clientes', 1)->has('clientes.0.servicos', 1)->where('clientes.0.servicos.0.pago', false));
+
+        // emitir serviço em aberto (antes do pagamento) e rejeição devolve os serviços
+        Http::fakeSequence()->push(['erros' => [['codigo' => 'E1', 'descricao' => 'Recusada.']]], 400)->push($this->nfseFalsa(), 201)
+            ->push($this->nfseFalsa('35485002211222333000181000000000000126110000000009'), 201);
+        $this->emitir($aberta)->assertJson(['situacao' => 'rejeitada']);
+        $this->assertNull($aberta->fresh()->nfse_id);
+        $this->emitir($aberta)->assertJson(['situacao' => 'emitida']);
+        $this->assertNotNull($aberta->fresh()->nfse_id);
+        $this->emitir($aberta)->assertStatus(422);                    // já tem nota
+        $this->emitir([$pago, $velha])->assertStatus(422)->assertJson(['mensagem' => 'Uma nota é de um cliente só.']);
+        $adm->get('/notas-fiscais')->assertInertia(fn ($pg) => $pg->has('clientes', 1));   // Ana saiu da lista
+
+        // avulsos: pela OS, pela placa; sem cadastro com tomador digitado
+        $adm->get('/notas-fiscais?aba=avulsos&q='.$velha->numero)->assertInertia(fn ($pg) => $pg->has('avulsos', 1)->where('avulsos.0.id', $velha->id));
+        $adm->get('/notas-fiscais?aba=avulsos&q=xyz9a88')->assertInertia(fn ($pg) => $pg->has('avulsos', 1)->where('avulsos.0.cliente', null));
+        $this->emitir($sem, ['avulso_documento' => '529.982.247-25', 'avulso_nome' => ''])->assertStatus(422);
+        $this->emitir($sem, ['avulso_documento' => '529.982.247-25', 'avulso_nome' => 'João Balcão'])->assertJson(['situacao' => 'emitida']);
+        $enviado = gzdecode(base64_decode(Http::recorded()->last()[0]['dpsXmlGZipB64']));
+        $this->assertStringContainsString('<toma><CPF>52998224725</CPF><xNome>João Balcão</xNome></toma>', $enviado);
+    }
+
+    public function test_cadastro_do_cliente_guarda_as_opcoes_de_nota(): void
+    {
+        $c = Cliente::create(['nome' => 'Cliente Novo', 'documento' => '11444777000161', 'dia_vencimento' => 10]);
+        $this->assertFalse($c->fresh()->nf_tomador);   // tudo desligado por padrão
+        $dados = ['nome' => 'Cliente Novo', 'documento' => '11.444.777/0001-61', 'dia_vencimento' => 10];
+        $this->actingAs($this->a->admin)->put("/clientes/{$c->id}", $dados + ['nf_tomador' => true, 'nf_iss_retido' => true, 'nf_retem_federal' => true])->assertSessionHas('sucesso');
+        $this->assertSame([true, true, true], [$c->fresh()->nf_tomador, $c->fresh()->nf_iss_retido, $c->fresh()->nf_retem_federal]);
+        // sem dados do tomador não há retenção
+        $this->actingAs($this->a->admin)->put("/clientes/{$c->id}", $dados + ['nf_tomador' => false, 'nf_iss_retido' => true])->assertSessionHas('sucesso');
+        $this->assertSame([false, false, false], [$c->fresh()->nf_tomador, $c->fresh()->nf_iss_retido, $c->fresh()->nf_retem_federal]);
+        // tela que não mostra as opções não mexe nelas
+        $c->update(['nf_tomador' => true]);
+        $this->actingAs($this->a->admin)->put("/clientes/{$c->id}", $dados)->assertSessionHas('sucesso');
+        $this->assertTrue($c->fresh()->nf_tomador);
+        $this->actingAs($this->a->admin)->get("/clientes/{$c->id}/editar")->assertInertia(fn ($pg) => $pg->where('cliente.nf_tomador', true));
+    }
+
+    /**
+     * Compara a DPS montada aqui com a de uma nota real emitida pelo Emissor Nacional (mesmo caso: tomador CNPJ em
+     * Santos, ISS retido a 2,01%, Simples): mesmos elementos, na mesma ordem (tirando os opcionais que o Emissor manda
+     * a mais: fone, email e IM). O XML real fica só na memória do teste: os dados são reproduzidos aqui, sem a nota.
+     */
+    public function test_dps_tem_a_mesma_estrutura_da_nota_real_do_emissor(): void
+    {
+        $this->configurar();
+        $c = Cliente::create(['nome' => 'TOMADOR TESTE', 'documento' => '11444777000161', 'cidade' => 'Santos', 'cep' => '11013203', 'logradouro' => 'SAO FRANCISCO', 'numero' => '276', 'bairro' => 'CENTRO']);
+        $o = Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $c->id, 'descricao' => 'Mensalidade', 'data' => '2026-11-05', 'vencimento' => '2026-11-05', 'competencia' => '2026-11', 'valor' => 640]);
+        $dps = Dps::montar($c, collect([$o]), $this->a->empresa->fresh(), ConfigNfse::ler(), 'producao', 2, ['iss' => '2.01', 'tributos' => '17.62'], ['retido' => true]);
+        $caminhos = function (string $xml): array {
+            $d = new \DOMDocument;
+            $d->loadXML($xml);
+            $r = [];
+            $andar = function (\DOMElement $e, string $p) use (&$andar, &$r) {
+                $r[] = $p.$e->localName;
+                foreach ($e->childNodes as $f) {
+                    if ($f instanceof \DOMElement) {
+                        $andar($f, $p.$e->localName.'/');
+                    }
+                }
+            };
+            $andar($d->documentElement, '');
+
+            return $r;
+        };
+        // estrutura da DPS da nota real (infDPS), sem fone/email/IM, que são opcionais
+        $real = ['DPS', 'DPS/infDPS', 'DPS/infDPS/tpAmb', 'DPS/infDPS/dhEmi', 'DPS/infDPS/verAplic', 'DPS/infDPS/serie', 'DPS/infDPS/nDPS', 'DPS/infDPS/dCompet',
+            'DPS/infDPS/tpEmit', 'DPS/infDPS/cLocEmi', 'DPS/infDPS/prest', 'DPS/infDPS/prest/CNPJ', 'DPS/infDPS/prest/regTrib', 'DPS/infDPS/prest/regTrib/opSimpNac',
+            'DPS/infDPS/prest/regTrib/regApTribSN', 'DPS/infDPS/prest/regTrib/regEspTrib', 'DPS/infDPS/toma', 'DPS/infDPS/toma/CNPJ', 'DPS/infDPS/toma/xNome',
+            'DPS/infDPS/toma/end', 'DPS/infDPS/toma/end/endNac', 'DPS/infDPS/toma/end/endNac/cMun', 'DPS/infDPS/toma/end/endNac/CEP', 'DPS/infDPS/toma/end/xLgr',
+            'DPS/infDPS/toma/end/nro', 'DPS/infDPS/toma/end/xBairro', 'DPS/infDPS/serv', 'DPS/infDPS/serv/locPrest', 'DPS/infDPS/serv/locPrest/cLocPrestacao',
+            'DPS/infDPS/serv/cServ', 'DPS/infDPS/serv/cServ/cTribNac', 'DPS/infDPS/serv/cServ/cTribMun', 'DPS/infDPS/serv/cServ/xDescServ', 'DPS/infDPS/serv/cServ/cNBS',
+            'DPS/infDPS/valores', 'DPS/infDPS/valores/vServPrest', 'DPS/infDPS/valores/vServPrest/vServ', 'DPS/infDPS/valores/trib', 'DPS/infDPS/valores/trib/tribMun',
+            'DPS/infDPS/valores/trib/tribMun/tribISSQN', 'DPS/infDPS/valores/trib/tribMun/tpRetISSQN', 'DPS/infDPS/valores/trib/tribMun/pAliq',
+            'DPS/infDPS/valores/trib/tribFed', 'DPS/infDPS/valores/trib/tribFed/piscofins', 'DPS/infDPS/valores/trib/tribFed/piscofins/CST',
+            'DPS/infDPS/valores/trib/tribFed/piscofins/tpRetPisCofins', 'DPS/infDPS/valores/trib/totTrib', 'DPS/infDPS/valores/trib/totTrib/pTotTribSN'];
+        $this->assertSame($real, $caminhos($dps['xml']));
+        $this->assertStringContainsString('<tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>2</tpRetISSQN><pAliq>2.01</pAliq></tribMun>', $dps['xml']);
+    }
+
+    public function test_cidade_de_fora_da_lista_pelo_cep(): void
+    {
+        $this->configurar();
+        $c = Cliente::create(['nome' => 'EMPRESA DE CAMPINAS', 'documento' => '11444777000161', 'cidade' => 'Campinas', 'cep' => '13010000', 'logradouro' => 'RUA X', 'numero' => '1', 'bairro' => 'CENTRO']);
+        $o = Ordens::lancar(['tipo' => 'mensalidade', 'cliente_id' => $c->id, 'descricao' => 'Mensalidade', 'data' => '2026-11-05', 'vencimento' => '2026-11-05', 'competencia' => '2026-11', 'valor' => 100]);
+        $consultas = 0;
+        Http::fake(function (Request $r) use (&$consultas) {
+            if (str_contains($r->url(), 'viacep.com.br')) {
+                $consultas++;
+
+                return Http::response(['ibge' => str_contains($r->url(), '13010000') ? '3509502' : '3550308']);
+            }
+
+            return Http::response($this->nfseFalsa(), 201);
+        });
+        $this->emitir($o)->assertJson(['situacao' => 'emitida']);
+        $dps = Http::recorded()->first(fn ($x) => str_contains($x[0]->url(), 'SefinNacional'))[0];
+        $this->assertStringContainsString('<endNac><cMun>3509502</cMun><CEP>13010000</CEP></endNac>', gzdecode(base64_decode($dps['dpsXmlGZipB64'])));
+        $this->assertSame(['3509502', '13010000'], [$c->fresh()->cidade_ibge, $c->fresh()->cidade_ibge_cep]);
+        // já guardado: não consulta de novo; CEP mudou: consulta
+        $this->assertSame('3509502', Dps::municipioDoCliente($c->fresh()));
+        $this->assertSame(1, $consultas);
+        $c->update(['cep' => '01001000']);
+        $this->assertSame('3550308', Dps::municipioDoCliente($c->fresh()));
+        $this->assertSame(2, $consultas);
     }
 
     public function test_configuracao_aceita_codigo_como_o_emissor_mostra(): void
@@ -276,14 +429,14 @@ class NfseTest extends TestCase
     {
         $this->configurar();
         ConfigNfse::gravar(['reg_ap_trib_sn' => '2']);
-        $p = $this->recebimento(null);
+        $p = $this->servico(null);
         $enviado = null;
         Http::fake(function (Request $r) use (&$enviado) {
             $enviado = gzdecode(base64_decode($r['dpsXmlGZipB64']));
 
             return Http::response($this->nfseFalsa(), 201);
         });
-        Notas::emitir($p);
+        Notas::emitir([$p]);
         $this->assertStringContainsString('<regApTribSN>2</regApTribSN>', $enviado);
         $this->assertStringNotContainsString('<toma>', $enviado);
     }
@@ -291,23 +444,23 @@ class NfseTest extends TestCase
     public function test_rejeitada_guarda_o_motivo_e_deixa_emitir_de_novo(): void
     {
         $this->configurar();
-        $p = $this->recebimento();
+        $p = $this->servico();
         Http::fakeSequence()->push(['erros' => [['codigo' => 'E0312', 'descricao' => 'Código de tributação nacional inexistente.']]], 400)->push($this->nfseFalsa(), 201);
 
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHas('erro');
+        $this->emitir($p)->assertJson(['situacao' => 'rejeitada']);
         $n = Nfse::first();
         $this->assertSame('rejeitada', $n->situacao);
         $this->assertSame('E0312: Código de tributação nacional inexistente.', $n->mensagem);
 
         // corrigiu e emitiu de novo: outro número de DPS
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHas('sucesso');
+        $this->emitir($p)->assertJson(['situacao' => 'emitida']);
         $this->assertSame([1, 2], Nfse::orderBy('id')->pluck('numero_dps')->all());
     }
 
     public function test_sem_resposta_fica_enviando_e_conferir_acha_a_nota(): void
     {
         $this->configurar();
-        $p = $this->recebimento();
+        $p = $this->servico();
         $caiu = true;
         Http::fake(function (Request $r) use (&$caiu) {
             if ($caiu) {
@@ -318,7 +471,7 @@ class NfseTest extends TestCase
                 ? Http::response(['chaveAcesso' => '35485002211222333000181000000000000126110000000001'], 200)
                 : Http::response(['nfseXmlGZipB64' => $this->nfseFalsa()['nfseXmlGZipB64']], 200);
         });
-        $this->actingAs($this->a->admin)->post("/notas-fiscais/emitir/{$p->id}")->assertSessionHas('aviso');
+        $this->emitir($p)->assertJson(['situacao' => 'enviando']);
         $n = Nfse::first();
         $this->assertSame('enviando', $n->situacao);
 
@@ -331,9 +484,9 @@ class NfseTest extends TestCase
     public function test_cancela_com_evento_assinado(): void
     {
         $this->configurar();
-        $p = $this->recebimento();
+        $p = $this->servico();
         Http::fake(['*/SefinNacional/nfse' => Http::response($this->nfseFalsa(), 201)]);
-        $n = Notas::emitir($p);
+        $n = Notas::emitir([$p]);
 
         $evento = null;
         Http::fake(function (Request $r) use (&$evento) {
@@ -348,8 +501,8 @@ class NfseTest extends TestCase
         $this->assertTrue(AssinaturaXml::confere($evento, $this->cert, 'infPedReg'));
         $this->assertStringContainsString('<CNPJAutor>11222333000181</CNPJAutor>', $evento);
         $this->assertStringContainsString('Id="PRE35485002211222333000181000000000000126110000000001101101"', $evento);
-        // cancelada libera emitir de novo
-        $this->assertNull(Notas::podeEmitir($p->fresh()));
+        // cancelada: o serviço volta a ficar sem nota
+        $this->assertNull($p->fresh()->nfse_id);
     }
 
     public function test_certificado_precisa_ser_do_cnpj_e_a_chave_dele(): void

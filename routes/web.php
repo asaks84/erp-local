@@ -379,7 +379,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/configuracoes/nfse/testar', [NfseController::class, 'testar']);
         Route::get('/notas-fiscais', [NfseController::class, 'index']);
         Route::put('/notas-fiscais/aliquotas', [NfseController::class, 'aliquotas']);
-        Route::post('/notas-fiscais/emitir/{pagamento}', [NfseController::class, 'emitir']);
+        Route::get('/notas-fiscais/conferir', [NfseController::class, 'conferirClientes']);
+        Route::post('/notas-fiscais/emitir', [NfseController::class, 'emitir']);
         Route::post('/notas-fiscais/{nota}/conferir', [NfseController::class, 'conferir']);
         Route::post('/notas-fiscais/{nota}/cancelar', [NfseController::class, 'cancelar']);
         Route::get('/notas-fiscais/{nota}/xml', [NfseController::class, 'xml']);

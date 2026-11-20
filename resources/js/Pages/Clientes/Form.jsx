@@ -10,6 +10,7 @@ export default function ClienteForm({ cliente, dia_padrao }) {
         complemento: cliente?.complemento || '', bairro: cliente?.bairro || '', cidade: cliente?.cidade || '', uf: cliente?.uf || '',
         dia_vencimento: cliente?.dia_vencimento ?? dia_padrao, cliente_desde: cliente?.cliente_desde || '',
         observacoes: cliente?.observacoes || '', nao_recebe_avisos: cliente?.nao_recebe_avisos || false,
+        nf_tomador: cliente?.nf_tomador || false, nf_iss_retido: cliente?.nf_iss_retido || false, nf_retem_federal: cliente?.nf_retem_federal || false,
     })
 
     function salvar(e) {

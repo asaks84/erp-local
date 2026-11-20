@@ -26,7 +26,7 @@ class ConfigNfse
         'c_trib_mun' => '004',           // 11.01.01.004 - Estacionamento de veículos - outros veículos (Santos)
         'c_nbs' => '106043000',          // Serviços de estacionamento
         'serie' => '1',
-        'descricao' => 'Serviço de estacionamento',
+        'descricao' => '',               // primeira linha da descrição (opcional); abaixo, uma linha por serviço
         'especificar_servicos' => false,  // nome do serviço (estadia, lavagem) em cada linha; mensalidade sempre vai
         // tributação federal (como no Emissor: "00 - Nenhum" e "0 - Não retidos" para quem está no Simples)
         'pis_cofins_cst' => '00',

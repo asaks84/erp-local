@@ -2,85 +2,113 @@
 
 namespace App\Servicos\Nfse;
 
+use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\Integracao;
 use App\Models\Nfse;
-use App\Models\Pagamento;
+use App\Models\OrdemServico;
 use App\Support\Atividades;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
- * Emissão da NFS-e pelo Sistema Nacional: uma nota por recebimento.
+ * Emissão da NFS-e pelo Sistema Nacional, a partir dos serviços (ordens) sem nota.
+ * - Cada serviço guarda a nota em que entrou (ordens_servico.nfse_id). Rejeitada ou cancelada, os serviços voltam a
+ *   ficar sem nota. Pago ou não, não importa: a nota pode sair antes do pagamento (clientes que fecham o mês).
  * - emitir(): monta a DPS, assina com o A1, envia. Emitida guarda a chave, o número e o XML da nota.
- *   Rejeitada guarda o motivo (dá para corrigir a configuração e emitir de novo, com outro número de DPS).
  *   Sem resposta (a conexão caiu): fica "enviando" e conferir() pergunta ao Sistema Nacional pela DPS.
  * - cancelar(): evento de cancelamento, assinado.
  */
 class Notas
 {
-    /** recebimento que pode ter nota: confirmado, com valor e sem nota emitida ou em andamento */
-    public static function podeEmitir(Pagamento $p): ?string
-    {
-        if ($p->situacao !== 'confirmado') {
-            return 'Recebimento estornado não tem nota.';
-        }
-        if ((float) $p->valor <= 0) {
-            return 'Recebimento sem valor.';
-        }
-        if (Nfse::where('pagamento_id', $p->id)->whereIn('situacao', ['enviando', 'emitida'])->exists()) {
-            return 'Este recebimento já tem nota.';
-        }
+    /** tipos de serviço que entram em nota (crédito e débito são ajustes, não serviço) */
+    public const TIPOS = ['mensalidade', 'servico', 'estadia'];
 
-        return null;
+    /** serviços sem nota: não cancelados, com valor */
+    public static function semNota(): Builder
+    {
+        return OrdemServico::query()->whereNull('nfse_id')->where('situacao', '!=', 'cancelada')
+            ->whereIn('tipo', self::TIPOS)->where('valor', '>', 0);
+    }
+
+    /** período padrão da lista de clientes: do início do mês anterior ao fim do mês atual */
+    public static function periodoPadrao(?Carbon $agora = null): array
+    {
+        $agora = ($agora ?? now())->copy()->setTimezone('America/Sao_Paulo');
+
+        return [$agora->copy()->subMonthNoOverflow()->startOfMonth()->toDateString(), $agora->copy()->endOfMonth()->toDateString()];
+    }
+
+    /** serviços sem nota dos clientes no período (pela data do serviço) */
+    public static function semNotaDosClientes(string $de, string $ate): Builder
+    {
+        return self::semNota()->whereNotNull('cliente_id')->whereBetween('data', [$de, $ate]);
     }
 
     /**
-     * @param  bool  $retido  ISS retido pelo tomador (cliente que recolhe o ISS no lugar do Local)
-     * @param  bool  $identificar  declarar os dados do cliente na nota (false: nota sem tomador)
-     * @param  bool  $retemFederal  o cliente retém os tributos federais (tipo e alíquotas da configuração)
+     * @param  Collection<int, OrdemServico>|array<int>  $ordens  serviços da nota (do mesmo cliente, ou avulsos sem cliente)
+     * @param  array  $op  identificar (dados do cliente na nota, padrão sim), retido (ISS retido pelo tomador),
+     *                     retem_federal (o cliente retém os tributos federais: tipo e alíquotas da configuração),
+     *                     avulso (['documento' => , 'nome' => ]: tomador digitado, para quem não tem cadastro)
      */
-    public static function emitir(Pagamento $p, bool $retido = false, bool $identificar = true, bool $retemFederal = false): Nfse
+    public static function emitir(Collection|array $ordens, array $op = []): Nfse
     {
         $empresa = Empresa::atual();
         $cfg = ConfigNfse::ler($empresa);
         if ($f = ConfigNfse::faltando($empresa)) {
             throw ValidationException::withMessages(['nfse' => 'Falta configurar: '.implode(', ', $f).' (Configurações › Nota fiscal).']);
         }
-        if ($motivo = self::podeEmitir($p)) {
-            throw ValidationException::withMessages(['nfse' => $motivo]);
-        }
         if ($cfg['ibs_cbs']) {
             // o grupo IBS/CBS da DPS entra quando for conferido no leiaute oficial em vigor (docs/16-nfse.md)
             throw ValidationException::withMessages(['nfse' => 'Com "Preencher as informações IBS/CBS" em Sim, a emissão por aqui ainda não está pronta. Emita pelo Emissor Nacional ou volte para Não.']);
         }
-        // retenção federal: o cliente diz se retém; o tipo e as alíquotas são os da configuração da empresa
-        $fed = $retemFederal ? ConfigNfse::retencaoConfigurada($cfg) : ['tipo' => '0', 'irrf' => false, 'cp' => false];
+        $ids = collect($ordens)->map(fn ($o) => $o instanceof OrdemServico ? $o->id : (int) $o)->unique()->values();
+        if ($ids->isEmpty()) {
+            throw ValidationException::withMessages(['nfse' => 'Escolha ao menos um serviço.']);
+        }
         $competencia = Dps::competencia();
         $aliq = ConfigNfse::aliquotas($competencia, $empresa);
         if (! $aliq) {
             throw ValidationException::withMessages(['nfse' => 'Falta informar as alíquotas de '.Carbon::parse($competencia.'-01')->format('m/Y').' (do e-mail da contabilidade), no alto da página Notas fiscais.']);
         }
+        $retido = (bool) ($op['retido'] ?? false);
+        $identificar = (bool) ($op['identificar'] ?? true);
+        // retenção federal: o cliente diz se retém; o tipo e as alíquotas são os da configuração da empresa
+        $fed = ! empty($op['retem_federal']) ? ConfigNfse::retencaoConfigurada($cfg) : ['tipo' => '0', 'irrf' => false, 'cp' => false];
         $i = ConfigNfse::integracao();
         $api = new SefinNacional($i);
         $serie = (string) (int) $cfg['serie'];
 
-        $nota = DB::transaction(function () use ($p, $empresa, $cfg, $api, $serie, $i, $aliq, $retido, $identificar, $fed, $competencia) {
+        $nota = DB::transaction(function () use ($ids, $op, $empresa, $cfg, $api, $serie, $i, $aliq, $retido, $identificar, $fed, $competencia) {
+            $lista = self::semNota()->whereIn('id', $ids)->lockForUpdate()->get();
+            if ($lista->count() !== $ids->count()) {
+                throw ValidationException::withMessages(['nfse' => 'Algum serviço já tem nota ou foi cancelado. Atualize a página.']);
+            }
+            if ($lista->pluck('cliente_id')->unique()->count() > 1) {
+                throw ValidationException::withMessages(['nfse' => 'Uma nota é de um cliente só.']);
+            }
+            $cliente = $lista->first()->cliente_id ? Cliente::find($lista->first()->cliente_id) : null;
             $numero = (int) Nfse::where('serie', $serie)->lockForUpdate()->max('numero_dps') + 1;
-            $dps = Dps::montar($p, $empresa, $cfg, $api->ambiente(), $numero, $aliq, $retido, $identificar, $fed);
+            $dps = Dps::montar($cliente, $lista, $empresa, $cfg, $api->ambiente(), $numero, $aliq,
+                ['retido' => $retido, 'identificar' => $identificar, 'fed' => $fed, 'avulso' => $op['avulso'] ?? []]);
             $xml = AssinaturaXml::assinar($dps['xml'], $i->credencial('certificado'), $i->credencial('chave'));
 
-            return Nfse::create([
-                'pagamento_id' => $p->id, 'ambiente' => $api->ambiente(), 'serie' => $serie, 'numero_dps' => $numero, 'id_dps' => $dps['id'],
-                'valor' => $p->valor, 'tomador_documento' => $dps['tomador_documento'], 'tomador_nome' => $dps['tomador_nome'],
+            $nota = Nfse::create([
+                'ambiente' => $api->ambiente(), 'serie' => $serie, 'numero_dps' => $numero, 'id_dps' => $dps['id'],
+                'valor' => $dps['valor'], 'tomador_documento' => $dps['tomador_documento'], 'tomador_nome' => $dps['tomador_nome'],
                 'descricao' => $dps['descricao'], 'xml_dps' => $xml, 'criado_por' => Auth::id(), 'competencia' => $competencia,
-                'cliente_id' => $p->cliente_id, 'tomador_identificado' => $identificar,
+                'cliente_id' => $cliente?->id, 'tomador_identificado' => $identificar,
                 'iss_retido' => $retido, 'aliquota_iss' => $retido ? $aliq['iss'] : null, 'valor_iss' => $dps['valor_iss'], 'p_tot_trib' => $aliq['tributos'],
                 'ret_federal' => $fed['tipo'], 'ret_irrf' => $fed['irrf'], 'ret_cp' => $fed['cp'], 'valor_ret_federal' => $dps['valor_ret_federal'] ?: null,
             ]);
+            OrdemServico::whereIn('id', $ids)->update(['nfse_id' => $nota->id]);
+
+            return $nota;
         });
 
         try {
@@ -110,6 +138,7 @@ class Notas
         }
         $msg = $r['erros'] ? implode(' · ', $r['erros']) : 'Resposta sem a chave da nota (HTTP '.$r['status'].').';
         $nota->update(['situacao' => 'rejeitada', 'mensagem' => mb_substr($msg, 0, 1000)]);
+        OrdemServico::where('nfse_id', $nota->id)->update(['nfse_id' => null]);   // os serviços voltam a ficar sem nota
         Atividades::registrar('nfse_rejeitada', 'DPS '.$nota->numero_dps.': '.mb_substr($msg, 0, 300));
     }
 
@@ -151,6 +180,7 @@ class Notas
             throw ValidationException::withMessages(['motivo' => 'O Sistema Nacional recusou o cancelamento: '.(implode(' · ', $r['erros']) ?: 'HTTP '.$r['status'])]);
         }
         $nota->update(['situacao' => 'cancelada', 'cancelada_em' => now(), 'mensagem' => mb_substr('Cancelada: '.$motivo, 0, 1000)]);
+        OrdemServico::where('nfse_id', $nota->id)->update(['nfse_id' => null]);   // os serviços voltam para a lista
         Atividades::registrar('nfse_cancelada', 'NFS-e '.($nota->numero_nfse ?? $nota->chave_acesso).': '.$motivo);
 
         return $nota;

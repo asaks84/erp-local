@@ -12,13 +12,16 @@ class Cliente extends Modelo
 
     protected $table = 'clientes';
 
-    protected $attributes = ['ativo' => true, 'nao_recebe_avisos' => false, 'origem' => 'gestao'];
+    protected $attributes = ['ativo' => true, 'nao_recebe_avisos' => false, 'origem' => 'gestao', 'nf_tomador' => false, 'nf_iss_retido' => false, 'nf_retem_federal' => false];
 
     protected function casts(): array
     {
         return [
             'ativo' => 'boolean',
             'nao_recebe_avisos' => 'boolean',
+            'nf_tomador' => 'boolean',
+            'nf_iss_retido' => 'boolean',
+            'nf_retem_federal' => 'boolean',
             'regras_boleto' => 'array',
             'campos_locais' => 'array',
             'cliente_desde' => 'date:Y-m-d',

@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\Integracao;
 use App\Models\Nfse;
-use App\Models\Pagamento;
+use App\Models\OrdemServico;
 use App\Servicos\Nfse\ConfigNfse;
 use App\Servicos\Nfse\Dps;
 use App\Servicos\Nfse\Notas;
 use App\Servicos\Nfse\SefinNacional;
 use App\Support\Atividades;
 use App\Support\Documento;
+use App\Support\Placa;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -58,7 +61,7 @@ class NfseController extends Controller
             'c_trib_mun' => ['required', 'digits:3'],
             'c_nbs' => ['required', 'regex:/^\d{9}$/'],
             'serie' => ['required', 'integer', 'min:1', 'max:99999'],
-            'descricao' => ['required', 'string', 'max:300'],
+            'descricao' => ['nullable', 'string', 'max:300'],
             'especificar_servicos' => ['boolean'],
             'pis_cofins_cst' => ['required', Rule::in(array_keys(ConfigNfse::CST_PIS_COFINS))],
             'tp_ret_pis_cofins' => ['required', Rule::in(array_keys(ConfigNfse::RET_PIS_COFINS))],
@@ -82,6 +85,7 @@ class NfseController extends Controller
         ]);
         $d['serie'] = (string) $d['serie'];
         $d['especificar_servicos'] = $r->boolean('especificar_servicos');
+        $d['descricao'] = (string) ($d['descricao'] ?? '');
         $d['ibs_cbs'] = $r->boolean('ibs_cbs');
         $d['ibs_cbs_cst'] = (string) ($d['ibs_cbs_cst'] ?? '');
         $d['ibs_cbs_class'] = (string) ($d['ibs_cbs_class'] ?? '');
@@ -143,38 +147,115 @@ class NfseController extends Controller
 
     // ---------- Gestão › Notas fiscais ----------
 
+    /**
+     * Notas fiscais: abas Clientes (serviços sem nota no período, por cliente, para marcar), Avulsos (busca por OS,
+     * ticket ou placa) e Notas (as emitidas).
+     */
     public function index(Request $r): Response
     {
-        $de = $r->query('de') ?: now()->subDays(30)->format('Y-m-d');
-        $ate = $r->query('ate') ?: now()->format('Y-m-d');
-        $mun = ConfigNfse::ler()['municipio_ibge'];
-        // escolhas da última nota de cada cliente (ISS retido, dados na nota): a próxima já vem igual
-        $ultima = Nfse::whereIn('situacao', ['emitida', 'enviando'])->whereNotNull('cliente_id')->orderBy('id')->get(['cliente_id', 'iss_retido', 'tomador_identificado', 'ret_federal', 'ret_irrf', 'ret_cp'])->keyBy('cliente_id');
-        $comNota = Nfse::whereIn('situacao', ['enviando', 'emitida'])->whereNotNull('pagamento_id')->pluck('pagamento_id');
-        $aEmitir = Pagamento::with('cliente:id,nome,documento,cidade,cep,logradouro,bairro', 'forma:id,nome')->where('situacao', 'confirmado')->where('valor', '>', 0)
-            ->whereBetween('recebido_em', [$de.' 00:00:00', $ate.' 23:59:59'])->whereNotIn('id', $comNota)
-            ->orderByDesc('recebido_em')->limit(300)->get()
-            ->map(fn (Pagamento $p) => ['id' => $p->id, 'recebido_em' => $p->recebido_em->format('d/m/Y H:i'), 'valor' => (float) $p->valor,
-                'cliente' => $p->cliente?->nome, 'documento' => Documento::valido($p->cliente?->documento) ? Documento::formatar($p->cliente->documento) : null,
-                'forma' => $p->forma?->nome, 'origem' => $p->origem,
-                'pode_identificar' => Documento::valido($p->cliente?->documento),
-                'pode_reter' => Documento::valido($p->cliente?->documento) && Dps::municipioDoCliente($p->cliente) === $mun,
-                'retido_antes' => (bool) $ultima->get($p->cliente_id)?->iss_retido,
-                'identificar_antes' => $ultima->get($p->cliente_id)?->tomador_identificado ?? true,
-                'federal_antes' => ($u = $ultima->get($p->cliente_id)) ? ($u->ret_federal !== '0' || $u->ret_irrf || $u->ret_cp) : false]);
-        $atual = Dps::competencia();
-        $aliquotas = collect(ConfigNfse::ler()['aliquotas'])->map(fn ($a, $c) => ['competencia' => $c] + $a)->values();
-        $notas = Nfse::with('pagamento:id,recebido_em', 'cliente:id,nome')->orderByDesc('id')->paginate(30)->withQueryString()
-            ->through(fn (Nfse $n) => ['id' => $n->id, 'situacao' => $n->situacao, 'ambiente' => $n->ambiente, 'numero' => $n->numero_nfse, 'dps' => $n->serie.'-'.$n->numero_dps,
-                'valor' => (float) $n->valor, 'tomador' => $n->tomador_nome, 'cliente' => $n->tomador_identificado ? null : $n->cliente?->nome, 'documento' => $n->tomador_documento ? Documento::formatar($n->tomador_documento) : null,
-                'emitida_em' => $n->emitida_em?->format('d/m/Y H:i') ?? $n->criado_em?->format('d/m/Y H:i'), 'mensagem' => $n->mensagem, 'chave' => $n->chave_acesso,
-                'iss_retido' => $n->iss_retido, 'valor_iss' => $n->valor_iss !== null ? (float) $n->valor_iss : null,
-                'valor_ret_federal' => $n->valor_ret_federal !== null ? (float) $n->valor_ret_federal : null]);
-
-        return Inertia::render('NotasFiscais/Index', [
-            'aEmitir' => $aEmitir, 'notas' => $notas, 'filtros' => ['de' => $de, 'ate' => $ate],
+        $aba = in_array($r->query('aba'), ['clientes', 'avulsos', 'notas'], true) ? $r->query('aba') : 'clientes';
+        [$de, $ate] = $this->periodo($r);
+        $props = [
+            'aba' => $aba, 'filtros' => ['de' => $de, 'ate' => $ate, 'q' => (string) $r->query('q', '')],
             'faltando' => ConfigNfse::faltando(), 'ambiente' => ConfigNfse::ambiente(),
-            'aliquotas' => $aliquotas, 'competenciaAtual' => $atual, 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
+            'aliquotas' => collect(ConfigNfse::ler()['aliquotas'])->map(fn ($a, $c) => ['competencia' => $c] + $a)->values(),
+            'competenciaAtual' => Dps::competencia(), 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
+            'clientes' => [], 'avulsos' => [], 'notas' => null,
+        ];
+
+        if ($aba === 'clientes') {
+            // quem teve nota no mês passado já vem marcado
+            $mesPassado = now()->setTimezone('America/Sao_Paulo')->subMonthNoOverflow();
+            $sugeridos = Nfse::whereIn('situacao', ['emitida', 'enviando'])->whereNotNull('cliente_id')
+                ->whereBetween('criado_em', [$mesPassado->copy()->startOfMonth(), $mesPassado->copy()->endOfMonth()])->pluck('cliente_id')->flip();
+            $props['clientes'] = Notas::semNotaDosClientes($de, $ate)
+                ->selectRaw('cliente_id, count(*) as qtd, sum(valor) as total')->groupBy('cliente_id')->get()
+                ->load('cliente:id,nome,documento')
+                ->map(fn ($l) => ['id' => $l->cliente_id, 'nome' => $l->cliente?->nome, 'documento' => Documento::valido($l->cliente?->documento) ? Documento::formatar($l->cliente->documento) : null,
+                    'qtd' => (int) $l->qtd, 'total' => round((float) $l->total, 2), 'sugerido' => isset($sugeridos[$l->cliente_id])])
+                ->sortBy(fn ($c) => mb_strtolower((string) $c['nome']))->values();
+        } elseif ($aba === 'avulsos') {
+            $props['avulsos'] = $this->buscarAvulsos((string) $r->query('q', ''));
+        } else {
+            $props['notas'] = Nfse::with('cliente:id,nome')->withCount('ordens')->orderByDesc('id')->paginate(30)->withQueryString()
+                ->through(fn (Nfse $n) => ['id' => $n->id, 'situacao' => $n->situacao, 'ambiente' => $n->ambiente, 'numero' => $n->numero_nfse, 'dps' => $n->serie.'-'.$n->numero_dps,
+                    'valor' => (float) $n->valor, 'tomador' => $n->tomador_nome, 'cliente' => $n->tomador_identificado ? null : $n->cliente?->nome, 'documento' => $n->tomador_documento ? Documento::formatar($n->tomador_documento) : null,
+                    'emitida_em' => $n->emitida_em?->format('d/m/Y H:i') ?? $n->criado_em?->format('d/m/Y H:i'), 'mensagem' => $n->mensagem, 'chave' => $n->chave_acesso,
+                    'iss_retido' => $n->iss_retido, 'valor_iss' => $n->valor_iss !== null ? (float) $n->valor_iss : null,
+                    'valor_ret_federal' => $n->valor_ret_federal !== null ? (float) $n->valor_ret_federal : null, 'servicos' => $n->ordens_count]);
+        }
+
+        return Inertia::render('NotasFiscais/Index', $props);
+    }
+
+    /** período De/Até da lista de clientes (padrão: início do mês anterior ao fim do mês atual) */
+    private function periodo(Request $r): array
+    {
+        [$de, $ate] = Notas::periodoPadrao();
+        $ok = fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
+
+        return [$ok($r->query('de')) ? $r->query('de') : $de, $ok($r->query('ate')) ? $r->query('ate') : $ate];
+    }
+
+    /** busca de serviços sem nota por número da OS, número do ticket ou placa (qualquer data) */
+    private function buscarAvulsos(string $q): array
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return [];
+        }
+        $n = ctype_digit($q) ? (int) $q : null;
+        $placa = Placa::normalizar($q);
+        $ordens = Notas::semNota()->with('cliente:id,nome,documento,cidade,cep,logradouro,bairro,cidade_ibge,cidade_ibge_cep,nf_tomador,nf_iss_retido,nf_retem_federal', 'estadia:id,numero,numero_impresso')
+            ->where(function ($w) use ($n, $placa) {
+                if ($n) {
+                    $w->orWhere('numero', $n)->orWhereHas('estadia', fn ($e) => $e->where('numero', $n)->orWhere('numero_impresso', $n));
+                }
+                if ($placa && strlen($placa) >= 3) {
+                    $w->orWhere('placa', 'like', '%'.$placa.'%');
+                }
+            })->orderByDesc('data')->limit(50)->get();
+
+        return $ordens->map(fn (OrdemServico $o) => $this->servico($o) + ['cliente' => $o->cliente ? $this->dadosCliente($o->cliente) : null])->all();
+    }
+
+    /** um serviço como a tela mostra */
+    private function servico(OrdemServico $o): array
+    {
+        return ['id' => $o->id, 'numero' => $o->numero, 'data' => $o->data?->format('d/m/Y'), 'tipo' => OrdemServico::TIPOS[$o->tipo] ?? $o->tipo,
+            'descricao' => $o->descricao, 'placa' => $o->placa ? Placa::formatar($o->placa) : null, 'valor' => (float) $o->valor,
+            'pago' => $o->situacao === 'paga', 'ticket' => $o->estadia?->numero_impresso ?: $o->estadia?->numero];
+    }
+
+    /** cliente e as escolhas de nota do cadastro dele (dados do tomador, ISS retido, retenção federal) */
+    private function dadosCliente(Cliente $c): array
+    {
+        $doc = Documento::valido($c->documento);
+        $reter = $doc && Dps::municipioDoCliente($c) === ConfigNfse::ler()['municipio_ibge'];
+
+        return ['id' => $c->id, 'nome' => $c->nome, 'documento' => $doc ? Documento::formatar($c->documento) : null,
+            'pode_identificar' => $doc, 'pode_reter' => $reter,
+            'identificar' => $doc && $c->nf_tomador, 'retido' => $reter && $c->nf_tomador && $c->nf_iss_retido,
+            'federal' => $doc && $c->nf_tomador && $c->nf_retem_federal];
+    }
+
+    /** conferir e emitir: os clientes marcados, com os serviços sem nota do período */
+    public function conferirClientes(Request $r): Response|RedirectResponse
+    {
+        [$de, $ate] = $this->periodo($r);
+        $ids = collect(explode(',', (string) $r->query('clientes')))->map(fn ($v) => (int) $v)->filter()->unique();
+        if ($ids->isEmpty()) {
+            return redirect('/notas-fiscais')->with('aviso', 'Marque ao menos um cliente.');
+        }
+        $ordens = Notas::semNotaDosClientes($de, $ate)->whereIn('cliente_id', $ids)->with('cliente:id,nome,documento,cidade,cep,logradouro,bairro,cidade_ibge,cidade_ibge_cep,nf_tomador,nf_iss_retido,nf_retem_federal', 'estadia:id,numero,numero_impresso')
+            ->orderBy('data')->orderBy('id')->get()->groupBy('cliente_id');
+        $clientes = $ordens->map(fn ($lista) => $this->dadosCliente($lista->first()->cliente) + ['servicos' => $lista->map(fn ($o) => $this->servico($o))->values()])
+            ->sortBy(fn ($c) => mb_strtolower((string) $c['nome']))->values();
+
+        return Inertia::render('NotasFiscais/Conferir', [
+            'clientes' => $clientes, 'filtros' => ['de' => $de, 'ate' => $ate],
+            'faltando' => ConfigNfse::faltando(), 'ambiente' => ConfigNfse::ambiente(), 'competenciaAtual' => Dps::competencia(),
+            'aliquota' => ConfigNfse::aliquotas(Dps::competencia()), 'retFederal' => ConfigNfse::retencaoFederal(ConfigNfse::ler()),
         ]);
     }
 
@@ -195,19 +276,33 @@ class NfseController extends Controller
         return back()->with('sucesso', "Alíquotas de {$mes} salvas.");
     }
 
-    public function emitir(Request $r, Pagamento $pagamento): RedirectResponse
+    /**
+     * Emite uma nota com os serviços escolhidos. A tela de conferir chama uma vez por cliente (em lote, uma de cada
+     * vez) e recebe JSON; a busca de avulsos também.
+     */
+    public function emitir(Request $r): JsonResponse
     {
+        $d = $r->validate([
+            'ordens' => ['required', 'array', 'min:1', 'max:200'], 'ordens.*' => ['integer'],
+            'identificar' => ['boolean'], 'retido' => ['boolean'], 'retem_federal' => ['boolean'],
+            'avulso_documento' => ['nullable', 'string', 'max:20'], 'avulso_nome' => ['nullable', 'string', 'max:150'],
+        ]);
         try {
-            $n = Notas::emitir($pagamento, $r->boolean('retido'), $r->boolean('identificar', true), $r->boolean('retem_federal'));
+            $n = Notas::emitir($d['ordens'], [
+                'identificar' => $r->boolean('identificar', true), 'retido' => $r->boolean('retido'), 'retem_federal' => $r->boolean('retem_federal'),
+                'avulso' => ['documento' => $d['avulso_documento'] ?? null, 'nome' => $d['avulso_nome'] ?? null],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['situacao' => 'erro', 'mensagem' => collect($e->errors())->flatten()->first()], 422);
         } catch (\RuntimeException $e) {
-            return back()->with('erro', $e->getMessage());
+            return response()->json(['situacao' => 'erro', 'mensagem' => $e->getMessage()], 422);
         }
 
-        return match ($n->situacao) {
-            'emitida' => back()->with('sucesso', 'NFS-e '.($n->numero_nfse ?? '').' emitida'.($n->ambiente === 'restrita' ? ' (teste, sem valor fiscal).' : '.')),
-            'enviando' => back()->with('aviso', $n->mensagem),
-            default => back()->with('erro', 'Nota rejeitada: '.$n->mensagem),
-        };
+        return response()->json(['situacao' => $n->situacao, 'id' => $n->id, 'numero' => $n->numero_nfse, 'mensagem' => match ($n->situacao) {
+            'emitida' => 'NFS-e '.($n->numero_nfse ?? '').' emitida'.($n->ambiente === 'restrita' ? ' (teste)' : ''),
+            'enviando' => $n->mensagem,
+            default => 'Rejeitada: '.$n->mensagem,
+        }]);
     }
 
     public function conferir(Nfse $nota): RedirectResponse

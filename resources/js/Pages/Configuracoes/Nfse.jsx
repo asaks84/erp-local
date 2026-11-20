@@ -167,7 +167,6 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                         <div className="col-md-4"><Campo rotulo="CNPJ" value={empresa.cnpj || ''} disabled ajuda={empresa.cnpj ? undefined : 'Informe em Empresa e unidades.'} erro={empresa.cnpj ? undefined : 'Sem CNPJ'} /></div>
                         <div className="col-md-8"><Campo rotulo="Razão Social" value={empresa.nome || ''} disabled ajuda="Nome e endereço vão pelo cadastro do Sistema Nacional." /></div>
                         <div className="col-md-4">{campo('municipio_ibge', 'Município (código IBGE)', { inputMode: 'numeric', ajuda: 'Santos/SP = 3548500' })}</div>
-                        <div className="col-md-4">{campo('im', 'Inscrição municipal', { inputMode: 'numeric', ajuda: 'Opcional (o Emissor não pede).' })}</div>
                         <div className="col-12">{lista('op_simples', 'Opção no Simples Nacional', opcoes.op_simples)}</div>
                         {c.op_simples === '3' && (
                             <div className="col-12">{lista('reg_ap_trib_sn', 'Regime de Apuração dos Tributos no Simples Nacional', opcoes.reg_ap, {
@@ -175,7 +174,7 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                             })}</div>
                         )}
                     </div>
-                    <p className="small text-muted mt-2 mb-0">Compras governamentais, destinatário e intermediário vão como no Emissor: “Não” e “não informado”. O tomador é o cliente do recebimento; declarar ou não os dados dele, a retenção do ISSQN e a retenção federal você escolhe cliente a cliente, na hora de emitir.</p>
+                    <p className="small text-muted mt-2 mb-0">Compras governamentais, destinatário e intermediário vão como no Emissor: “Não” e “não informado”. O tomador é o cliente do recebimento; os dados dele na nota, o ISS retido e a retenção federal ficam no cadastro de cada cliente (Nota fiscal), e dá para mudar na hora de emitir.</p>
                 </Passo>
 
                 <Passo n="2" nome="Serviço/fornecimento prestado" onde="Serviço">
@@ -183,17 +182,17 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                         <div className="col-md-4">{campo('c_trib_nac', 'Código de Tributação Nacional', { inputMode: 'numeric', maxLength: 8, placeholder: '11.01.01', ajuda: nome('c_trib_nac', c.c_trib_nac) })}</div>
                         <div className="col-md-4">{campo('c_trib_mun', 'Código Complementar Municipal', { inputMode: 'numeric', maxLength: 12, placeholder: '11.01.01.004', ajuda: nome('c_trib_mun', c.c_trib_mun) })}</div>
                         <div className="col-md-4">{campo('c_nbs', 'Item da NBS', { inputMode: 'numeric', maxLength: 11, placeholder: '106043000', ajuda: nome('c_nbs', c.c_nbs) })}</div>
-                        <div className="col-12">{campo('descricao', 'Descrição do Serviço/Fornecimento', { maxLength: 300, ajuda: 'Primeira linha da descrição; abaixo vem uma linha por conta paga.' })}</div>
+                        <div className="col-12">{campo('descricao', 'Primeira linha da descrição (opcional)', { maxLength: 300, ajuda: 'Em branco, a descrição tem só as linhas dos serviços.' })}</div>
                         <div className="col-12">
                             <div className="form-check form-switch">
                                 <input className="form-check-input" type="checkbox" role="switch" id="especificar" checked={!!c.especificar_servicos} onChange={(ev) => form.setData('especificar_servicos', ev.target.checked)} />
                                 <label className="form-check-label" htmlFor="especificar">Especificar cada serviço na descrição</label>
                             </div>
                             <div className="border rounded bg-body-tertiary small p-2 mt-1 font-monospace">
-                                {(c.descricao || 'Serviço de estacionamento')}<br />
-                                ABC1D23 - Fiat Uno - Mensalidade 11/2026 - R$ 180,00<br />
-                                ABC1D23 - Fiat Uno - {c.especificar_servicos ? 'Estadia - ' : ''}R$ 25,00<br />
-                                ABC1D23 - Fiat Uno - {c.especificar_servicos ? 'Lavagem simples - ' : ''}R$ 40,00
+                                {c.descricao && <>{c.descricao}<br /></>}
+                                UNO - ABC1D23 - Mensalidade Diurno 11/2026 - R$ 180,00<br />
+                                05/11 - UNO - ABC1D23 - {c.especificar_servicos ? 'Estadia - ' : ''}R$ 25,00<br />
+                                12/11 - UNO - ABC1D23 - {c.especificar_servicos ? 'Lavagem simples - ' : ''}R$ 40,00
                             </div>
                             <div className="form-text">{c.especificar_servicos ? 'Cada linha diz o serviço.' : 'Só a mensalidade é nomeada; estadia, lavagem e outros saem só com placa, veículo e valor (para não citar na nota serviço sem CNAE, por exemplo).'}</div>
                         </div>
@@ -226,7 +225,7 @@ export default function Nfse({ config, empresa, certificado, ambiente, faltando,
                     </div>
                     <p className="small text-muted mt-2 mb-0">
                         Hoje, no Simples: <strong>00 - Nenhum</strong>, <strong>0 - Não Retidos</strong>, IRRF e previdenciária em 0,00. As outras opções ficam para se mudar de regime (confirme com a contabilidade).
-                        Aqui fica <em>como</em> é a retenção; <em>se</em> o cliente retém você marca na emissão (a opção só aparece quando há retenção configurada).
+                        Aqui fica <em>como</em> é a retenção; <em>se</em> o cliente retém fica no cadastro dele (e aparece na emissão só quando há retenção configurada).
                     </p>
 
                     {c.ibs_cbs && (

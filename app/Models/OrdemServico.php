@@ -53,6 +53,11 @@ class OrdemServico extends Modelo
         return $this->belongsTo(Cliente::class);
     }
 
+    public function nfse(): BelongsTo
+    {
+        return $this->belongsTo(Nfse::class);
+    }
+
     public function veiculo(): BelongsTo
     {
         return $this->belongsTo(Veiculo::class);

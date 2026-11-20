@@ -4,6 +4,34 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 19/11/2026 — NFS-e: cidade do tomador pelo CEP e data na descrição
+
+- **Cidade do tomador pelo CEP:** a nota pede o código IBGE da cidade; quando a cidade não está na lista da Baixada, o ERP consulta o CEP do cliente no ViaCEP na emissão e guarda o código no cadastro (com o CEP usado; se o CEP mudar, consulta de novo). Antes, cliente de cidade fora da lista saía sem endereço na nota.
+- **Descrição** como o Cauê emite: modelo e depois placa ("POLO - TMA2G79"); estadia e serviço avulso levam a data na frente ("05/10 - POLO - TMA2G79 - R$ 60,00"); mensalidade continua com o mês. Sem modelo no cadastro do veículo, vai a marca (ou o tipo). Carro fora do cadastro lançado na conta do cliente (ex.: o da esposa): o modelo digitado no lançamento e a placa da própria ordem (sem modelo, o tipo do veículo). A primeira linha (descrição base) passou a ser opcional e vem em branco: a descrição fica só com as linhas dos serviços, como nas notas feitas no Emissor.
+- Migração `2026_12_06_000003_clientes_cidade_ibge`. Arquivos: app/Servicos/Nfse/{Dps,ConfigNfse}.php, NfseController, Pages/Configuracoes/Nfse.jsx, tests/Feature/NfseTest.php, docs 12, 13 e 16.
+
+## 19/11/2026 — DPS conferida contra uma nota real do Emissor Nacional
+
+- O XML de uma nota real emitida pelo Emissor Nacional (Simples, tomador CNPJ em Santos, ISS retido a 2,01%) confirmou a estrutura da DPS montada pelo ERP: mesmos elementos e mesma ordem, inclusive tribMun (tribISSQN, tpRetISSQN, pAliq), tribFed (CST 00, tpRetPisCofins 0) e totTrib (pTotTribSN). Novo teste compara as duas estruturas.
+- A inscrição municipal do prestador deixou de ir na DPS (o Emissor não manda; vem do cadastro nacional) e saiu da tela de configuração.
+- Arquivos: app/Servicos/Nfse/Dps.php, Pages/Configuracoes/Nfse.jsx, tests/Feature/NfseTest.php, docs 13 e 16.
+
+## 19/11/2026 — Opções de nota no cadastro do cliente; ícone de engrenagem
+
+- **Cadastro do cliente › Nota fiscal (NFS-e):** emitir com os dados do tomador, ISS retido pelo tomador e retenção de tributos federais. Tudo desligado por padrão; sem os dados do tomador, as retenções ficam desligadas. É o padrão da tela de conferir e emitir (dá para mudar na hora, só para aquela nota). Substitui o "lembrar a última nota".
+- Ícone de engrenagem (menu Configurações, conferir notas) trocado pelo do Lucide; o anterior parecia um sol.
+- Migração `2026_12_06_000002_clientes_nota_fiscal`. Arquivos: ClienteController, Models/Cliente, Components/CamposCliente.jsx, Pages/Clientes/Form.jsx, NfseController, Pages/NotasFiscais/Conferir.jsx, Components/{EscolhasNota,Icone}.jsx, Pages/Configuracoes/Nfse.jsx, tests/Feature/NfseTest.php, docs 12, 13 e 16.
+
+## 19/11/2026 — NFS-e por serviço: lista de clientes, conferir e emitir em lote, avulsos
+
+- **Notas fiscais** agora parte dos **serviços sem nota** (pagos ou não), e não mais dos recebimentos. Abas:
+  - **Clientes:** cada cliente com serviços sem nota no período (De/Até; padrão do início do mês anterior ao fim do mês atual), com quantidade e total. Marque os clientes e veja o total das notas; quem teve nota no mês passado já vem marcado. "Conferir e emitir" abre a próxima tela.
+  - **Avulsos:** busca por número da OS, número do ticket ou placa; emite a nota daquele serviço. Sem cadastro, dá para digitar CPF/CNPJ e nome de quem pediu (ou deixar sem tomador).
+  - **Notas:** as emitidas, como antes.
+- **Conferir e emitir:** só os clientes marcados, com os serviços em letra menor (dá para tirar um serviço), as escolhas do cliente em etiquetas e a engrenagem para mudar. Emite um cliente ou **em lote**: a tela manda uma nota de cada vez, com barra de progresso e botão Parar; recusada fica marcada com o motivo e as outras seguem.
+- Cada serviço guarda a nota em que entrou (ordens_servico.nfse_id): a nota pode sair antes do pagamento (clientes que fecham o mês) e o pagamento que chega depois não pede nota de novo. Rejeitada ou cancelada, os serviços voltam a ficar sem nota. Crédito e débito (ajustes) não entram.
+- Migração `2026_12_06_000001_nfse_por_servico`. Arquivos: app/Servicos/Nfse/{Notas,Dps}.php, NfseController, Models/{Nfse,OrdemServico}, routes/web.php, Pages/NotasFiscais/{Index,Conferir}.jsx, Components/{EscolhasNota,Avisos}.jsx, lib/json.js, tests/Feature/NfseTest.php, docs 12, 13 e 16.
+
 ## 19/11/2026 — NFS-e igual ao Emissor Nacional, alíquotas do mês e escolhas por cliente
 
 - **Configurações › Nota fiscal** reorganizada nos passos do Emissor Nacional (Emitente, Serviço, Tributação municipal, Série), com os mesmos nomes e opções. Códigos já preenchidos para o Local: 11.01.01 (nacional), 11.01.01.004 (complementar municipal de Santos) e NBS 106043000; aceita colar o código com pontos, como o Emissor mostra. Código complementar e NBS agora são obrigatórios (o Emissor de Santos pede).

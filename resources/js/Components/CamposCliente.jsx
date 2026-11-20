@@ -67,6 +67,26 @@ export default function CamposCliente({ data, setData, errors, mostrarExtras = t
                             checked={!!data.nao_recebe_avisos} onChange={(e) => setData('nao_recebe_avisos', e.target.checked)} />
                         <label className="form-check-label" htmlFor="nao_recebe_avisos">Não enviar avisos de cobrança (WhatsApp)</label>
                     </div>
+                    {data.nf_tomador !== undefined && (
+                        <fieldset className="border rounded p-3 mt-3">
+                            <legend className="float-none w-auto px-2 fs-6 mb-0">Nota fiscal (NFS-e)</legend>
+                            <p className="small text-muted mb-2">Como sai a nota deste cliente. Na hora de emitir dá para mudar.</p>
+                            {[
+                                ['nf_tomador', 'Emitir com os dados do tomador (nome e CPF/CNPJ deste cliente)', 'Desligado, a nota sai sem tomador.'],
+                                ['nf_iss_retido', 'ISS retido pelo tomador', 'Cliente obrigado a reter o ISS (precisa de endereço completo em Santos).'],
+                                ['nf_retem_federal', 'Retenção de tributos federais', 'Só vale se houver retenção em Configurações › Nota fiscal (no Simples, não há).'],
+                            ].map(([k, rotulo, ajuda]) => (
+                                <div className="form-check form-switch" key={k}>
+                                    <input className="form-check-input" type="checkbox" role="switch" id={k} checked={!!data[k]} disabled={k !== 'nf_tomador' && !data.nf_tomador}
+                                        onChange={(e) => (k === 'nf_tomador' && !e.target.checked
+                                            ? setData((d) => ({ ...d, nf_tomador: false, nf_iss_retido: false, nf_retem_federal: false }))
+                                            : setData(k, e.target.checked))} />
+                                    <label className="form-check-label" htmlFor={k}>{rotulo}</label>
+                                    <div className="form-text mt-0 mb-1">{ajuda}</div>
+                                </div>
+                            ))}
+                        </fieldset>
+                    )}
                 </>
             )}
         </>

@@ -4,8 +4,9 @@ namespace App\Models;
 
 use App\Models\Concerns\PertenceAEmpresa;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** NFS-e emitida pelo Sistema Nacional, uma por recebimento (pagamento). */
+/** NFS-e emitida pelo Sistema Nacional, dos serviços (ordens) de um cliente. pagamento_id: notas antigas, por recebimento. */
 class Nfse extends Modelo
 {
     use PertenceAEmpresa;
@@ -26,6 +27,11 @@ class Nfse extends Modelo
     public function pagamento(): BelongsTo
     {
         return $this->belongsTo(Pagamento::class);
+    }
+
+    public function ordens(): HasMany
+    {
+        return $this->hasMany(OrdemServico::class, 'nfse_id');
     }
 
     public function cliente(): BelongsTo

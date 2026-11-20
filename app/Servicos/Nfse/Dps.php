@@ -5,18 +5,20 @@ namespace App\Servicos\Nfse;
 use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\OrdemServico;
-use App\Models\Pagamento;
 use App\Support\Documento;
 use App\Support\Placa;
 use DOMDocument;
 use DOMElement;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Monta a DPS (Declaração de Prestação de Serviço) do Sistema Nacional da NFS-e, leiaute 1.01, a partir de um
- * recebimento. Ordem dos campos como no leiaute; o prestador é identificado só pelo CNPJ (nome e endereço vêm do
+ * Monta a DPS (Declaração de Prestação de Serviço) do Sistema Nacional da NFS-e, leiaute 1.01, a partir dos
+ * serviços (ordens) de um cliente. Ordem dos campos como no leiaute; o prestador é identificado só pelo CNPJ (nome e endereço vêm do
  * cadastro nacional, como pede a regra para tpEmit = 1). Ainda sem o grupo de IBS/CBS da reforma tributária
  * (no Emissor Nacional esses campos são opcionais por enquanto).
  *
@@ -46,32 +48,36 @@ class Dps
     }
 
     /**
-     * Descrição do serviço: a descrição base e uma linha por conta paga, "PLACA - VEÍCULO - SERVIÇO - VALOR".
+     * Descrição do serviço: a descrição base (se houver, na primeira linha) e uma linha por serviço (ordem),
+     * "MODELO - PLACA - SERVIÇO - VALOR"; estadia e serviço avulso levam a data na frente ("05/10 - POLO - TMA2G79 - R$ 60,00").
      * Sem "especificar serviços" (Configurações), só a mensalidade leva o nome do serviço; as outras contas saem
      * "PLACA - VEÍCULO - VALOR" (para quem não tem CNAE de lavagem, por exemplo, não citar o serviço na nota).
      */
-    public static function descricao(Pagamento $p, array $cfg): string
+    public static function descricao(Collection $ordens, array $cfg): string
     {
         $especificar = (bool) ($cfg['especificar_servicos'] ?? false);
-        $linhas = $p->itens()->with('ordem.veiculo.tipo')->get()
-            ->filter(fn ($i) => (float) $i->valor > 0 && $i->ordem)
-            ->map(function ($i) use ($especificar) {
-                $o = $i->ordem;
+        (new EloquentCollection($ordens->all()))->loadMissing('veiculo.tipo', 'tipoVeiculo');
+        $linhas = $ordens->filter(fn (OrdemServico $o) => (float) $o->valor > 0)->sortBy([['data', 'asc'], ['id', 'asc']])
+            ->map(function (OrdemServico $o) use ($especificar) {
                 $placa = $o->placa ?: $o->veiculo?->placa;
-                $veiculo = trim(($o->veiculo?->marca ?? '').' '.($o->veiculo?->modelo ?? '')) ?: $o->veiculo?->tipo?->nome;
+                // modelo do veículo (como o Cauê escreve no Emissor: "POLO - TMA2G79"). Carro que não é do cadastro (ex.: o da
+                // esposa, lançado na conta do cliente): o modelo digitado no lançamento e a placa da própria ordem; sem nada, o tipo
+                $veiculo = trim((string) ($o->veiculo?->modelo ?: $o->veiculo?->marca ?: $o->veiculo_descricao ?: $o->veiculo?->tipo?->nome ?: $o->tipoVeiculo?->nome)) ?: null;
                 $servico = match (true) {
                     $o->tipo === 'mensalidade' => (trim((string) $o->descricao) ?: 'Mensalidade').($o->competencia ? ' '.Carbon::parse($o->competencia.'-01')->format('m/Y') : ''),
                     ! $especificar => null,
                     $o->tipo === 'estadia' => 'Estadia',
                     default => trim((string) $o->descricao) ?: OrdemServico::TIPOS[$o->tipo] ?? null,
                 };
-                $partes = array_filter([$placa ? Placa::formatar($placa) : null, $veiculo, $servico], fn ($x) => $x !== null && $x !== '');
+                $data = $o->tipo !== 'mensalidade' && $o->data ? $o->data->format('d/m') : null;
+                $partes = array_filter([$data, $veiculo, $placa ? Placa::formatar($placa) : null, $servico], fn ($x) => $x !== null && $x !== '');
 
-                return implode(' - ', $partes ?: ['Serviço']).' - R$ '.number_format((float) $i->valor, 2, ',', '.');
+                return implode(' - ', $partes ?: ['Serviço']).' - R$ '.number_format((float) $o->valor, 2, ',', '.');
             })->values();
-        $base = trim((string) $cfg['descricao']) ?: 'Serviço de estacionamento';
+        $base = trim((string) ($cfg['descricao'] ?? ''));
+        $texto = implode("\n", array_filter([$base, $linhas->implode("\n")], fn ($x) => $x !== ''));
 
-        return Str::limit($base.($linhas->isNotEmpty() ? "\n".$linhas->implode("\n") : ''), 2000, '');
+        return Str::limit($texto !== '' ? $texto : 'Serviço de estacionamento', 2000, '');
     }
 
     /** competência (AAAA-MM) da nota: o mês da emissão (a data de competência é o dia em que a nota é emitida) */
@@ -81,23 +87,28 @@ class Dps
     }
 
     /**
+     * Monta a DPS de um conjunto de serviços (ordens) do mesmo cliente (ou avulsos, sem cliente).
+     *
      * @param  array{iss: string, tributos: string}  $aliq  alíquotas da competência
-     * @param  bool  $identificar  declarar os dados do cliente (tomador) na nota; false = nota sem tomador
-     * @param  array{tipo?: string, irrf?: bool, cp?: bool}  $fed  retenção federal (da configuração)
-     * @return array{xml: string, id: string, tomador_documento: ?string, tomador_nome: ?string, descricao: string, valor_iss: ?float}
+     * @param  array  $op  retido (ISS retido pelo tomador), identificar (dados do cliente na nota; false = sem tomador),
+     *                     fed (retenção federal: tipo, irrf, cp), avulso (documento e nome digitados: consumidor sem cadastro)
+     * @return array{xml: string, id: string, tomador_documento: ?string, tomador_nome: ?string, descricao: string, valor_iss: ?float, valor_ret_federal: float, valor: float}
      */
-    public static function montar(Pagamento $p, Empresa $e, array $cfg, string $ambiente, int $numero, array $aliq, bool $retido = false, bool $identificar = true, array $fed = [], ?Carbon $agora = null): array
+    public static function montar(?Cliente $cliente, Collection $ordens, Empresa $e, array $cfg, string $ambiente, int $numero, array $aliq, array $op = [], ?Carbon $agora = null): array
     {
+        $retido = (bool) ($op['retido'] ?? false);
+        $identificar = (bool) ($op['identificar'] ?? true);
+        $fed = (array) ($op['fed'] ?? []);
         $agora ??= now();
         $cnpj = preg_replace('/\D/', '', (string) $e->documento);
         $mun = (string) $cfg['municipio_ibge'];
         $serie = (string) (int) $cfg['serie'];
         $id = self::id($mun, $cnpj, $serie, $numero);
-        $valor = round((float) $p->valor, 2);
+        $valor = round((float) $ordens->sum('valor'), 2);
         if ($valor <= 0) {
-            throw ValidationException::withMessages(['nfse' => 'Recebimento sem valor: não há nota a emitir.']);
+            throw ValidationException::withMessages(['nfse' => 'Sem valor: não há nota a emitir.']);
         }
-        $descricao = self::descricao($p, $cfg);
+        $descricao = self::descricao($ordens, $cfg);
 
         $d = new DOMDocument('1.0', 'UTF-8');
         $dps = $d->createElementNS(self::NS, 'DPS');
@@ -117,9 +128,7 @@ class Dps
         // prestador
         $prest = self::filho($d, $inf, 'prest');
         self::filho($d, $prest, 'CNPJ', $cnpj);
-        if (trim((string) $cfg['im']) !== '') {
-            self::filho($d, $prest, 'IM', preg_replace('/\D/', '', (string) $cfg['im']));
-        }
+        // inscrição municipal do prestador não vai: o Emissor Nacional não manda (vem do cadastro nacional)
         $reg = self::filho($d, $prest, 'regTrib');
         self::filho($d, $reg, 'opSimpNac', (string) $cfg['op_simples']);
         if ($cfg['op_simples'] === '3') {
@@ -128,7 +137,8 @@ class Dps
         self::filho($d, $reg, 'regEspTrib', (string) $cfg['reg_esp_trib']);
 
         // tomador: só com CPF/CNPJ válido (consumidor sem documento: nota sem tomador)
-        [$tomDoc, $tomNome, $tomMun] = $identificar ? self::tomador($d, $inf, $p->cliente) : [null, null, null];
+        [$tomDoc, $tomNome, $tomMun] = ! $identificar ? [null, null, null]
+            : ($cliente ? self::tomador($d, $inf, $cliente) : self::tomadorAvulso($d, $inf, $op['avulso'] ?? []));
         if ($retido && ! $tomDoc) {
             throw ValidationException::withMessages(['nfse' => 'ISS retido precisa dos dados do cliente na nota (CPF/CNPJ válido no cadastro).']);
         }
@@ -180,7 +190,7 @@ class Dps
             self::filho($d, $pt, 'pTotTribMun', $pct);
         }
 
-        return ['xml' => $d->saveXML($dps), 'id' => $id, 'tomador_documento' => $tomDoc, 'tomador_nome' => $tomNome, 'descricao' => $descricao, 'valor_iss' => $valorIss, 'valor_ret_federal' => $valorFed];
+        return ['xml' => $d->saveXML($dps), 'id' => $id, 'tomador_documento' => $tomDoc, 'tomador_nome' => $tomNome, 'descricao' => $descricao, 'valor_iss' => $valorIss, 'valor_ret_federal' => $valorFed, 'valor' => $valor];
     }
 
     /**
@@ -239,15 +249,59 @@ class Dps
         return round($total, 2);
     }
 
-    /** código IBGE do endereço do cliente, se o endereço estiver completo (CEP, rua, bairro e cidade conhecida) */
+    /**
+     * Código IBGE da cidade do cliente, se o endereço estiver completo (CEP, rua e bairro). Ordem: o já guardado para
+     * esse CEP; a lista da Baixada (pelo nome da cidade); a consulta do CEP no ViaCEP. O que achar fica guardado no
+     * cliente (cidade_ibge + o CEP usado).
+     */
     public static function municipioDoCliente(?Cliente $c): ?string
     {
-        if (! $c) {
+        if (! $c || ! $c->logradouro || ! $c->bairro) {
             return null;
         }
-        $mun = self::MUNICIPIOS[Str::of((string) $c->cidade)->ascii()->lower()->trim()->value()] ?? null;
+        $cep = preg_replace('/\D/', '', (string) $c->cep);
+        if (strlen($cep) !== 8) {
+            return null;
+        }
+        if ($c->cidade_ibge && $c->cidade_ibge_cep === $cep) {
+            return $c->cidade_ibge;
+        }
+        $mun = self::MUNICIPIOS[Str::of((string) $c->cidade)->ascii()->lower()->trim()->value()] ?? self::ibgeDoCep($cep);
+        if ($mun && $c->exists) {
+            $c->forceFill(['cidade_ibge' => $mun, 'cidade_ibge_cep' => $cep])->saveQuietly();
+        }
 
-        return $mun && strlen(preg_replace('/\D/', '', (string) $c->cep)) === 8 && $c->logradouro && $c->bairro ? $mun : null;
+        return $mun;
+    }
+
+    /** código IBGE da cidade pelo CEP (ViaCEP); null se não achar ou sem conexão */
+    public static function ibgeDoCep(string $cep): ?string
+    {
+        try {
+            $r = Http::timeout(5)->acceptJson()->get("https://viacep.com.br/ws/{$cep}/json/");
+            $ibge = (string) ($r->json('ibge') ?? '');
+
+            return $r->ok() && preg_match('/^\d{7}$/', $ibge) ? $ibge : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** tomador digitado na emissão avulsa (consumidor sem cadastro): CPF/CNPJ e nome, sem endereço */
+    private static function tomadorAvulso(DOMDocument $d, DOMElement $inf, array $a): array
+    {
+        $doc = Documento::limpar($a['documento'] ?? null);
+        if (! $doc) {
+            return [null, null, null];
+        }
+        if (! Documento::valido($doc) || trim((string) ($a['nome'] ?? '')) === '') {
+            throw ValidationException::withMessages(['nfse' => 'Para a nota com tomador, informe CPF/CNPJ válido e o nome.']);
+        }
+        $t = self::filho($d, $inf, 'toma');
+        self::filho($d, $t, strlen($doc) === 14 ? 'CNPJ' : 'CPF', $doc);
+        self::filho($d, $t, 'xNome', Str::limit(trim($a['nome']), 150, ''));
+
+        return [$doc, trim($a['nome']), null];
     }
 
     private static function tomador(DOMDocument $d, DOMElement $inf, ?Cliente $c): array
@@ -261,7 +315,7 @@ class Dps
         self::filho($d, $t, 'xNome', Str::limit(trim($c->nome), 150, ''));
         $mun = self::municipioDoCliente($c);
         $cep = preg_replace('/\D/', '', (string) $c->cep);
-        $temEndereco = $mun !== null;
+        $temEndereco = $mun !== null;   // código IBGE achado (lista, guardado ou pelo CEP)
         if ($temEndereco) {
             $end = self::filho($d, $t, 'end');
             $nac = self::filho($d, $end, 'endNac');

@@ -3,16 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Cobranca;
 use App\Models\Empresa;
+use App\Models\Estorno;
+use App\Models\FormaPagamento;
+use App\Models\OrdemServico;
+use App\Models\Pagamento;
+use App\Models\PagamentoItem;
+use App\Models\Unidade;
 use App\Models\Veiculo;
+use App\Servicos\Baixa;
 use App\Servicos\Contratos;
+use App\Servicos\Estornos;
+use App\Servicos\Inter\Boletos;
+use App\Servicos\Ordens;
 use App\Support\Atividades;
 use App\Support\Documento;
 use App\Support\EmpresaAtual;
+use App\Support\Formato;
 use App\Support\Placa;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -108,9 +122,9 @@ class ClienteController extends Controller
                 'convenio' => $cliente->convenio?->ativo ? $cliente->convenio->resumo() : null,
                 'regras_boleto' => $cliente->regras_boleto,
             ],
-            'regras_boleto_empresa' => \App\Servicos\Inter\Boletos::regras(),
+            'regras_boleto_empresa' => Boletos::regras(),
             // emitir cobrança com boleto: a primeira mensalidade (ou proporcional) sai sem as regras
-            'boleto_regras_sugerido' => ! \App\Servicos\Inter\Boletos::temPrimeiraMensalidade(\App\Servicos\Baixa::abertas($cliente)),
+            'boleto_regras_sugerido' => ! Boletos::temPrimeiraMensalidade(Baixa::abertas($cliente)),
             'veiculos' => $cliente->veiculos->map(fn (Veiculo $v) => [
                 'id' => $v->id,
                 'rotulo' => $v->rotulo(),
@@ -135,22 +149,22 @@ class ClienteController extends Controller
             ]),
             'pagadores' => $cliente->pagadores->map->only(['id', 'nome', 'documento', 'conta']),
             // dinheiro (etapa 3)
-            'abertas' => \App\Servicos\Baixa::abertas($cliente)->map(fn ($o) => OrdemController::linha($o)),
-            'total_aberto' => \App\Servicos\Baixa::totalAberto($cliente),
-            'cobrancas' => \App\Models\Cobranca::where('cliente_id', $cliente->id)->orderByDesc('numero')->limit(6)->get()->map(fn ($c) => CobrancaController::resumo($c)),
-            'pagamentos' => \App\Models\Pagamento::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('recebido_em')->limit(8)->get()->map(fn ($p) => [
+            'abertas' => Baixa::abertas($cliente)->map(fn ($o) => OrdemController::linha($o)),
+            'total_aberto' => Baixa::totalAberto($cliente),
+            'cobrancas' => Cobranca::where('cliente_id', $cliente->id)->orderByDesc('numero')->limit(6)->get()->map(fn ($c) => CobrancaController::resumo($c)),
+            'pagamentos' => Pagamento::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('recebido_em')->limit(8)->get()->map(fn ($p) => [
                 'id' => $p->id, 'recebido_em' => $p->recebido_em->format('Y-m-d H:i'), 'valor' => (float) $p->valor, 'forma' => $p->forma?->nome,
                 'situacao' => $p->situacao, 'origem' => $p->origem, 'motivo_estorno' => $p->motivo_estorno,
             ]),
-            'estornos' => \App\Models\Estorno::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('estornado_em')->orderByDesc('id')->limit(5)->get()->map(fn ($e) => [
+            'estornos' => Estorno::with('forma:id,nome')->where('cliente_id', $cliente->id)->orderByDesc('estornado_em')->orderByDesc('id')->limit(5)->get()->map(fn ($e) => [
                 'id' => $e->id, 'estornado_em' => $e->estornado_em->format('Y-m-d'), 'valor' => (float) $e->valor, 'forma' => $e->forma?->nome,
                 'motivo' => $e->motivo, 'situacao' => $e->situacao, 'motivo_desfeito' => $e->motivo_desfeito,
             ]),
-            'credito_estornavel' => \App\Servicos\Estornos::disponivel($cliente),
-            'formas_estorno' => \App\Models\FormaPagamento::where('ativa', true)->whereIn('tipo', ['pix', 'transferencia', 'dinheiro'])->orderBy('ordem')->get(['id', 'nome', 'tipo']),
+            'credito_estornavel' => Estornos::disponivel($cliente),
+            'formas_estorno' => FormaPagamento::where('ativa', true)->whereIn('tipo', ['pix', 'transferencia', 'dinheiro'])->orderBy('ordem')->get(['id', 'nome', 'tipo']),
             'mes_atual' => now()->format('Y-m'),
             'periodos' => Empresa::atual()->config('periodos'),
-            'unidades' => \App\Models\Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
+            'unidades' => Unidade::where('ativa', true)->orderBy('nome')->get(['id', 'nome']),
             'pausa_padrao' => ['tipo' => Empresa::atual()->config('pausa_taxa_tipo'), 'valor' => Empresa::atual()->config('pausa_taxa_valor')],
         ]);
     }
@@ -166,14 +180,14 @@ class ClienteController extends Controller
         $ate = $f['ate'] ?? now()->toDateString();
 
         $mov = collect();
-        $ordens = \App\Models\OrdemServico::where('cliente_id', $cliente->id)->get();
+        $ordens = OrdemServico::where('cliente_id', $cliente->id)->get();
         $ids = $ordens->pluck('id')->all();
         // ordens que um pagamento confirmado baixou (as demais pagas foram baixadas sem pagamento registrado)
-        $cobertas = \App\Models\PagamentoItem::whereIn('ordem_id', $ids ?: [0])
+        $cobertas = PagamentoItem::whereIn('ordem_id', $ids ?: [0])
             ->whereHas('pagamento', fn ($q) => $q->where('situacao', 'confirmado'))->pluck('ordem_id')->flip();
         // estornos ao cliente: a linha do estorno conta o valor devolvido; os créditos usados e a sobra
         // (crédito novo) não aparecem por conta própria, senão o saldo contaria duas vezes
-        $estornos = \App\Models\Estorno::where('cliente_id', $cliente->id)->get();
+        $estornos = Estorno::where('cliente_id', $cliente->id)->get();
         $pular = $estornos->pluck('credito_restante_id')->filter()->flip();
         $usadosEstorno = $estornos->where('situacao', 'feito')->flatMap(fn ($e) => $e->creditos ?? [])->flip();
         foreach ($estornos as $e) {
@@ -186,7 +200,7 @@ class ClienteController extends Controller
             if (isset($pular[$o->id]) && ! isset($cobertas[$o->id])) {
                 continue;
             }
-            $mov->push(['quando' => $o->data->format('Y-m-d').' 00:00:00', 'ordem' => 1, 'descricao' => '#'.$o->numero.' '.$o->descricao.($o->competencia ? ' '.\Carbon\Carbon::parse($o->competencia.'-01')->format('m/Y') : '').($o->placa ? ' · '.\App\Support\Placa::formatar($o->placa) : ''),
+            $mov->push(['quando' => $o->data->format('Y-m-d').' 00:00:00', 'ordem' => 1, 'descricao' => '#'.$o->numero.' '.$o->descricao.($o->competencia ? ' '.Carbon::parse($o->competencia.'-01')->format('m/Y') : '').($o->placa ? ' · '.Placa::formatar($o->placa) : ''),
                 'tipo' => $o->tipo, 'valor' => $o->valorComSinal()]);
             if ($o->situacao === 'cancelada' && $o->cancelada_em) {
                 $mov->push(['quando' => $o->cancelada_em->format('Y-m-d H:i:s'), 'ordem' => 2, 'descricao' => 'Cancelada #'.$o->numero.' ('.$o->motivo_cancelamento.')', 'tipo' => 'cancelamento', 'valor' => -$o->valorComSinal()]);
@@ -197,14 +211,14 @@ class ClienteController extends Controller
                 $mov->push(['quando' => $quando, 'ordem' => 3, 'descricao' => 'Baixada no sistema atual sem data de pagamento #'.$o->numero, 'tipo' => 'pagamento', 'valor' => -$o->valorComSinal()]);
             }
         }
-        $pagamentos = \App\Models\Pagamento::with(['forma:id,nome', 'itens.ordem:id,numero'])
+        $pagamentos = Pagamento::with(['forma:id,nome', 'itens.ordem:id,numero'])
             ->where(fn ($q) => $q->where('cliente_id', $cliente->id)->orWhereHas('itens', fn ($i) => $i->whereIn('ordem_id', $ids ?: [0])))->get();
         foreach ($pagamentos as $p) {
             $itens = $p->itens->filter(fn ($i) => in_array($i->ordem_id, $ids));
             $baixado = round((float) $itens->sum('valor'), 2);
             $dif = round((float) $p->valor - round((float) $p->itens->sum('valor'), 2), 2);
-            $obs = $dif < 0 ? ' · desconto/débito de '.\App\Support\Formato::moeda(-$dif) : ($dif > 0 ? ' · '.\App\Support\Formato::moeda($dif).' a mais' : '');
-            $mov->push(['quando' => $p->recebido_em->format('Y-m-d H:i:s'), 'ordem' => 3, 'descricao' => 'Pagamento '.\App\Support\Formato::moeda($p->valor).' ('.($p->forma?->nome ?? 'forma não informada').') · ordens '.$itens->map(fn ($i) => '#'.$i->ordem->numero)->implode(', ').$obs,
+            $obs = $dif < 0 ? ' · desconto/débito de '.Formato::moeda(-$dif) : ($dif > 0 ? ' · '.Formato::moeda($dif).' a mais' : '');
+            $mov->push(['quando' => $p->recebido_em->format('Y-m-d H:i:s'), 'ordem' => 3, 'descricao' => 'Pagamento '.Formato::moeda($p->valor).' ('.($p->forma?->nome ?? 'forma não informada').') · ordens '.$itens->map(fn ($i) => '#'.$i->ordem->numero)->implode(', ').$obs,
                 'tipo' => 'pagamento', 'valor' => -$baixado]);
             if ($p->situacao === 'estornado' && $p->estornado_em) {
                 $mov->push(['quando' => $p->estornado_em->format('Y-m-d H:i:s'), 'ordem' => 4, 'descricao' => 'Pagamento desfeito ('.$p->motivo_estorno.')', 'tipo' => 'estorno', 'valor' => $baixado]);
@@ -249,7 +263,8 @@ class ClienteController extends Controller
     {
         return Inertia::render('Clientes/Form', [
             'cliente' => [
-                ...$cliente->only(['id', 'nome', 'email', 'telefone', 'celular', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'dia_vencimento', 'observacoes', 'nao_recebe_avisos']),
+                ...$cliente->only(['id', 'nome', 'email', 'telefone', 'celular', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'dia_vencimento', 'observacoes', 'nao_recebe_avisos',
+                    'nf_tomador', 'nf_iss_retido', 'nf_retem_federal']),
                 'documento' => Documento::formatar($cliente->documento),
                 'cliente_desde' => $cliente->cliente_desde?->format('Y-m-d'),
             ],
@@ -281,7 +296,7 @@ class ClienteController extends Controller
      */
     public function desativar(Request $request, Cliente $cliente): RedirectResponse
     {
-        $abertas = \App\Servicos\Baixa::abertas($cliente)->where('tipo', '<>', 'credito');
+        $abertas = Baixa::abertas($cliente)->where('tipo', '<>', 'credito');
         $d = $request->validate(['contas' => [$abertas->isNotEmpty() ? 'required' : 'nullable', 'in:cancelar,manter']],
             ['contas.required' => 'O cliente tem conta em aberto: escolha se as contas são excluídas, mantidas ou recebidas.']);
         if (($d['contas'] ?? null) === 'cancelar') {
@@ -290,9 +305,9 @@ class ClienteController extends Controller
             }
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($cliente, $abertas, $d) {
+        DB::transaction(function () use ($cliente, $abertas, $d) {
             if (($d['contas'] ?? null) === 'cancelar') {
-                $abertas->each(fn ($o) => \App\Servicos\Ordens::cancelar($o, 'Cliente removido'));
+                $abertas->each(fn ($o) => Ordens::cancelar($o, 'Cliente removido'));
             }
             $this->encerrarCadastro($cliente);
         });
@@ -356,6 +371,9 @@ class ClienteController extends Controller
             $prefixo.'cliente_desde' => ['nullable', 'date', 'before_or_equal:today'],
             $prefixo.'observacoes' => ['nullable', 'string', 'max:500'],
             $prefixo.'nao_recebe_avisos' => ['boolean'],
+            $prefixo.'nf_tomador' => ['sometimes', 'boolean'],
+            $prefixo.'nf_iss_retido' => ['sometimes', 'boolean'],
+            $prefixo.'nf_retem_federal' => ['sometimes', 'boolean'],
         ], [
             $prefixo.'documento.unique' => 'Este CPF/CNPJ já está cadastrado em outro cliente.',
         ]);
@@ -370,6 +388,15 @@ class ClienteController extends Controller
             }
         }
         $sem['nao_recebe_avisos'] = (bool) ($sem['nao_recebe_avisos'] ?? false);
+        // nota fiscal: só nas telas que mostram essas opções (o cadastro do cliente); sem dados do tomador não há retenção
+        foreach (['nf_tomador', 'nf_iss_retido', 'nf_retem_federal'] as $k) {
+            if (array_key_exists($k, $sem)) {
+                $sem[$k] = (bool) $sem[$k];
+            }
+        }
+        if (array_key_exists('nf_tomador', $sem) && ! $sem['nf_tomador']) {
+            $sem['nf_iss_retido'] = $sem['nf_retem_federal'] = false;
+        }
 
         return $sem;
     }
