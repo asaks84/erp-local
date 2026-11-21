@@ -16,6 +16,10 @@ return [
     // Backup diário dos bancos (ERP e sistema atual): quantos dias guardar.
     'backup_dias' => (int) env('ERP_BACKUP_DIAS', 14),
 
+    // LGPD: prazos de guarda aplicados pela rotina diária lgpd:limpar
+    'lgpd_ex_cliente_anos' => 5,      // ex-cliente sem movimento há N anos é anonimizado (prazo de cobrança e guarda fiscal)
+    'lgpd_fila_dias' => 120,          // cadastro da fila de espera que não virou cliente é apagado após N dias
+
     // Faixas de IP do Cloudflare: só destes endereços o IP real do cliente é aceito
     // (cabeçalho CF-Connecting-IP / X-Forwarded-For). Lista oficial: https://www.cloudflare.com/ips/
     'proxies_confiaveis' => array_filter(explode(',', (string) env('ERP_PROXIES_CONFIAVEIS',

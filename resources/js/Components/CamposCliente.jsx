@@ -60,7 +60,8 @@ export default function CamposCliente({ data, setData, errors, mostrarExtras = t
                         <div className={`col-sm-6${lg(2)}`}>
                             <CampoData rotulo="Cliente desde" value={data.cliente_desde} erro={errors.cliente_desde} onChange={(v) => setData('cliente_desde', v)} />
                         </div>
-                        <div className={largo ? 'col-xl-8' : 'col-12'}><Campo as="textarea" rotulo="Observações" style={{ height: 80 }} maxLength={500} {...campo('observacoes')} /></div>
+                        <div className={largo ? 'col-xl-8' : 'col-12'}><Campo as="textarea" rotulo="Observações" style={{ height: 80 }} maxLength={500} {...campo('observacoes')}
+                            ajuda="Só o que ajuda no atendimento. Não anote saúde, religião, conflitos pessoais nem dados de outras pessoas (LGPD)." /></div>
                     </div>
                     <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" role="switch" id="nao_recebe_avisos"

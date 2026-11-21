@@ -26,3 +26,6 @@ Schedule::call(fn () => Artisan::call('whatsapp:regua'))->name('whatsapp:regua')
 
 // Backup diário dos bancos às 3h10.
 Schedule::call(fn () => Artisan::call('backup:banco'))->name('backup:banco')->dailyAt('03:10')->withoutOverlapping(60);
+
+// LGPD: prazos de guarda (fila de espera 120 dias; ex-cliente 5 anos), depois do backup
+Schedule::call(fn () => Artisan::call('lgpd:limpar'))->name('lgpd:limpar')->dailyAt('03:40')->withoutOverlapping(30);

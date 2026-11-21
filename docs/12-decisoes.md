@@ -6,6 +6,7 @@ Cada decisão com data e motivo. Decisão nova entra no topo. Para mudar uma dec
 
 | Data | Decisão | Motivo |
 |---|---|---|
+| 21/11/2026 | Prazos de guarda (só o obrigatório): ex-cliente anonimizado após 5 anos sem movimento (com bloqueios); fila de espera apagada após 120 dias; demais dados (IPs, avisos, atualizações) sem limpeza por enquanto; rotina diária lgpd:limpar | Decisão do Cauê |
 | 20/11/2026 | Backup fora do servidor no Google Drive do dono (por enquanto), criptografado com senha só dele (AES-256 + PBKDF2, compatível com openssl); OAuth com app próprio do dono e escopo drive.file; 30 dias de guarda (mín. 3 arquivos); falha no Drive não afeta o backup local | Pedido do Cauê; gap P1-8 do relatório .lgpd (troca de provedor depois, junto com a saída do Google) |
 | 20/11/2026 | Incidentes LGPD no próprio ERP (Sistema › Incidentes), não em documento: roteiro na tela, registro sem exclusão, prazo de 6 dias úteis (pequeno porte) contando só fins de semana (lado seguro), avisos prontos para ANPD e clientes, encerramento com exigências | Pedido do Cauê; gap P0-4 do relatório .lgpd |
 | 20/11/2026 | Direitos do titular atendidos pela equipe (sem área do cliente): exportar (tela/PDF/JSON) e anonimizar no cadastro do cliente; anonimizar mantém valores, datas e notas fiscais e apaga o que identifica, sem volta; bloqueado com cliente ativo, dívida, crédito, mensalidade, pátio, lavagem, convênio ativo, nota enviando e, durante o paralelo, cliente vindo do sistema atual | Pedido do Cauê (não quer área do cliente); gaps P1-5 e P1-6 do relatório .lgpd |

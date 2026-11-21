@@ -77,8 +77,8 @@ export default function Privacidade({ empresa_publica: empresa }) {
 
             <Secao titulo="Por quanto tempo guardamos">
                 <ul>
-                    <li>Cadastro e histórico: enquanto você for cliente. Depois, pelo tempo que a lei exige ou que for necessário para cobrar ou se defender em um processo. Registros fiscais e financeiros ficam no mínimo 5 anos.</li>
-                    <li>Cadastro enviado pelo link e não aprovado: apagado na recusa.</li>
+                    <li>Cadastro e histórico: enquanto você for cliente. Depois de 5 anos sem nenhum movimento, os dados que identificam você são anonimizados (sem pendência em aberto). Valores e notas fiscais ficam pelo prazo legal.</li>
+                    <li>Cadastro enviado pelo link (fila de espera) que não virou cliente: apagado na recusa ou depois de 120 dias.</li>
                     <li>Cópias de segurança (backup): 14 dias no servidor e 30 dias na cópia criptografada fora dele.</li>
                 </ul>
             </Secao>

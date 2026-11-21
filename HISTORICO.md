@@ -4,6 +4,28 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 21/11/2026 — LGPD: aviso no campo de observações do cliente; ROPA e documento para o advogado
+
+- Cadastro do cliente (ERP): o campo Observações ganhou a dica "Só o que ajuda no atendimento. Não anote saúde, religião, conflitos pessoais nem dados de outras pessoas (LGPD)."
+- Fora do código: registro simplificado das operações de tratamento (ROPA) e documento de pontos para revisão jurídica (15 perguntas com a decisão adotada em cada uma, texto da política e da ciência, prazos de guarda), como documentos compartilháveis.
+- Arquivo: resources/js/Components/CamposCliente.jsx.
+
+## 21/11/2026 — SQL de limpeza dos testes do PDV e do cliente 1012 (versão nova)
+
+- `sql-limpeza/1-conferir.sql` (só lê) e `sql-limpeza/2-apagar.sql` (transação), a partir do modelo anterior: do cliente 1012 (CAUÊ CARRERA, conferido pelo nome) saem as contas, cobranças, boletos, avisos, pagamentos, ajustes e estornos criados no ERP; cadastro, veículos e contas vindas do sistema atual ficam. Do PDV saem estadias dos aparelhos, contas lançadas pelo PDV, pagamentos, Pix com QR, caixas, movimentos, despesas pagas pelo caixa e, novo, o registro de ações dos aparelhos (pdv_acoes). Contas de outros clientes recebidas no PDV voltam a ficar em aberto.
+- Novo em relação ao modelo antigo (o banco mudou): apaga pdv_acoes antes das estadias e desliga a NFS-e do pagamento apagado (a nota fica); sem isso o modelo antigo pararia com erro de chave estrangeira.
+- Testado num banco com dados gerados pela API do PDV.
+
+## 21/11/2026 — LGPD: prazos de guarda automáticos
+
+- Rotina diária `lgpd:limpar` às 03:40 (depois do backup), só com o que a lei obriga:
+  - **Fila de espera:** cadastro que não virou cliente é apagado depois de 120 dias (`erp.lgpd_fila_dias`).
+  - **Ex-cliente:** inativo e sem nenhum movimento há 5 anos (`erp.lgpd_ex_cliente_anos`) é anonimizado com os mesmos bloqueios do botão (conta ou crédito em aberto, mensalidade, pátio etc.). Movimento = serviço, pagamento, estadia, mensalidade ou alteração do cadastro.
+  - Durante o paralelo, o que veio do sistema atual fica de fora (a importação traria de volta).
+  - O resumo vai para o registro de atividades. `php artisan lgpd:limpar --simular` mostra o que faria sem mudar nada.
+- Política de privacidade: prazos atualizados (5 anos sem movimento; fila de espera 120 dias).
+- Arquivos: app/Console/Commands/LimparLgpd.php, config/erp.php, routes/console.php, Pages/Privacidade.jsx, tests/Feature/LimparLgpdTest.php, docs 12 e 13.
+
 ## 20/11/2026 — Backup criptografado no Google Drive
 
 - **Configurações › Backup** (aba nova): passo a passo para criar o acesso no Google Cloud (Drive API, tela de consentimento publicada, ID do cliente OAuth "Aplicativo da Web" com o endereço de retorno para copiar); campos do ID e da chave do cliente (criptografados), **senha do backup** (mín. 12, com confirmação, guardada criptografada) e dias de guarda no Drive (padrão 30); conectar e desconectar a conta; "Fazer backup agora"; situação (último backup no servidor, último envio, última falha).
