@@ -27,6 +27,7 @@ use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\ImpressaoController;
+use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\InterController;
 use App\Http\Controllers\LavagemController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\PagadorController;
 use App\Http\Controllers\PatioController;
 use App\Http\Controllers\PendenteController;
 use App\Http\Controllers\PlanoContaController;
+use App\Http\Controllers\PrivacidadeController;
 use App\Http\Controllers\RecorrenteController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ResultadoController;
@@ -51,9 +53,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\WhatsAppWebhookController;
-use App\Models\Empresa;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 // Toda rota declara a permissão que exige ("permissao:<chave>", ou "permissao:livre" para
 // qualquer usuário logado) ou que é pública ("publica"). Rota sem isso é bloqueada.
@@ -77,11 +77,7 @@ Route::middleware('publica')->group(function () {
     Route::get('/c/{token}', CobrancaPublicaController::class)->middleware('throttle:60,1');
     // PDV: app separado (React próprio), fala com o servidor só pela API (routes/api.php)
     Route::get('/pdv/{tela?}', fn () => view('pdv'))->where('tela', '.*')->middleware('publica');
-    Route::get('/privacidade', function () {
-        $e = Empresa::withoutGlobalScopes()->where('ativa', true)->orderBy('id')->first();
-
-        return Inertia::render('Privacidade', ['empresa_publica' => ['nome' => $e?->nome ?? config('app.name'), 'telefone' => $e?->telefone, 'email' => $e?->email]]);
-    });
+    Route::get('/privacidade', PrivacidadeController::class);
     // webhook da Meta (WhatsApp): sem sessão de usuário; a Meta não manda o token de formulário
     Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verificar']);
     Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receber'])->middleware('throttle:600,1');
@@ -220,6 +216,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:excluir_cadastro')->group(function () {
         Route::post('/clientes/{cliente}/remover', [ClienteController::class, 'desativar']);
         Route::post('/clientes/{cliente}/reativar', [ClienteController::class, 'reativar']);
+        // LGPD: atender o pedido do cliente (ver ou levar os dados; ser apagado)
+        Route::get('/clientes/{cliente}/dados-pessoais', [ClienteController::class, 'dadosPessoais']);
+        Route::post('/clientes/{cliente}/anonimizar', [ClienteController::class, 'anonimizar']);
         Route::post('/veiculos/{veiculo}/remover', [VeiculoController::class, 'desativar']);
         Route::post('/veiculos/{veiculo}/reativar', [VeiculoController::class, 'reativar']);
     });
@@ -290,6 +289,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/empresa/config', [EmpresaController::class, 'config']);
         Route::post('/empresa/link-cadastro', [EmpresaController::class, 'gerarLink']);
         Route::put('/empresa/cobranca', [EmpresaController::class, 'cobranca']);
+        Route::put('/empresa/privacidade', [EmpresaController::class, 'privacidade']);
 
         Route::get('/configuracoes/pagamentos', [FormaPagamentoController::class, 'index']);
         Route::get('/configuracoes/inter', [InterController::class, 'index']);
@@ -398,5 +398,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/usuarios/{usuario}/codigo-pin', [UsuarioController::class, 'codigoPin']);
 
         Route::get('/atividades', AtividadeController::class);
+
+        // LGPD: roteiro e registro de incidentes com dados pessoais
+        Route::get('/incidentes', [IncidenteController::class, 'index']);
+        Route::post('/incidentes', [IncidenteController::class, 'store']);
+        Route::put('/incidentes/{incidente}', [IncidenteController::class, 'update']);
+        Route::post('/incidentes/{incidente}/encerrar', [IncidenteController::class, 'encerrar']);
     });
 });

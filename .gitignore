@@ -30,6 +30,9 @@ localm43_senna*.sql
 *.key
 *.crt
 
+# Relatórios das skills de LGPD (descrevem pontos fracos do sistema; ficam só na máquina)
+/.lgpd/
+
 # Editor e sistema
 /.vscode/
 /.cursor/

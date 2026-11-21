@@ -81,7 +81,7 @@ class CadastroPublicoController extends Controller
             'cor' => ['nullable', 'string', 'max:20'],
             'tipo_veiculo_id' => ['nullable', 'integer', 'exists:tipos_veiculo,id,empresa_id,'.$empresa->id],
             'aceite' => ['accepted'],
-        ], ['aceite.accepted' => 'É preciso autorizar o uso dos dados para enviar o cadastro.']);
+        ], ['aceite.accepted' => 'Confirme que leu a política de privacidade para enviar o cadastro.']);
 
         unset($d['aceite']);
         foreach (['nome', 'logradouro', 'complemento', 'bairro', 'cidade', 'marca', 'modelo', 'cor'] as $c) {

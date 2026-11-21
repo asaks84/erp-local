@@ -14,6 +14,7 @@ use App\Models\Unidade;
 use App\Models\Veiculo;
 use App\Servicos\Baixa;
 use App\Servicos\Contratos;
+use App\Servicos\DadosPessoais;
 use App\Servicos\Estornos;
 use App\Servicos\Inter\Boletos;
 use App\Servicos\Ordens;
@@ -28,6 +29,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -121,7 +123,10 @@ class ClienteController extends Controller
                 'cliente_desde' => $cliente->cliente_desde?->format('Y-m-d'),
                 'convenio' => $cliente->convenio?->ativo ? $cliente->convenio->resumo() : null,
                 'regras_boleto' => $cliente->regras_boleto,
+                'anonimizado_em' => $cliente->anonimizado_em?->format('d/m/Y'),
             ],
+            // LGPD: o que impede anonimizar agora (a tela mostra antes de pedir a confirmação)
+            'lgpd' => ['bloqueios' => DadosPessoais::bloqueios($cliente), 'motivos' => DadosPessoais::MOTIVOS],
             'regras_boleto_empresa' => Boletos::regras(),
             // emitir cobrança com boleto: a primeira mensalidade (ou proporcional) sai sem as regras
             'boleto_regras_sugerido' => ! Boletos::temPrimeiraMensalidade(Baixa::abertas($cliente)),
@@ -261,6 +266,8 @@ class ClienteController extends Controller
 
     public function edit(Cliente $cliente): Response
     {
+        self::naoAnonimizado($cliente);
+
         return Inertia::render('Clientes/Form', [
             'cliente' => [
                 ...$cliente->only(['id', 'nome', 'email', 'telefone', 'celular', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'dia_vencimento', 'observacoes', 'nao_recebe_avisos',
@@ -282,6 +289,7 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente): RedirectResponse
     {
+        self::naoAnonimizado($cliente);
         $cliente->update(self::validar($request, $cliente));
         Atividades::registrar('cliente_alterado', 'cliente '.$cliente->id.' - '.$cliente->nome);
 
@@ -334,10 +342,47 @@ class ClienteController extends Controller
 
     public function reativar(Cliente $cliente): RedirectResponse
     {
+        self::naoAnonimizado($cliente);
         $cliente->update(['ativo' => true]);
         Atividades::registrar('cliente_reativado', 'cliente '.$cliente->id.' - '.$cliente->nome);
 
         return back()->with('sucesso', 'Cliente reativado. Reative os veículos que voltarem.');
+    }
+
+    /** cliente anonimizado não volta: nem edição nem reativação (os dados apagados não reaparecem) */
+    private static function naoAnonimizado(Cliente $cliente): void
+    {
+        abort_if((bool) $cliente->anonimizado_em, 403, 'Cliente anonimizado (LGPD): o cadastro não pode ser editado nem reativado.');
+    }
+
+    /** LGPD: tudo o que o sistema guarda sobre o cliente, para mandar a ele (na tela, impressão/PDF ou arquivo) */
+    public function dadosPessoais(Request $request, Cliente $cliente): Response|JsonResponse
+    {
+        self::naoAnonimizado($cliente);
+        $dados = DadosPessoais::exportar($cliente);
+        if ($request->query('formato') === 'json') {
+            Atividades::registrar('cliente_dados_exportados', 'cliente '.$cliente->id.': dados pessoais baixados em arquivo (LGPD)');
+
+            return response()->json($dados, 200, ['Content-Disposition' => 'attachment; filename="dados-cliente-'.$cliente->id.'.json"'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        Atividades::registrar('cliente_dados_exportados', 'cliente '.$cliente->id.': dados pessoais abertos para impressão (LGPD)');
+
+        return Inertia::render('Clientes/DadosPessoais', ['dados' => $dados, 'cliente_id' => $cliente->id]);
+    }
+
+    /** LGPD: anonimiza a pedido do cliente ou por prazo vencido; confirma digitando o nome atual */
+    public function anonimizar(Request $request, Cliente $cliente): RedirectResponse
+    {
+        $d = $request->validate([
+            'motivo' => ['required', 'in:'.implode(',', array_keys(DadosPessoais::MOTIVOS))],
+            'confirmacao' => ['required', 'string'],
+        ], ['confirmacao.required' => 'Digite o nome do cliente para confirmar.']);
+        if (mb_strtoupper(trim($d['confirmacao'])) !== mb_strtoupper(trim((string) $cliente->nome))) {
+            throw ValidationException::withMessages(['confirmacao' => 'O nome digitado não confere com o do cadastro.']);
+        }
+        DadosPessoais::anonimizar($cliente, $d['motivo']);
+
+        return redirect("/clientes/{$cliente->id}")->with('sucesso', 'Cliente anonimizado. Valores, datas e notas fiscais continuam no histórico.');
     }
 
     public static function validar(Request $request, ?Cliente $cliente = null, string $prefixo = ''): array

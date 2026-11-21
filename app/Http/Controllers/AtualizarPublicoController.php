@@ -93,7 +93,7 @@ class AtualizarPublicoController extends Controller
             'cidade' => ['required', 'string', 'max:60'],
             'uf' => ['required', 'alpha', 'size:2'],
             'aceite' => ['accepted'],
-        ], ['aceite.accepted' => 'É preciso autorizar o uso dos dados para enviar.']);
+        ], ['aceite.accepted' => 'Confirme que leu a política de privacidade para enviar.']);
         unset($d['aceite']);
         foreach (['nome', 'logradouro', 'complemento', 'bairro', 'cidade'] as $c) {
             $d[$c] = isset($d[$c]) ? mb_strtoupper(trim($d[$c])) : null;

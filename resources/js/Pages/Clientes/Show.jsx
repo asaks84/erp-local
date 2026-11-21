@@ -120,7 +120,37 @@ function AcoesMensalidade({ veiculo, contrato, periodos, pausaPadrao, unidades }
     )
 }
 
-export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual, regras_boleto_empresa, boleto_regras_sugerido, estornos = [], credito_estornavel = 0, formas_estorno = [] }) {
+/**
+ * LGPD: anonimizar a pedido do cliente ou por prazo vencido. Mostra o que impede (dívida, crédito, pátio...) e,
+ * sem bloqueio, pede o motivo e o nome do cliente digitado para confirmar. Não tem volta.
+ */
+function Anonimizar({ cliente, lgpd, onFechar }) {
+    const form = useForm({ motivo: 'pedido', confirmacao: '' })
+    const bloqueado = lgpd.bloqueios.length > 0
+    return (
+        <Janela aberta titulo="Anonimizar cliente (LGPD)" rotuloOk="Anonimizar" perigo onFechar={onFechar} ocupado={form.processing || bloqueado}
+            onEnviar={() => form.post(`/clientes/${cliente.id}/anonimizar`, { preserveScroll: true, onSuccess: onFechar })}>
+            {bloqueado ? (
+                <div className="alert alert-warning small mb-0">
+                    <strong>Ainda não dá para anonimizar:</strong>
+                    <ul className="mb-0 mt-1 ps-3">{lgpd.bloqueios.map((b) => <li key={b}>{b}</li>)}</ul>
+                </div>
+            ) : (
+                <>
+                    <p className="small">Apaga nome, CPF/CNPJ, telefones, e-mail, endereço, observações, placas e os textos dos avisos. Ficam os valores, as datas e as notas fiscais (guarda legal), com o nome trocado por <strong>CLIENTE ANONIMIZADO {cliente.id}</strong>.</p>
+                    <p className="small text-danger fw-semibold">Não tem volta: o cadastro não pode ser reativado nem editado. Se precisar mandar os dados ao cliente, exporte antes.</p>
+                    <Campo as="select" rotulo="Motivo" value={form.data.motivo} onChange={(e) => form.setData('motivo', e.target.value)} erro={form.errors.motivo}>
+                        {Object.entries(lgpd.motivos).map(([k, r]) => <option key={k} value={k}>{r}</option>)}
+                    </Campo>
+                    <Campo rotulo={`Digite o nome do cliente: ${cliente.nome}`} value={form.data.confirmacao} autoComplete="off"
+                        onChange={(e) => form.setData('confirmacao', e.target.value)} erro={form.errors.confirmacao} className="mb-0" />
+                </>
+            )}
+        </Janela>
+    )
+}
+
+export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pausa_padrao, abertas, total_aberto, cobrancas, pagamentos, mes_atual, regras_boleto_empresa, boleto_regras_sugerido, estornos = [], credito_estornavel = 0, formas_estorno = [], lgpd = { bloqueios: [], motivos: {} } }) {
     const interLigado = !!usePage().props.empresa?.inter
     const pode = usePode()
     const { unidades = [] } = usePage().props
@@ -129,6 +159,7 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
     const cidade = [cliente.bairro, cliente.cidade && `${cliente.cidade}${cliente.uf ? '/' + cliente.uf : ''}`, cliente.cep && mCep(cliente.cep)].filter(Boolean).join(' · ')
 
     const [remover, setRemover] = useState(false)
+    const [anonimizar, setAnonimizar] = useState(false)
     const [removendo, setRemovendo] = useState(false)
     const aReceber = abertas.filter((o) => o.tipo !== 'credito')
     const totalReceber = aReceber.reduce((s, o) => s + o.valor, 0)
@@ -151,11 +182,11 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
     return (
         <div className="pagina">
             <TituloPagina titulo={cliente.nome}>
-                <Link href={`/clientes/${cliente.id}/editar`} className="btn btn-outline-secondary d-inline-flex align-items-center gap-2"><Icone nome="lapis" tamanho={16} /> Editar</Link>
+                {!cliente.anonimizado_em && <Link href={`/clientes/${cliente.id}/editar`} className="btn btn-outline-secondary d-inline-flex align-items-center gap-2"><Icone nome="lapis" tamanho={16} /> Editar</Link>}
             </TituloPagina>
             <div className="d-flex flex-wrap gap-2 mb-3" style={{ marginTop: -12 }}>
                 <span className="selo">Cód. {cliente.id}</span>
-                {!cliente.ativo && <span className="selo selo-erro">Inativo</span>}
+                {cliente.anonimizado_em ? <span className="selo selo-erro">Anonimizado em {cliente.anonimizado_em} (LGPD)</span> : !cliente.ativo && <span className="selo selo-erro">Inativo</span>}
                 {cliente.convenio && <span className="selo selo-marca">Convênio: {cliente.convenio}</span>}
                 {cliente.nao_recebe_avisos && <span className="selo">Não recebe avisos</span>}
             </div>
@@ -195,11 +226,16 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
 
                     {(interLigado || cliente.regras_boleto) && regras_boleto_empresa && <RegrasBoletoCliente cliente={cliente} empresa={regras_boleto_empresa} />}
 
-                    {pode('excluir_cadastro') && (
+                    {pode('excluir_cadastro') && !cliente.anonimizado_em && (
                         <div className="mt-3">
                             {cliente.ativo
                                 ? <button type="button" className="btn btn-link text-danger px-0" onClick={() => (aReceber.length ? setRemover(true) : setConfirmar({ url: `/clientes/${cliente.id}/remover`, titulo: 'Remover cliente', texto: 'O cliente e os veículos saem das listas e as mensalidades são encerradas hoje. O histórico continua guardado e ele pode ser reativado.' }))}>Remover cliente</button>
                                 : <button type="button" className="btn btn-link px-0" onClick={() => router.post(`/clientes/${cliente.id}/reativar`, {}, { preserveScroll: true })}>Reativar cliente</button>}
+                            <div className="border-top mt-2 pt-2">
+                                <div className="small text-muted mb-1">LGPD: pedido do cliente</div>
+                                <a href={`/clientes/${cliente.id}/dados-pessoais`} target="_blank" rel="noreferrer" className="btn btn-link px-0 d-block text-start">Exportar dados do cliente</a>
+                                <button type="button" className="btn btn-link text-danger px-0" onClick={() => setAnonimizar(true)}>Anonimizar cliente</button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -297,6 +333,7 @@ export default function ClienteShow({ cliente, veiculos, pagadores, periodos, pa
                 </Modal.Footer>
             </Modal>
 
+            {anonimizar && <Anonimizar cliente={cliente} lgpd={lgpd} onFechar={() => setAnonimizar(false)} />}
             <Confirmar aberto={!!confirmar} titulo={confirmar?.titulo} perigo rotuloOk="Remover" onOk={executar} onCancelar={() => setConfirmar(null)}>
                 {confirmar?.texto}
             </Confirmar>

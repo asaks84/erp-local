@@ -47,6 +47,7 @@ export const MENU = [
             { rotulo: 'Usuários', href: '/usuarios', icone: 'cadeado', permissao: 'usuarios', acende: ['/usuarios'] },
             { rotulo: 'Conferência', href: '/conferencia', icone: 'lista', permissao: 'configuracoes', acende: ['/conferencia'] },
             { rotulo: 'Registro de atividades', href: '/atividades', icone: 'lista', permissao: 'usuarios', acende: ['/atividades'] },
+            { rotulo: 'Incidentes (LGPD)', href: '/incidentes', icone: 'alerta', permissao: 'usuarios', acende: ['/incidentes'] },
         ],
     },
 ]

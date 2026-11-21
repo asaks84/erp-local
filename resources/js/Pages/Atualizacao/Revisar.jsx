@@ -20,7 +20,7 @@ export default function RevisarAtualizacao({ atualizacao: a, cliente, linhas, do
     return (
         <div className="pagina">
             <TituloPagina titulo={`Atualização cadastral · ${cliente.nome}`}
-                descricao={a.respondido_em ? `Respondido em ${dataHora(a.respondido_em)} · autorização de uso dos dados em ${dataHora(a.consentimento_em)}` : null} />
+                descricao={a.respondido_em ? `Respondido em ${dataHora(a.respondido_em)} · ciência da política de privacidade em ${dataHora(a.consentimento_em)}` : null} />
             {!respondida && <div className="alert aviso-neutro">Situação: {a.situacao}{a.motivo_recusa && ` · ${a.motivo_recusa}`}{a.revisado_em && ` · revisado em ${dataHora(a.revisado_em)}`}</div>}
             <div className="row g-4">
                 <div className="col-xl-8">

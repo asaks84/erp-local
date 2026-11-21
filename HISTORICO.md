@@ -4,9 +4,41 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 20/11/2026 — LGPD: Sistema › Incidentes (roteiro e registro)
+
+- Novo item **Incidentes (LGPD)** no menu Sistema (permissão de usuários, como o registro de atividades).
+- **Roteiro** na própria tela (aberto enquanto não há incidente): o que conta como incidente e os cinco passos: conter (desativar aparelho, trocar senha e chaves), registrar no mesmo dia, avaliar o risco (régua baixo × relevante), comunicar ANPD e clientes em até 6 dias úteis se relevante, encerrar com justificativa.
+- **Registro** de cada caso: título, quando soube (o prazo conta daqui), quando ocorreu, descrição, dados afetados, pessoas afetadas, contenção, risco, justificativa e, se relevante, datas da comunicação à ANPD (com protocolo) e aos clientes. Situação: avaliar → comunicar → pronto → encerrado; prazo vencido em vermelho. O prazo pula só sábado e domingo (feriado não estende: a data fica igual ou antes da real).
+- **Avisos prontos** para copiar: o que preencher no formulário da ANPD e a mensagem aos clientes, montados com o que está salvo.
+- Encerrar exige risco decidido, contenção, justificativa e, se relevante, as duas comunicações. Encerrado não muda; não há exclusão.
+- Migração `2026_12_08_000002_create_incidentes`. Arquivos: app/Models/Incidente.php, app/Http/Controllers/IncidenteController.php, routes/web.php, resources/js/lib/menu.js, Pages/Sistema/Incidentes.jsx, tests/Feature/IncidentesTest.php, docs 12 e 13.
+
+## 20/11/2026 — LGPD: exportar e anonimizar cliente
+
+- **Cliente › LGPD: pedido do cliente** (permissão de excluir cadastro):
+  - **Exportar dados do cliente:** abre em outra aba tudo o que o sistema guarda sobre ele (cadastro, veículos e trocas de placa, mensalidades, serviços, estadias, cobranças, pagamentos, notas, quem paga por ele, avisos de WhatsApp, atualizações pelo link e com quem compartilha), com "Imprimir ou salvar em PDF" e "Baixar arquivo (JSON)". Fica no registro de atividades.
+  - **Anonimizar cliente:** apaga nome (vira "CLIENTE ANONIMIZADO <código>"), CPF/CNPJ, telefones, e-mail, endereço, observações, placas e dados dos veículos, trocas de placa, celular e texto dos avisos, o que veio pelo link de atualização, quem paga por ele, nome e documento no extrato e no Pix, e o nome no registro de atividades. Ficam valores, datas, cobranças, pagamentos e as notas fiscais (guarda legal). Confirma com o motivo (pedido do cliente ou prazo vencido) e o nome digitado. Não tem volta: o cadastro não é editado, reativado nem exportado.
+  - **Bloqueios** (a tela mostra antes): cliente ativo, conta em aberto (a lei permite guardar para cobrar), crédito a devolver, mensalidade que não terminou, veículo no pátio, lavagem em andamento, convênio ativo, nota sendo emitida e, com o espelho do sistema atual ligado, cliente que veio de lá (a importação traria os dados de volta).
+- A importação do sistema atual não sobrescreve cliente anonimizado, os veículos nem os pagadores dele.
+- Migração `2026_12_08_000001_clientes_anonimizado` (clientes.anonimizado_em). Arquivos: app/Servicos/DadosPessoais.php (novo), ClienteController, Concerns/ImportaCadastros, Models/Cliente, routes/web.php, Pages/Clientes/{Show,DadosPessoais (nova)}.jsx, tests/Feature/DadosPessoaisTest.php (novo), docs 12 e 13.
+
+## 20/11/2026 — LGPD: política de privacidade revista e aceite dos formulários
+
+- Primeira rodada da skill `lgpd-audit` (etapas L0 e L1): relatórios em `.lgpd/` (STATUS, discovery, gaps), só na máquina (fora do Git). Enquadramento: agente de pequeno porte (ME/EPP pelo cartão CNPJ).
+- **Política de privacidade** (`/privacidade`) reescrita: identifica o controlador (razão social, CNPJ, endereço); lista os dados por tipo de titular (clientes, balcão, ticket perdido, quem paga por outro, formulários), finalidades e bases legais (contrato, obrigação legal, legítimo interesse) e compartilhamento (Inter, Sistema Nacional da NFS-e no lugar de "prefeitura", Meta, Hostinger, Cloudflare), com a transferência internacional (Meta e Cloudflare); prazos de guarda, direitos com prazo de resposta (15 dias), canal de privacidade e dispensa de encarregado (ATPP), segurança.
+- **Configurações › Empresa › Política de privacidade (LGPD)**: endereço da empresa e canal de privacidade, que aparecem na política. Sem endereço, usa o da primeira unidade; o canal aparece junto do e-mail e do telefone da empresa.
+- **Formulários públicos** (cadastro e atualização): o "Autorizo…" (consentimento) virou ciência da política, com link: "Li a política de privacidade. Meus dados são usados para o cadastro, o contato e a cobrança do serviço contratado." As telas de revisão dizem "ciência da política de privacidade em".
+- Arquivos: app/Http/Controllers/{PrivacidadeController (novo),EmpresaController,CadastroPublicoController,AtualizarPublicoController}.php, routes/web.php, Pages/{Privacidade,Empresa/Edit,Cadastro/Publico,Atualizacao/Publico,Atualizacao/Revisar,Pendentes/Revisar}.jsx, tests/Feature/PrivacidadeTest.php (novo), docs 12 e 13.
+
+## 20/11/2026 — Skills de LGPD no projeto (.claude/skills)
+
+- Instaladas em `.claude/skills/` as 19 skills de LGPD de github.com/goul4rt/lgpd-skills (v1.3.0, MIT; licença em `.claude/skills/LICENSE-lgpd-skills.txt`), sem alteração: o maestro `lgpd-audit` e as sub-skills (mapeamento de dados, base legal, encarregado, retenção, DSAR, incidentes, ROPA, RIPD, política de privacidade e outras). O Claude Code passa a usá-las neste projeto ("audite LGPD", "como estamos de LGPD").
+- Os exemplos de código delas são TypeScript/Prisma/Postgres; aqui (Laravel/MySQL) servem de referência e precisam ser adaptados.
+- Os artefatos que elas geram ficam em `.lgpd/` (raiz do projeto). `.claude/` e `.lgpd/` não vão para o servidor (deploy/rsync-excluir.txt). A `.lgpd/` também fica fora do Git (.gitignore): os relatórios ficam só na máquina.
+
 ## 20/11/2026 — Registro: impressora Bluetooth e leitor de QR testados
 
-- Teste do Cauê no balcão: a impressora térmica imprime por Bluetooth e o leitor de QR Code do PDV funciona perfeitamente. Registrado na decisão 2 de docs/15-plano-pdv.md. Sem mudança de código.
+- Teste do Cauê no balcão: a impressora térmica imprime por Bluetooth BLE direto pelo Chrome (sem RawBT nem app próprio) e o leitor de QR Code do PDV funciona perfeitamente. Registrado na decisão 2 de docs/15-plano-pdv.md. Sem mudança de código.
 
 ## 20/11/2026 — Notas fiscais: lista pelas cobranças do mês; "Emitir nota" na cobrança
 

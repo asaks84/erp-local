@@ -16,3 +16,5 @@ public/hot
 resources/js/
 resources/scss/
 deploy/
+.claude/
+.lgpd/

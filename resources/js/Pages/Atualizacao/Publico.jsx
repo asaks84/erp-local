@@ -55,7 +55,7 @@ function Formulario({ token, empresa, dados, documentoDica, veiculos }) {
             <div className="form-check mb-3">
                 <input className={`form-check-input${errors.aceite ? ' is-invalid' : ''}`} type="checkbox" id="aceite" checked={data.aceite} onChange={(e) => setData('aceite', e.target.checked)} />
                 <label className="form-check-label" htmlFor="aceite">
-                    Autorizo {empresa.nome} a usar meus dados para o cadastro, contato e cobrança da mensalidade (LGPD).
+                    Li a <a href="/privacidade" target="_blank" rel="noreferrer">política de privacidade</a>. Meus dados são usados para o cadastro, o contato e a cobrança do serviço contratado.
                 </label>
                 {errors.aceite && <div className="invalid-feedback">{errors.aceite}</div>}
             </div>

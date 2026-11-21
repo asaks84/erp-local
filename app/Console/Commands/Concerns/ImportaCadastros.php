@@ -6,6 +6,7 @@ use App\Models\CadastroPendente;
 use App\Models\Cliente;
 use App\Models\Convenio;
 use App\Models\MensalidadeContrato;
+use App\Models\OrdemServico;
 use App\Models\PagadorVinculado;
 use App\Models\Servico;
 use App\Models\ServicoPreco;
@@ -13,6 +14,7 @@ use App\Models\Tarifa;
 use App\Models\TipoVeiculo;
 use App\Models\Unidade;
 use App\Models\Veiculo;
+use App\Servicos\Convenios;
 use App\Support\Legado;
 use App\Support\Placa;
 use App\Support\Telefone;
@@ -30,7 +32,7 @@ trait ImportaCadastros
     /** @var array<int,int> cliente antigo → novo */
     private array $mapaClientes = [];
 
-    /** @var array<string,\App\Models\Veiculo> placa antiga → veículo novo */
+    /** @var array<string,Veiculo> placa antiga → veículo novo */
     private array $mapaVeiculos = [];
 
     private function texto($v, int $max = 255): ?string
@@ -208,6 +210,12 @@ trait ImportaCadastros
         $n = $a = 0;
         foreach ($linhas as $c) {
             $cliente = Cliente::where('legado_id', $c->cli_id)->first();
+            // anonimizado no ERP (LGPD): os dados apagados não voltam pela importação
+            if ($cliente?->anonimizado_em) {
+                $mapa[(int) $c->cli_id] = $cliente->id;
+
+                continue;
+            }
             $doc = preg_replace('/\D/', '', (string) $c->cli_cpf) ?: null;
             if ($doc && Cliente::where('documento', $doc)->when($cliente, fn ($q) => $q->where('id', '<>', $cliente->id))->exists()) {
                 $this->warn("Cliente {$c->cli_id} ({$c->cli_nome}): CPF/CNPJ repetido; importado sem documento.");
@@ -280,6 +288,11 @@ trait ImportaCadastros
                 $sem++;
             }
             $veiculo = Veiculo::where('legado_id', $v->vcl_id)->first();
+            if ($veiculo && $veiculo->cliente_id && Cliente::whereKey($veiculo->cliente_id)->whereNotNull('anonimizado_em')->exists()) {
+                $vistos[] = $v->vcl_id;   // veículo de cliente anonimizado (LGPD): fica como está
+
+                continue;
+            }
             if ($placa && Veiculo::where('placa', $placa)->where('ativo', true)->when($veiculo, fn ($q) => $q->where('id', '<>', $veiculo->id))->exists()) {
                 $this->warn("Veículo {$v->vcl_id}: placa {$placa} repetida; importado sem placa.");
                 $identificacao = Placa::identificacao($original);
@@ -368,7 +381,7 @@ trait ImportaCadastros
         $mes = now()->format('Y-m');
         $ontemDoMes = now()->startOfMonth()->subDay()->toDateString();
         foreach (MensalidadeContrato::where('motivo_fim', self::MOTIVO_SAIU)->where('fim', now()->toDateString())->get() as $c) {
-            $temMes = \App\Models\OrdemServico::where('tipo', 'mensalidade')->where('veiculo_id', $c->veiculo_id)
+            $temMes = OrdemServico::where('tipo', 'mensalidade')->where('veiculo_id', $c->veiculo_id)
                 ->where('competencia', $mes)->where('situacao', '<>', 'cancelada')->exists();
             if (! $temMes) {
                 $c->update(['fim' => max($c->inicio->toDateString(), $ontemDoMes)]);
@@ -403,7 +416,7 @@ trait ImportaCadastros
             ]);
             $conv->save();
             // regras por serviço: refeitas do modo do sistema atual, a não ser que o convênio tenha sido editado no ERP
-            \App\Servicos\Convenios::refazerDoLegado($conv);
+            Convenios::refazerDoLegado($conv);
             $vistos[] = $conv->id;
         }
         $this->contar('Convênios', $n, $a);
@@ -448,7 +461,7 @@ trait ImportaCadastros
         }
         $n = $a = 0;
         foreach ($legado->conexao()->table($t)->orderBy('pv_id')->get() as $p) {
-            if (! isset($clientes[(int) $p->pv_cli_id])) {
+            if (! isset($clientes[(int) $p->pv_cli_id]) || Cliente::whereKey($clientes[(int) $p->pv_cli_id])->whereNotNull('anonimizado_em')->exists()) {
                 continue;
             }
             $pag = PagadorVinculado::where('legado_id', $p->pv_id)->first();

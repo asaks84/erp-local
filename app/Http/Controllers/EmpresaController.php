@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Empresa;
 use App\Models\Unidade;
 use App\Support\Atividades;
+use App\Support\Documento;
 use App\Support\EmpresaAtual;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,6 +33,7 @@ class EmpresaController extends Controller
                 'pausa_taxa_valor' => (float) $empresa->config('pausa_taxa_valor'),
             ],
             'cobranca_instrucoes' => $empresa->config('cobranca_instrucoes'),
+            'privacidade' => ['endereco' => (string) $empresa->config('privacidade_endereco'), 'contato' => (string) $empresa->config('privacidade_contato')],
             'link_cadastro' => $empresa->codigo_publico ? url('/cadastro/'.$empresa->codigo_publico) : null,
             'unidades' => Unidade::orderByDesc('ativa')->orderBy('nome')->get(['id', 'nome', 'endereco', 'ativa']),
         ]);
@@ -40,13 +43,13 @@ class EmpresaController extends Controller
     {
         // guarda só os números; a tela mostra com a máscara
         $request->merge([
-            'documento' => \App\Support\Documento::limpar($request->input('documento')),
+            'documento' => Documento::limpar($request->input('documento')),
             'telefone' => preg_replace('/\D/', '', (string) $request->input('telefone')) ?: null,
         ]);
         $dados = $request->validate([
             'nome' => ['required', 'string', 'max:80'],
             'razao_social' => ['nullable', 'string', 'max:120'],
-            'documento' => ['nullable', 'digits:14', fn ($a, $v, $f) => \App\Support\Documento::valido($v) ? null : $f('CNPJ inválido. Confira os números.')],
+            'documento' => ['nullable', 'digits:14', fn ($a, $v, $f) => Documento::valido($v) ? null : $f('CNPJ inválido. Confira os números.')],
             'telefone' => ['nullable', 'string', 'min:10', 'max:11'],
             'email' => ['nullable', 'email', 'max:120'],
         ], ['documento.digits' => 'O CNPJ tem 14 números.', 'telefone.min' => 'Telefone com DDD: 10 ou 11 números.']);
@@ -88,12 +91,29 @@ class EmpresaController extends Controller
         return back()->with('sucesso', 'Instruções da cobrança salvas.');
     }
 
+    /** endereço do controlador e canal de privacidade, que aparecem na política pública (/privacidade) */
+    public function privacidade(Request $request): RedirectResponse
+    {
+        $d = $request->validate([
+            'endereco' => ['nullable', 'string', 'max:200'],
+            'contato' => ['nullable', 'string', 'max:120'],
+        ]);
+        $empresa = $this->empresa();
+        $empresa->configuracoes = array_merge($empresa->configuracoes ?? [], [
+            'privacidade_endereco' => trim((string) ($d['endereco'] ?? '')), 'privacidade_contato' => trim((string) ($d['contato'] ?? '')),
+        ]);
+        $empresa->save();
+        Atividades::registrar('empresa_config_alterada', 'dados da política de privacidade');
+
+        return back()->with('sucesso', 'Dados da política de privacidade salvos.');
+    }
+
     /** cria (ou troca) o código do link público de cadastro; trocar invalida o QR Code antigo */
     public function gerarLink(): RedirectResponse
     {
         $empresa = $this->empresa();
         do {
-            $codigo = strtolower(\Illuminate\Support\Str::random(8));
+            $codigo = strtolower(Str::random(8));
         } while (Empresa::where('codigo_publico', $codigo)->exists());
         $empresa->update(['codigo_publico' => $codigo]);
         Atividades::registrar('link_cadastro_gerado', $codigo);

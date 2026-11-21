@@ -62,6 +62,25 @@ function InstrucoesCobranca({ texto }) {
     )
 }
 
+/** endereço e canal de privacidade que aparecem na política pública */
+function Privacidade({ valores }) {
+    const { data, setData, put, processing, errors } = useForm({ endereco: valores.endereco || '', contato: valores.contato || '' })
+    return (
+        <form className="card mt-4" noValidate onSubmit={(e) => { e.preventDefault(); put('/empresa/privacidade', { preserveScroll: true }) }}>
+            <div className="card-header d-flex align-items-center">Política de privacidade (LGPD)<a href="/privacidade" target="_blank" rel="noreferrer" className="small ms-auto">Ver a página</a></div>
+            <div className="card-body">
+                <Campo rotulo="Endereço da empresa" maxLength={200} value={data.endereco} onChange={(e) => setData('endereco', e.target.value)} erro={errors.endereco}
+                    ajuda="Identifica quem é o responsável pelos dados. Em branco: usa o endereço da primeira unidade." />
+                <Campo rotulo="Canal de privacidade (e-mail ou WhatsApp)" maxLength={120} value={data.contato} onChange={(e) => setData('contato', e.target.value)} erro={errors.contato}
+                    ajuda="Onde o cliente pede para ver, corrigir ou apagar os dados. Aparece junto do e-mail e do telefone da empresa." className="mb-0" />
+            </div>
+            <div className="card-footer bg-transparent d-flex justify-content-end p-3">
+                <button type="submit" className="btn btn-primary" disabled={processing}>Salvar</button>
+            </div>
+        </form>
+    )
+}
+
 function LinkCadastro({ link }) {
     const [qr, setQr] = useState(null)
     useEffect(() => { if (link) QRCode.toDataURL(link, { width: 480, margin: 1 }).then(setQr) }, [link])
@@ -94,7 +113,7 @@ function LinkCadastro({ link }) {
     )
 }
 
-export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, cobranca_instrucoes }) {
+export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, cobranca_instrucoes, privacidade }) {
     const { data, setData, put, processing, errors } = useForm({
         nome: empresa.nome || '',
         razao_social: empresa.razao_social || '',
@@ -171,6 +190,7 @@ export default function EmpresaEdit({ empresa, unidades, config, link_cadastro, 
                     </div>
                     <LinkCadastro link={link_cadastro} />
                     <InstrucoesCobranca texto={cobranca_instrucoes} />
+                    <Privacidade valores={privacidade} />
                 </div>
             </div>
         </div>

@@ -29,7 +29,7 @@ export default function PendenteRevisar({ pendente, existente, tipos, unidades, 
 
     return (
         <div className="estreito">
-            <TituloPagina titulo="Revisar cadastro" descricao={`Recebido em ${dataHora(pendente.recebido_em)} · autorização de uso dos dados em ${dataHora(pendente.consentimento_em)}`} />
+            <TituloPagina titulo="Revisar cadastro" descricao={`Recebido em ${dataHora(pendente.recebido_em)} · ciência da política de privacidade em ${dataHora(pendente.consentimento_em)}`} />
             {existente && (
                 <div className="alert alert-warning">
                     Este CPF/CNPJ já é do cliente <Link href={`/clientes/${existente.id}`}>{existente.nome} (cód. {existente.id})</Link>.
