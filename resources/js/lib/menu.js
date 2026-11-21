@@ -64,6 +64,7 @@ export const CONFIGURACOES = [
     { rotulo: 'Banco Inter', href: '/configuracoes/inter', permissao: 'configuracoes', acende: ['/configuracoes/inter'] },
     { rotulo: 'Nota fiscal (NFS-e)', href: '/configuracoes/nfse', permissao: 'nfse', acende: ['/configuracoes/nfse'] },
     { rotulo: 'WhatsApp', href: '/configuracoes/whatsapp', permissao: 'configuracoes', acende: ['/configuracoes/whatsapp'] },
+    { rotulo: 'Backup', href: '/configuracoes/backup', permissao: 'configuracoes', acende: ['/configuracoes/backup'] },
     { rotulo: 'Aparelhos (PDV)', href: '/configuracoes/aparelhos', permissao: 'configuracoes', acende: ['/configuracoes/aparelhos'] },
     { rotulo: 'Impressão (PDV)', href: '/configuracoes/impressao', permissao: 'configuracoes', acende: ['/configuracoes/impressao'] },
 ]

@@ -70,15 +70,16 @@ export default function Privacidade({ empresa_publica: empresa }) {
                     <li><strong>Meta (WhatsApp):</strong> envia os avisos de cobrança.</li>
                     <li><strong>Hostinger:</strong> hospeda o sistema e o banco de dados.</li>
                     <li><strong>Cloudflare:</strong> protege o site e faz a ligação entre o seu aparelho e o sistema.</li>
+                    <li><strong>Google (Drive):</strong> guarda as cópias de segurança, criptografadas com uma senha que só nós temos.</li>
                 </ul>
-                <p>Essas empresas usam os dados só para prestar esses serviços. Meta e Cloudflare podem tratar dados fora do Brasil, inclusive nos Estados Unidos; essa transferência segue o art. 33 da LGPD, nos termos de tratamento de dados dessas empresas.</p>
+                <p>Essas empresas usam os dados só para prestar esses serviços. Meta, Cloudflare e Google podem tratar dados fora do Brasil, inclusive nos Estados Unidos; essa transferência segue o art. 33 da LGPD, nos termos de tratamento de dados dessas empresas.</p>
             </Secao>
 
             <Secao titulo="Por quanto tempo guardamos">
                 <ul>
                     <li>Cadastro e histórico: enquanto você for cliente. Depois, pelo tempo que a lei exige ou que for necessário para cobrar ou se defender em um processo. Registros fiscais e financeiros ficam no mínimo 5 anos.</li>
                     <li>Cadastro enviado pelo link e não aprovado: apagado na recusa.</li>
-                    <li>Cópias de segurança (backup): 14 dias.</li>
+                    <li>Cópias de segurança (backup): 14 dias no servidor e 30 dias na cópia criptografada fora dele.</li>
                 </ul>
             </Secao>
 

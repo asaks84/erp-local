@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Servicos\Backup\Cofre;
+use App\Servicos\Backup\GoogleDrive;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +15,9 @@ use Illuminate\Support\Facades\Storage;
  * Feito em PHP puro (sem mysqldump): a hospedagem compartilhada não deixa abrir outros
  * programas (proc_open desligado). Gera um .sql.gz que se restaura com
  * "gunzip < arquivo.sql.gz | mysql banco" ou pelo phpMyAdmin.
+ *
+ * Com o Google Drive conectado (Configurações › Backup), cada arquivo também sai do servidor: criptografado com a
+ * senha do backup (Cofre) e enviado para a pasta de backups do Drive, que guarda os últimos N dias.
  */
 class BackupBanco extends Command
 {
@@ -25,6 +30,7 @@ class BackupBanco extends Command
         $disco = Storage::disk('local');
         $disco->makeDirectory('backups');
         $ok = true;
+        $novos = [];
         foreach (['erp' => config('database.default'), 'sistema-atual' => config('erp.legado_conexao')] as $nome => $conexao) {
             $c = config("database.connections.{$conexao}");
             if (! $c || empty($c['database'])) {
@@ -34,6 +40,7 @@ class BackupBanco extends Command
             try {
                 $linhas = $this->despejar($conexao, $arquivo);
                 $this->info("Backup de {$nome}: ".basename($arquivo).' ('.round(filesize($arquivo) / 1024)." KB, {$linhas} registros)");
+                $novos[] = $arquivo;
             } catch (\Throwable $e) {
                 @unlink($arquivo);
                 $this->error("Backup de {$nome} falhou: ".$e->getMessage());
@@ -42,8 +49,50 @@ class BackupBanco extends Command
             }
         }
         $this->limpar();
+        if ($novos && ! $this->enviarParaDrive($novos)) {
+            $ok = false;
+        }
 
         return $ok ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** cópia criptografada no Google Drive; uma falha aqui não apaga o backup local, mas fica registrada na tela */
+    private function enviarParaDrive(array $arquivos): bool
+    {
+        $i = GoogleDrive::integracao();
+        if (! $i?->ativo || ! $i->credencial('refresh_token') || ! $i->credencial('senha')) {
+            return true;
+        }
+        $temp = [];
+        try {
+            $drive = new GoogleDrive($i);
+            $enviados = [];
+            $tamanho = 0;
+            foreach ($arquivos as $arquivo) {
+                $cifrado = $temp[] = $arquivo.'.enc';
+                Cofre::criptografar($arquivo, $cifrado, $i->credencial('senha'));
+                $drive->enviar($cifrado, basename($cifrado));
+                $enviados[] = basename($cifrado);
+                $tamanho += filesize($cifrado);
+            }
+            $apagados = $drive->limpar((int) ($i->credencial('dias') ?: 30));
+            $cred = $i->credenciais;
+            $cred['ultimo_envio'] = ['arquivos' => $enviados, 'kb' => (int) round($tamanho / 1024), 'apagados' => $apagados];
+            $i->forceFill(['credenciais' => $cred, 'testado_em' => now(), 'ultimo_erro' => null])->save();
+            $this->info('Google Drive: '.implode(', ', $enviados).($apagados ? " ({$apagados} antigo(s) apagado(s))" : ''));
+
+            return true;
+        } catch (\Throwable $e) {
+            $i->forceFill(['ultimo_erro' => mb_substr(now()->format('d/m H:i').' '.$e->getMessage(), 0, 255)])->save();
+            $this->error('Google Drive: '.$e->getMessage());
+            report($e);
+
+            return false;
+        } finally {
+            foreach ($temp as $t) {
+                @unlink($t);
+            }
+        }
     }
 
     /** grava estrutura e dados de todas as tabelas; devolve quantos registros */

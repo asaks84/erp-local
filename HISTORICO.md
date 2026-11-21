@@ -4,6 +4,15 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 20/11/2026 — Backup criptografado no Google Drive
+
+- **Configurações › Backup** (aba nova): passo a passo para criar o acesso no Google Cloud (Drive API, tela de consentimento publicada, ID do cliente OAuth "Aplicativo da Web" com o endereço de retorno para copiar); campos do ID e da chave do cliente (criptografados), **senha do backup** (mín. 12, com confirmação, guardada criptografada) e dias de guarda no Drive (padrão 30); conectar e desconectar a conta; "Fazer backup agora"; situação (último backup no servidor, último envio, última falha).
+- **Backup diário (03:10)**: depois do .sql.gz no servidor, cada arquivo é criptografado (AES-256-CBC, chave da senha por PBKDF2-SHA256 com 200 mil voltas, formato do OpenSSL) e enviado para a pasta "Backups ERP Local Estacionamento" no Drive; apaga da pasta os mais velhos que os dias de guarda, mantendo sempre os 3 mais novos. Falha no Drive não mexe no backup do servidor e aparece na tela.
+- Permissão no Google: só `drive.file` (o ERP vê apenas os arquivos que ele mesmo cria).
+- Abrir um backup baixado: `php artisan backup:abrir arquivo.sql.gz.enc` (pede a senha) ou `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -in arquivo.sql.gz.enc -out arquivo.sql.gz`.
+- Política de privacidade: Google (Drive) na lista de compartilhamento e na transferência internacional; prazo do backup fora do servidor.
+- Arquivos: app/Servicos/Backup/{Cofre,GoogleDrive}.php, Pages/Privacidade.jsx, app/Console/Commands/{BackupBanco,AbrirBackup}.php, app/Http/Controllers/BackupController.php, routes/web.php, resources/js/lib/menu.js, Pages/Configuracoes/Backup.jsx, tests/Feature/BackupDriveTest.php, docs 12 e 13. Sem migração (usa a tabela integracoes, tipo google_drive).
+
 ## 20/11/2026 — LGPD: Sistema › Incidentes (roteiro e registro)
 
 - Novo item **Incidentes (LGPD)** no menu Sistema (permissão de usuários, como o registro de atividades).
