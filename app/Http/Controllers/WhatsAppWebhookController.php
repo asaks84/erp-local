@@ -44,8 +44,14 @@ class WhatsAppWebhookController extends Controller
                 if (! $i) {
                     continue;
                 }
+                // sem a chave secreta não dá para saber se o aviso veio da Meta: recusa (auditoria de 21/11/2026)
                 $segredo = $i->credencial('app_secret');
-                if ($segredo && ! hash_equals('sha256='.hash_hmac('sha256', $request->getContent(), $segredo), (string) $request->header('X-Hub-Signature-256'))) {
+                if (! $segredo) {
+                    Log::warning('whatsapp webhook: recusado, falta a chave secreta do aplicativo em Configurações › WhatsApp');
+
+                    return response('', 403);
+                }
+                if (! hash_equals('sha256='.hash_hmac('sha256', $request->getContent(), $segredo), (string) $request->header('X-Hub-Signature-256'))) {
                     Log::warning('whatsapp webhook: assinatura não confere');
 
                     return response('', 403);

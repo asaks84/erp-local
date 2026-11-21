@@ -60,9 +60,18 @@ class MensagensWhatsAppTest extends TestCase
     }
 
     /** WhatsApp ligado, com a Meta simulada: $naMeta = modelos que existem lá */
+    /** a Meta assina o corpo com a chave secreta do aplicativo */
+    private function webhook(array $corpo, ?string $segredo = 'segredo-do-app-123456')
+    {
+        $json = json_encode($corpo);
+        $h = $segredo ? ['X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', $json, $segredo)] : [];
+
+        return $this->call('POST', '/webhooks/whatsapp', [], [], [], $this->transformHeadersToServerVars($h + ['CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json']), $json);
+    }
+
     private function ligar(array $naMeta = []): void
     {
-        Integracao::create(['tipo' => 'whatsapp', 'ativo' => true, 'credenciais' => ['token' => str_repeat('t', 60), 'phone_number_id' => '111222333', 'waba_id' => '444555666', 'verify_token' => 'v']]);
+        Integracao::create(['tipo' => 'whatsapp', 'ativo' => true, 'credenciais' => ['token' => str_repeat('t', 60), 'phone_number_id' => '111222333', 'waba_id' => '444555666', 'verify_token' => 'v', 'app_secret' => 'segredo-do-app-123456']]);
         $this->naMeta = $naMeta;
         Http::fake(function (Request $r) {
             $this->pedidos[] = $r;
@@ -145,10 +154,10 @@ class MensagensWhatsAppTest extends TestCase
         // a Meta avisa pelo webhook: recusada, com o motivo
         $corpo = fn ($ev, $motivo = null) => ['entry' => [['id' => '444555666', 'changes' => [['field' => 'message_template_status_update',
             'value' => ['event' => $ev, 'message_template_name' => 'cobranca_vence_hoje', 'message_template_language' => 'pt_BR', 'reason' => $motivo]]]]]];
-        $this->postJson('/webhooks/whatsapp', $corpo('REJECTED', 'PROMOTIONAL'))->assertOk();
+        $this->webhook($corpo('REJECTED', 'PROMOTIONAL'))->assertOk();
         $this->assertSame('REJECTED', $m->refresh()->situacao);
         $this->assertStringContainsString('promocional', $m->motivo);
-        $this->postJson('/webhooks/whatsapp', $corpo('APPROVED'))->assertOk();
+        $this->webhook($corpo('APPROVED'))->assertOk();
         $this->assertSame(['APPROVED', null], [$m->refresh()->situacao, $m->motivo]);
     }
 

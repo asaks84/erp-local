@@ -41,6 +41,12 @@ class SemInternet
     /** mais antigo que isso não entra (celular esquecido sem internet por semanas: melhor resolver na mão) */
     public const DIAS_MAX = 7;
 
+    /**
+     * saída que chega mais de tantos minutos depois de feita é lançada (o cliente já pagou), mas vai para o gerente
+     * conferir a hora e o valor: hora inventada ou relógio do celular atrasado baratearia a estadia (auditoria 21/11/2026)
+     */
+    public const SAIDA_CONFERIR_MIN = 60;
+
     /** tudo o que o celular precisa para trabalhar sem internet */
     public static function pacote(Aparelho $a): array
     {
@@ -74,13 +80,14 @@ class SemInternet
                 'tipo_id' => $m->veiculo->tipo_veiculo_id, 'modelo' => trim($m->veiculo->marca.' '.$m->veiculo->modelo) ?: null])
             ->unique('placa')->values();
 
-        // quem tem PIN nesta unidade (ou em todas), com a versão do PIN para conferir sem internet (PBKDF2 com o sal da
-        // empresa; o PIN em si nunca sai daqui). Quem ainda não tem a versão sem internet ganha no próximo uso com internet.
+        // quem tem PIN nesta unidade (ou em todas), com a dica do PIN (Pins::dica): o celular pega erro de digitação e mostra
+        // o nome, sem receber nada que permita descobrir o PIN. Quem confere de verdade é o servidor, na sincronização.
+        // Quem ainda não tem a versão sem internet ganha no próximo uso do PIN com internet.
         $usuarios = Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $a->empresa_id)->where('ativo', true)
             ->whereNotNull('pin_hash')->when($a->unidade_id, fn ($q) => $q->where(fn ($w) => $w->whereNull('unidade_id')->orWhere('unidade_id', $a->unidade_id)))
             ->with('nivel')->get()
             ->map(fn (Usuario $u) => ['id' => $u->id, 'nome' => $u->nome, 'pin_desde' => $u->pin_definido_em ? Carbon::parse($u->pin_definido_em)->toIso8601String() : null,
-                'gerente' => $u->pode('pdv_gerente'), 'nivel' => $u->nivel?->nome, 'h' => $u->pin_offline_hash])->values();
+                'gerente' => $u->pode('pdv_gerente'), 'nivel' => $u->nivel?->nome, 'dica' => Pins::dica($u)])->values();
 
         $caixa = Caixa::where('situacao', 'aberto')->orderBy('id')->first();
 
@@ -100,6 +107,7 @@ class SemInternet
             'usuarios' => $usuarios,
             'pin_sal' => Pins::salOffline($a->empresa_id),
             'pin_rodadas' => Pins::OFFLINE_RODADAS,
+            'pin_chave' => Pins::chavePublica((int) $a->empresa_id),
             'caixa' => $caixa ? ['desde' => $caixa->aberto_em->format('H:i')] : null,
             'pendentes' => PdvAcao::where('aparelho_id', $a->id)->where('situacao', 'pendente')->count(),
         ];
@@ -118,7 +126,7 @@ class SemInternet
      * Sobe as ações da fila, na ordem. Devolve, para cada uuid, ok ou pendente (com a mensagem). Ação já recebida
      * (mesmo uuid) responde de novo o mesmo resultado, sem refazer.
      *
-     * @param  array<int, array{uuid: string, tipo: string, feita_em: string, usuario_id: int, dados: array}>  $acoes
+     * @param  array<int, array{uuid: string, tipo: string, feita_em: string, usuario_id: ?int, prova: ?string, dados: array}>  $acoes
      */
     public static function sincronizar(Aparelho $a, array $acoes): array
     {
@@ -150,16 +158,17 @@ class SemInternet
         $tipo = (string) ($x['tipo'] ?? '');
         $dados = is_array($x['dados'] ?? null) ? $x['dados'] : [];
         $quando = self::quando($x['feita_em'] ?? null);
-        $u = Usuario::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $a->empresa_id)->find((int) ($x['usuario_id'] ?? 0));
+        // quem fez sai do PIN que o celular trancou com a chave do servidor, nunca do usuario_id que o celular informa
+        $u = Pins::abrirProva((int) $a->empresa_id, isset($x['prova']) ? (string) $x['prova'] : null, $uuid);
         $acao = new PdvAcao(['aparelho_id' => $a->id, 'uuid' => $uuid, 'tipo' => mb_substr($tipo, 0, 30), 'dados' => $dados,
-            'usuario_id' => $u?->id, 'feita_em' => $quando, 'sem_internet' => true]);
+            'usuario_id' => $u instanceof Usuario ? $u->id : null, 'feita_em' => $quando, 'sem_internet' => true]);
 
         $problema = match (true) {
             ! in_array($tipo, self::TIPOS, true) => 'Ação desconhecida ('.$tipo.'). Atualize o app do PDV.',
             ! $quando => 'Hora da ação inválida.',
             $quando->isAfter(now()->addMinutes(10)) => 'A hora do celular estava no futuro ('.$quando->format('d/m H:i').'). Confira a data e hora do celular.',
             $quando->lt(now()->subDays(self::DIAS_MAX)) => 'Ação feita há mais de '.self::DIAS_MAX.' dias ('.$quando->format('d/m H:i').'): confira e lance na gestão.',
-            ! $u || ! $u->ativo => 'A pessoa que fez a ação não existe mais ou está inativa.',
+            is_string($u) => $u,
             default => null,
         };
         if ($problema) {
@@ -189,6 +198,12 @@ class SemInternet
             Carbon::setTestNow($relogio);
         }
         $acao->forceFill(['criado_em' => $agoraReal, 'atualizado_em' => $agoraReal])->saveQuietly();
+        $atraso = (int) $quando->diffInMinutes($agoraReal);
+        if ($tipo === 'estadia_saida' && $atraso > self::SAIDA_CONFERIR_MIN) {
+            $aviso = 'Saída feita no celular às '.$quando->format('d/m H:i').' e enviada só às '.$agoraReal->format('d/m H:i')
+                .' por '.$u->nome.': já está lançada; confira se a hora e o valor batem.';
+            self::pendente($acao, $acao->situacao === 'pendente' && $acao->mensagem ? $acao->mensagem.' '.$aviso : $aviso);
+        }
 
         return $acao;
     }

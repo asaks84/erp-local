@@ -23,7 +23,8 @@ class SemInternetController extends Controller
             'acoes.*.uuid' => ['required', 'uuid'],
             'acoes.*.tipo' => ['required', 'string', 'max:30'],
             'acoes.*.feita_em' => ['required', 'string', 'max:40'],
-            'acoes.*.usuario_id' => ['required', 'integer'],
+            'acoes.*.usuario_id' => ['nullable', 'integer'],     // só informativo: quem fez sai do PIN trancado (prova)
+            'acoes.*.prova' => ['nullable', 'string', 'max:1000'],
             'acoes.*.dados' => ['nullable', 'array'],
         ]);
 

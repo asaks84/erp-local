@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -51,9 +52,18 @@ class WhatsAppTest extends TestCase
         return Cobrancas::emitir($this->x->cliente, '2026-11', $vencimento);
     }
 
+    /** a Meta assina o corpo com a chave secreta do aplicativo */
+    private function webhook(array $corpo, ?string $segredo = 'segredo-do-app-123456')
+    {
+        $json = json_encode($corpo);
+        $h = $segredo ? ['X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', $json, $segredo)] : [];
+
+        return $this->call('POST', '/webhooks/whatsapp', [], [], [], $this->transformHeadersToServerVars($h + ['CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json']), $json);
+    }
+
     private function ligar(): void
     {
-        Integracao::create(['tipo' => 'whatsapp', 'ativo' => true, 'credenciais' => ['token' => str_repeat('t', 60), 'phone_number_id' => '111222333', 'waba_id' => '444555666', 'verify_token' => 'segredo-do-webhook']]);
+        Integracao::create(['tipo' => 'whatsapp', 'ativo' => true, 'credenciais' => ['token' => str_repeat('t', 60), 'phone_number_id' => '111222333', 'waba_id' => '444555666', 'verify_token' => 'segredo-do-webhook', 'app_secret' => 'segredo-do-app-123456']]);
     }
 
     public function test_regua_cria_um_aviso_por_passo_e_para_quando_paga(): void
@@ -134,10 +144,20 @@ class WhatsAppTest extends TestCase
 
         // webhook da Meta: entregue e lido
         $corpo = fn ($status) => ['entry' => [['changes' => [['value' => ['metadata' => ['phone_number_id' => '111222333'], 'statuses' => [['id' => 'wamid.ABC', 'status' => $status]]]]]]]];
-        $this->postJson('/webhooks/whatsapp', $corpo('delivered'))->assertOk();
+        // sem assinatura, com assinatura errada ou sem a chave guardada: recusa (auditoria de 21/11/2026)
+        $this->webhook($corpo('delivered'), null)->assertForbidden();
+        $this->webhook($corpo('delivered'), 'outra-chave-qualquer-123')->assertForbidden();
+        $i = Integracao::whatsapp();
+        $semChave = $i->credenciais;
+        unset($semChave['app_secret']);
+        $i->update(['credenciais' => $semChave]);
+        $this->webhook($corpo('delivered'), null)->assertForbidden();
+        $i->update(['credenciais' => $semChave + ['app_secret' => 'segredo-do-app-123456']]);
+        $this->assertSame('enviado', $a->refresh()->situacao);
+        $this->webhook($corpo('delivered'))->assertOk();
         $this->assertSame('entregue', $a->refresh()->situacao);
-        $this->postJson('/webhooks/whatsapp', $corpo('read'))->assertOk();
-        $this->postJson('/webhooks/whatsapp', $corpo('delivered'))->assertOk(); // fora de ordem: não volta
+        $this->webhook($corpo('read'))->assertOk();
+        $this->webhook($corpo('delivered'))->assertOk(); // fora de ordem: não volta
         $this->assertSame('lido', $a->refresh()->situacao);
 
         // falha da Meta fica no aviso, com a dica
@@ -195,10 +215,13 @@ class WhatsAppTest extends TestCase
     public function test_configuracao_credenciais_teste_e_webhook(): void
     {
         $this->actingAs($this->a->operador)->get('/configuracoes/whatsapp')->assertForbidden();
-        $this->actingAs($this->a->admin)->post('/configuracoes/whatsapp/credenciais', ['phone_number_id' => '111222333', 'waba_id' => '444555666', 'token' => str_repeat('k', 80)])->assertSessionHasNoErrors();
+        $this->actingAs($this->a->admin)->post('/configuracoes/whatsapp/credenciais', ['phone_number_id' => '111222333', 'waba_id' => '444555666', 'token' => str_repeat('k', 80)])->assertSessionHasErrors('app_secret');
+        $this->actingAs($this->a->admin)->post('/configuracoes/whatsapp/credenciais', ['phone_number_id' => '111222333', 'waba_id' => '444555666', 'token' => str_repeat('k', 80), 'app_secret' => str_repeat('s', 32)])->assertSessionHasNoErrors();
+        // guardada: salvar de novo sem ela mantém
+        $this->actingAs($this->a->admin)->post('/configuracoes/whatsapp/credenciais', ['phone_number_id' => '111222333', 'waba_id' => '444555666'])->assertSessionHasNoErrors();
         $i = Integracao::whatsapp();
         $this->assertFalse($i->ativo);
-        $this->assertStringNotContainsString(str_repeat('k', 80), (string) \Illuminate\Support\Facades\DB::table('integracoes')->value('credenciais')); // criptografado
+        $this->assertStringNotContainsString(str_repeat('k', 80), (string) DB::table('integracoes')->value('credenciais')); // criptografado
         $this->actingAs($this->a->admin)->get('/configuracoes/whatsapp')->assertInertia(fn ($p) => $p->where('integracao.tem_token', true)->missing('integracao.token')
             ->where('integracao.webhook_token', $i->credencial('verify_token'))->has('modelos', 3));
 

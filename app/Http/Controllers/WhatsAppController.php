@@ -77,6 +77,10 @@ class WhatsAppController extends Controller
             'app_secret' => ['nullable', 'string', 'min:16', 'max:100'],
         ], ['phone_number_id.regex' => 'Só os números do ID.', 'waba_id.regex' => 'Só os números do ID.', 'token.min' => 'Esse token parece incompleto.']);
         $i = $this->integracao();
+        // obrigatória: sem ela o sistema não confere se os avisos (webhook) vêm mesmo da Meta e recusa todos
+        if (! filled($d['app_secret'] ?? null) && empty(($i->credenciais ?? [])['app_secret'])) {
+            throw ValidationException::withMessages(['app_secret' => 'Informe a chave secreta do aplicativo.']);
+        }
         $cred = $i->credenciais ?? [];
         if (! filled($d['token'] ?? null) && empty($cred['token'])) {
             throw ValidationException::withMessages(['token' => 'Informe o token.']);

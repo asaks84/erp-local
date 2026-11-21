@@ -122,6 +122,23 @@ class PdvBaseTest extends TestCase
         $this->assertSame(Pins::hash($this->a->empresa->id, '5072'), Usuario::where('login', 'a-admin')->value('pin_hash'));
     }
 
+    public function test_cadastro_de_pin_trava_depois_de_5_senhas_erradas_como_o_login(): void
+    {
+        $token = $this->parear();
+        $cad = fn ($senha) => $this->comToken($token)->postJson('/api/pdv/pin/cadastrar', ['login' => 'a-operador', 'senha' => $senha, 'pin' => '4831']);
+        foreach (range(1, 5) as $_) {
+            $cad('errada')->assertStatus(422)->assertJsonPath('errors.login.0', 'Login ou senha incorretos.');
+        }
+        // a 6ª, mesmo com a senha certa, espera
+        $cad('segredo1')->assertStatus(422)->assertJsonPath('errors.login.0', fn ($m) => str_starts_with($m, 'Muitas tentativas'));
+        $this->assertNull(Usuario::where('login', 'a-operador')->value('pin_hash'));
+        // outro login no mesmo aparelho não é afetado
+        $this->comToken($token)->postJson('/api/pdv/pin/cadastrar', ['login' => 'a-admin', 'senha' => 'segredo1', 'pin' => '5072'])->assertOk();
+        // passado o minuto, entra
+        $this->travel(61)->seconds();
+        $cad('segredo1')->assertOk();
+    }
+
     public function test_conferir_pin_e_trava_depois_de_5_erros(): void
     {
         $token = $this->parear();

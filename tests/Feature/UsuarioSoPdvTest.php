@@ -72,6 +72,19 @@ class UsuarioSoPdvTest extends TestCase
         $this->assertNull($u->fresh()->pin_codigo_hash);
     }
 
+    public function test_codigo_errado_trava_depois_de_5_tentativas(): void
+    {
+        [, $codigo] = $this->criarSoPdv();
+        foreach (range(1, 5) as $i) {
+            $this->pdv()->postJson('/api/pdv/pin/cadastrar', ['codigo' => str_pad((string) $i, 6, '0', STR_PAD_LEFT), 'pin' => '4831'])->assertStatus(422)
+                ->assertJsonPath('errors.codigo.0', 'Código inválido ou vencido. Peça um código novo ao gerente.');
+        }
+        $this->pdv()->postJson('/api/pdv/pin/cadastrar', ['codigo' => $codigo, 'pin' => '4831'])->assertStatus(422)
+            ->assertJsonPath('errors.codigo.0', fn ($m) => str_starts_with($m, 'Muitas tentativas'));
+        $this->travel(61)->seconds();
+        $this->pdv()->postJson('/api/pdv/pin/cadastrar', ['codigo' => $codigo, 'pin' => '4831'])->assertOk();
+    }
+
     public function test_codigo_vence_em_24_horas(): void
     {
         [, $codigo] = $this->criarSoPdv();

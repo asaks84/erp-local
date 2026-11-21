@@ -57,10 +57,24 @@ class PdvSemInternetTest extends TestCase
         return $this->withHeader('Authorization', 'Bearer '.$this->token);
     }
 
-    private function acao(string $tipo, string $quando, array $dados, ?string $uuid = null): array
+    private ?string $chave = null;
+
+    /** o que o celular faz: tranca o PIN com a chave pública do pacote (RSA-OAEP, como o WebCrypto) */
+    private function prova(string $pin, string $uuid): string
     {
-        return ['uuid' => $uuid ?? (string) Str::uuid(), 'tipo' => $tipo, 'feita_em' => Carbon::parse($quando)->toIso8601String(),
-            'usuario_id' => $this->a->operador->id, 'dados' => $dados];
+        $this->chave ??= $this->pdv()->getJson('/api/pdv/pacote')->assertOk()->json('pin_chave');
+        $pem = "-----BEGIN PUBLIC KEY-----\n".chunk_split($this->chave, 64, "\n").'-----END PUBLIC KEY-----';
+        openssl_public_encrypt(json_encode(['p' => $pin, 'u' => $uuid]), $saida, $pem, OPENSSL_PKCS1_OAEP_PADDING);
+
+        return base64_encode($saida);
+    }
+
+    private function acao(string $tipo, string $quando, array $dados, ?string $uuid = null, string $pin = '4831'): array
+    {
+        $uuid ??= (string) Str::uuid();
+
+        return ['uuid' => $uuid, 'tipo' => $tipo, 'feita_em' => Carbon::parse($quando)->toIso8601String(),
+            'usuario_id' => $this->a->operador->id, 'prova' => $this->prova($pin, $uuid), 'dados' => $dados];
     }
 
     private function subir(array $acoes): array
@@ -77,10 +91,15 @@ class PdvSemInternetTest extends TestCase
         $this->assertSame($this->a->tipo->id, $j['patio'][0]['tipo_veiculo_id']);
         $this->assertSame(1, $j['ultimo_numero']);
         $this->assertContains($this->a->operador->id, array_column($j['usuarios'], 'id'));
-        // PIN nunca vai no pacote; vai só a versão para conferir sem internet (PBKDF2 com o sal da empresa)
+        // nada que revele o PIN vai no pacote: só a dica (2 caracteres da versão sem internet) e a chave pública
         $this->assertStringNotContainsString('pin_hash', json_encode($j));
+        $completo = hash_pbkdf2('sha256', '4831', $j['pin_sal'], $j['pin_rodadas'], 64);
+        $this->assertStringNotContainsString($completo, json_encode($j));
         $op = collect($j['usuarios'])->firstWhere('id', $this->a->operador->id);
-        $this->assertSame(hash_pbkdf2('sha256', '4831', $j['pin_sal'], $j['pin_rodadas'], 64), $op['h']);
+        $this->assertArrayNotHasKey('h', $op);
+        $this->assertSame(substr($completo, 0, 2), $op['dica']);
+        $this->assertNotEmpty(base64_decode($j['pin_chave'], true));
+        $this->assertStringNotContainsString('PRIVATE', json_encode($j));
         // conferir o PIN devolve o que o celular guarda para conferir sem internet
         $this->pdv()->postJson('/api/pdv/pin/conferir', ['pin' => '4831'])->assertOk()->assertJsonPath('usuario.gerente', false);
     }
@@ -94,6 +113,7 @@ class PdvSemInternetTest extends TestCase
         $saida = $this->acao('estadia_saida', '2026-11-10 11:30', ['codigo' => 'abcdefgh12345678', 'destino' => 'pago', 'forma_pagamento_id' => $dinheiro,
             'valor_recebido' => 30, 'cobrado' => 25, 'rotulo' => 'OFF1A23']);
 
+        Carbon::setTestNow('2026-11-10 11:50:00'); // a internet voltou 20 minutos depois da saída
         $r = $this->subir([$entrada, $saida]);
         $this->assertSame(['ok', 'ok'], array_column($r, 'situacao'));
 
@@ -155,6 +175,7 @@ class PdvSemInternetTest extends TestCase
     public function test_vale_o_que_o_celular_cobrou_e_a_diferenca_vira_pendencia(): void
     {
         $dinheiro = FormaPagamento::where('tipo', 'dinheiro')->value('id');
+        Carbon::setTestNow('2026-11-10 11:40:00');
         $r = $this->subir([
             $this->acao('estadia_entrada', '2026-11-10 10:00', ['placa' => 'dif1a23', 'tipo_veiculo_id' => $this->a->tipo->id, 'codigo' => 'difdifdifdif0001']),
             // 1h30 dá R$ 20 aqui; o celular cobrou R$ 15
@@ -162,6 +183,7 @@ class PdvSemInternetTest extends TestCase
         ]);
         $this->assertSame(['ok', 'pendente'], array_column($r, 'situacao'));
         $this->assertStringContainsString('cobrou R$ 15,00 e a gestão calcula R$ 20,00', $r[1]['mensagem']);
+        $this->assertStringNotContainsString('enviada só', $r[1]['mensagem']);
         $this->assertSame(15.0, (float) Pagamento::first()->valor);
         $this->assertSame('finalizada', Estadia::first()->situacao);
     }
@@ -180,6 +202,44 @@ class PdvSemInternetTest extends TestCase
         $this->a->operador->update(['ativo' => false]);
         $this->assertSame('pendente', $this->subir([$inativo])[0]['situacao']);
         $this->assertSame(0, Estadia::count());
+    }
+
+    public function test_quem_fez_sai_do_pin_conferido_no_servidor_e_nao_do_celular(): void
+    {
+        $outro = $this->a->admin;
+        Pins::definir($outro, '7392');
+        $e1 = $this->acao('estadia_entrada', '2026-11-10 17:50', ['placa' => 'pin1a23', 'tipo_veiculo_id' => $this->a->tipo->id]);
+        $e1['usuario_id'] = $outro->id; // o celular diz que foi o outro; o PIN digitado é do operador
+        $errado = $this->acao('estadia_entrada', '2026-11-10 17:51', ['placa' => 'pin2a23', 'tipo_veiculo_id' => $this->a->tipo->id], null, '5555');
+        $sem = $this->acao('estadia_entrada', '2026-11-10 17:52', ['placa' => 'pin3a23', 'tipo_veiculo_id' => $this->a->tipo->id]);
+        unset($sem['prova']);
+        // prova de outra ação não serve
+        $copiada = $this->acao('estadia_entrada', '2026-11-10 17:53', ['placa' => 'pin4a23', 'tipo_veiculo_id' => $this->a->tipo->id]);
+        $copiada['prova'] = $e1['prova'];
+
+        $r = $this->subir([$e1, $errado, $sem, $copiada]);
+        $this->assertSame(['ok', 'pendente', 'pendente', 'pendente'], array_column($r, 'situacao'));
+        $this->assertSame($this->a->operador->id, PdvAcao::where('uuid', $e1['uuid'])->value('usuario_id'));
+        $this->assertSame($this->a->operador->id, Estadia::where('placa', 'PIN1A23')->value('criado_por'));
+        $this->assertStringContainsString('não é de ninguém', $r[1]['mensagem']);
+        $this->assertStringContainsString('sem o PIN', $r[2]['mensagem']);
+        $this->assertStringContainsString('não é desta ação', $r[3]['mensagem']);
+        $this->assertSame(1, Estadia::count());
+    }
+
+    public function test_saida_que_chega_muito_depois_e_lancada_mas_vai_para_conferir(): void
+    {
+        $dinheiro = FormaPagamento::where('tipo', 'dinheiro')->value('id');
+        // carro entrou às 08:00; pela fila chega uma saída "às 09:00", mandada só às 18:00 (hora inventada ou relógio errado)
+        $r = $this->subir([
+            $this->acao('estadia_entrada', '2026-11-10 08:00', ['placa' => 'tar1a23', 'tipo_veiculo_id' => $this->a->tipo->id, 'codigo' => 'tardetardetarde1']),
+            $this->acao('estadia_saida', '2026-11-10 09:00', ['codigo' => 'tardetardetarde1', 'destino' => 'pago', 'forma_pagamento_id' => $dinheiro, 'cobrado' => 15]),
+        ]);
+        $this->assertSame(['ok', 'pendente'], array_column($r, 'situacao'));
+        $this->assertStringContainsString('enviada só às 10/11 18:00', $r[1]['mensagem']);
+        $this->assertStringContainsString($this->a->operador->nome, $r[1]['mensagem']);
+        $this->assertSame('finalizada', Estadia::first()->situacao); // o cliente já pagou: fica lançado
+        $this->assertSame(15.0, (float) Pagamento::first()->valor);
     }
 
     public function test_gerente_ve_e_resolve_a_pendencia_na_gestao(): void

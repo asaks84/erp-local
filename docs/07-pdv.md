@@ -28,7 +28,7 @@ O jeito de identificar quem fez cada ação é uma configuração da empresa (ou
   - a pessoa escolhe o próprio PIN; PINs óbvios (0000, 1234, 1111...) são recusados;
   - PIN é único na empresa; se alguém escolher um PIN que já é de outra pessoa, o sistema responde só "PIN indisponível, escolha outro" e **cancela o PIN antigo** (que acabou de ser descoberto); o dono cadastra um novo no próximo uso;
   - 5 PINs errados seguidos travam o aparelho por 1 minuto e vão para o registro de atividades;
-  - sem internet, o aparelho confere o PIN por uma cópia protegida (hash) guardada nele.
+  - sem internet, o aparelho só pega erro de digitação por uma dica curta do PIN; o PIN vai trancado com a ação e quem confere é o servidor, quando a internet volta (docs/15-plano-pdv.md, PIN sem internet).
 - **Caixa**: uma gaveta só, do aparelho, dividida em turnos. Na troca de turno, quem fecha informa o dinheiro contado; o sistema mostra o esperado (troco inicial + recebido em dinheiro − sangrias) e guarda a diferença com o nome. Cada recebimento continua com o nome de quem digitou o PIN.
 - O sistema registra quem **digitou**: a regra de uso é "cada um registra o que fez". Se um dia precisar, a etapa da lavagem ganha um campo "executado por".
 
@@ -36,7 +36,7 @@ O jeito de identificar quem fez cada ação é uma configuração da empresa (ou
 
 O PDV não tem banco próprio: com internet, toda operação vai direto para o ERP pela API e o servidor calcula com os dados do momento. A cópia local só serve para quando a internet cai.
 
-- **Cópia local, atualizada ao iniciar a operação do dia** (e por um botão "Atualizar tabelas"): tarifas por tipo de veículo, tabela de serviços e lavagens, convênios, placas de mensalistas ativos e os PINs protegidos (hash). Preço muda de um dia para o outro, não no meio do dia.
+- **Cópia local, atualizada ao iniciar a operação do dia** (e por um botão "Atualizar tabelas"): tarifas por tipo de veículo, tabela de serviços e lavagens, convênios, placas de mensalistas ativos e as dicas dos PINs (não revelam o PIN). Preço muda de um dia para o outro, não no meio do dia.
 
 1. Sem internet, o PDV grava numa fila do aparelho as entradas, saídas, pagamentos e lavagens, cada um com seu UUID e a hora do aparelho.
 2. Na saída, calcula a cobrança pela cópia local e cobra esse valor, marcado "a confirmar".

@@ -18,3 +18,4 @@ resources/scss/
 deploy/
 .claude/
 .lgpd/
+.agents/

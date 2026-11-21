@@ -20,14 +20,15 @@ function Credenciais({ i }) {
         <form className="card h-100" onSubmit={(ev) => { ev.preventDefault(); form.post('/configuracoes/whatsapp/credenciais', { preserveScroll: true, onSuccess: () => form.reset('token', 'app_secret') }) }}>
             <div className="card-header">Credenciais da API oficial (Meta)</div>
             <div className="card-body">
+                {i.tem_token && !i.tem_app_secret && <div className="alert alert-warning small py-2">Falta a chave secreta do aplicativo: sem ela, os avisos de entrega e de mudança nos modelos que a Meta manda são recusados.</div>}
                 <p className="small text-muted">Os dados vêm do aplicativo criado em developers.facebook.com (WhatsApp › Configuração da API). O token e a chave secreta ficam guardados criptografados; ninguém consegue ver de novo pela tela.</p>
                 <div className="row g-2">
                     <div className="col-sm-6"><Campo rotulo="ID do número de telefone" value={form.data.phone_number_id} onChange={(ev) => form.setData('phone_number_id', ev.target.value.replace(/\D/g, ''))} erro={e.phone_number_id} inputMode="numeric" autoComplete="off" /></div>
                     <div className="col-sm-6"><Campo rotulo="ID da conta do WhatsApp Business" value={form.data.waba_id} onChange={(ev) => form.setData('waba_id', ev.target.value.replace(/\D/g, ''))} erro={e.waba_id} inputMode="numeric" autoComplete="off" /></div>
                     <div className="col-12"><Campo rotulo="Token de acesso" type="password" value={form.data.token} onChange={(ev) => form.setData('token', ev.target.value)} erro={e.token} autoComplete="new-password"
                         ajuda={i.tem_token ? 'Guardado. Vazio = mantém.' : 'Para uso contínuo, gere o token de um usuário do sistema, sem expiração. O token temporário da tela de testes vence em horas.'} /></div>
-                    <div className="col-12"><Campo rotulo="Chave secreta do aplicativo (opcional)" type="password" value={form.data.app_secret} onChange={(ev) => form.setData('app_secret', ev.target.value)} erro={e.app_secret} autoComplete="new-password"
-                        ajuda={i.tem_app_secret ? 'Guardada. Vazio = mantém.' : 'Configurações do app › Básico. Com ela, o sistema confere que os avisos de entrega vêm mesmo da Meta.'} /></div>
+                    <div className="col-12"><Campo rotulo="Chave secreta do aplicativo" type="password" value={form.data.app_secret} onChange={(ev) => form.setData('app_secret', ev.target.value)} erro={e.app_secret} autoComplete="new-password"
+                        ajuda={i.tem_app_secret ? 'Guardada. Vazio = mantém.' : 'Obrigatória. Configurações do app › Básico › Chave secreta do aplicativo. Sem ela, os avisos de entrega e de modelos são recusados.'} /></div>
                 </div>
             </div>
             <div className="card-footer bg-transparent d-flex justify-content-end">

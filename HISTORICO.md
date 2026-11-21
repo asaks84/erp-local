@@ -4,6 +4,25 @@ Alterações do ERP Local, da mais nova para a mais antiga. Cada alteração ent
 
 ---
 
+## 21/11/2026 — Segurança: cadastro de PIN com o mesmo limite do login
+
+- Observação menor da auditoria: o cadastro de PIN no PDV aceitava 20 tentativas por minuto, contra 5 da tela de login. Agora 5 senhas erradas por minuto (por login e IP) travam até completar o minuto; com o código de cadastro (quem é só do PDV), 5 códigos errados por minuto por IP. PIN recusado por ser óbvio ou repetido não conta, para a pessoa poder escolher outro.
+- Arquivos: app/Servicos/Pdv/Pins.php, tests/Feature/PdvBaseTest.php, tests/Feature/UsuarioSoPdvTest.php, docs/17-auditoria-seguranca.md, docs/12-decisoes.md, docs/13-desenvolvimento.md.
+
+## 21/11/2026 — Segurança: PIN do PDV sem internet e webhook do WhatsApp (auditoria)
+
+Correções dos três achados da auditoria de segurança (skill security-audit, rotas públicas e API do PDV).
+- **Achado 1 (médio):** a cópia do sistema que vai para o celular trazia a versão do PIN de cada pessoa da unidade, gerentes incluídos. Com 10 mil combinações, dava para descobrir todos os PINs em minutos num computador. Agora vai só uma dica (2 caracteres; gerente 1), que pega erro de digitação e mostra o nome, mas não revela o PIN. O celular deixou de guardar a versão completa de quem usou o PIN com internet; guarda só a dica.
+- **Achado 2 (médio):** a fila sem internet aceitava qualquer `usuario_id` sem PIN. Agora cada ação leva o PIN digitado, trancado com a chave pública do servidor (RSA por empresa, criada no primeiro uso) e preso ao uuid da ação. O servidor confere o PIN e é dele que sai quem fez. PIN errado, ausente (app antigo) ou copiado de outra ação vira pendência para o gerente. Saída que chega mais de 60 minutos depois de feita é lançada, porque o cliente já pagou, mas vai para conferência com a hora e o nome de quem fez.
+- **Achado 3 (baixo):** o webhook do WhatsApp aceitava avisos sem assinatura quando a chave secreta do aplicativo estava vazia. Agora recusa, e a chave passou a ser obrigatória em Configurações › WhatsApp; a tela avisa quando ela falta.
+- App do PDV 0.8.0. Ação feita sem internet em celular com app ou cópia antigos vira pendência, em vez de ser lançada.
+- Arquivos: app/Servicos/Pdv/Pins.php, app/Servicos/Pdv/SemInternet.php, app/Http/Controllers/Pdv/SemInternetController.php, app/Http/Controllers/WhatsAppWebhookController.php, app/Http/Controllers/WhatsAppController.php, resources/js/pdv/offline/pins.js, resources/js/pdv/offline/local.js, resources/js/pdv/offline/fila.js, resources/js/pdv/offline/servidor.js, resources/js/Pages/Configuracoes/WhatsApp.jsx, tests/Feature/PdvSemInternetTest.php, tests/Feature/WhatsAppTest.php, tests/Feature/MensagensWhatsAppTest.php, tests/js/pin.test.mjs, docs/07-pdv.md, docs/15-plano-pdv.md, docs/12-decisoes.md, docs/13-desenvolvimento.md.
+
+## 21/11/2026 — Auditoria de segurança rápida (rotas públicas e API do PDV)
+
+- Novo documento `docs/17-auditoria-seguranca.md` com o relatório: 3 achados em aberto (2 médios no modo sem internet do PDV: PINs quebráveis no pacote e fila que aceita autor e hora sem conferência; 1 baixo: assinatura opcional no webhook do WhatsApp). Nenhuma mudança no código.
+- Arquivos: docs/17-auditoria-seguranca.md, docs/README.md.
+
 ## 21/11/2026 — LGPD: aviso no campo de observações do cliente; ROPA e documento para o advogado
 
 - Cadastro do cliente (ERP): o campo Observações ganhou a dica "Só o que ajuda no atendimento. Não anote saúde, religião, conflitos pessoais nem dados de outras pessoas (LGPD)."

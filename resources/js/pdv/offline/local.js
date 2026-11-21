@@ -1,7 +1,7 @@
 import { ErroApi } from './servidor'
 import { novoCodigo, novoUuid } from './estado'
 import { enfileirar, fila, pacote } from './fila'
-import { conferirPinLocal } from './pins'
+import { conferirPinLocal, trancarPin } from './pins'
 import { agoraBrasilia, calcularEstadia, duracao, minutosDe } from './tarifador'
 
 /*
@@ -161,6 +161,7 @@ async function entrar(p, d) {
     const u = await pessoa(d.pin)
 
     const uuid = d.acao_uuid || novoUuid()
+    const prova = await trancarPin(d.pin, uuid)
     const codigo = d.codigo || novoCodigo()
     const numero = proximoNumero()
     const entrada = agoraBrasilia()
@@ -174,7 +175,7 @@ async function entrar(p, d) {
     }
     const troco = forma?.tipo === 'dinheiro' && recebido !== null && recebido > diaria.valor ? `Recebido ${moeda(recebido)} · troco ${moeda(recebido - diaria.valor)}` : null
     enfileirar({
-        uuid, tipo: 'estadia_entrada', feita_em: new Date().toISOString(), usuario_id: u.id,
+        uuid, tipo: 'estadia_entrada', feita_em: new Date().toISOString(), usuario_id: u.id, prova,
         dados: { placa, identificacao: placa ? null : ident, modelo, tipo_veiculo_id: tipo.id, pacote_id: diaria?.id ?? null, pagar_agora: pagarAgora,
             forma_pagamento_id: forma?.id ?? null, valor_recebido: recebido, codigo, numero, rotulo: placa || ident },
         local: { estadia },
@@ -226,8 +227,10 @@ async function sair(p, id, d) {
 
     const final = destino === 'mensalista' ? 'mensalista' : cliente > 0 ? destino : c.convenio > 0 ? 'convenio' : c.pago_entrada > 0 ? 'pago_entrada' : 'gratis'
     const conv = convenioId === undefined ? e.convenio : convenioId ? convenioDe(convenioId) : null
+    const uuid = d.acao_uuid || novoUuid()
+    const prova = await trancarPin(d.pin, uuid)
     enfileirar({
-        uuid: d.acao_uuid || novoUuid(), tipo: 'estadia_saida', feita_em: new Date().toISOString(), usuario_id: u.id,
+        uuid, tipo: 'estadia_saida', feita_em: new Date().toISOString(), usuario_id: u.id, prova,
         dados: { codigo: e.codigo, destino, convenio_id: convenioId === undefined ? (e.convenio?.id ?? null) : convenioId, conta_cliente_id: contaId,
             forma_pagamento_id: forma?.id ?? null, forma_nome: forma?.nome ?? null, valor_recebido: recebido, cobrado: cliente,
             perdido, retirada_nome: perdido ? nome : null, retirada_documento: perdido ? doc : null, rotulo: e.rotulo },

@@ -58,7 +58,7 @@ export function sincronizar() {
             if (!lote.length) break
             let r
             try {
-                r = await chamar('POST', '/sincronizar', { acoes: lote.map(({ uuid, tipo, feita_em, usuario_id, dados }) => ({ uuid, tipo, feita_em, usuario_id, dados })) }, { espera: 30000 })
+                r = await chamar('POST', '/sincronizar', { acoes: lote.map(({ uuid, tipo, feita_em, usuario_id, prova, dados }) => ({ uuid, tipo, feita_em, usuario_id, prova, dados })) }, { espera: 30000 })
             } catch (e) {
                 if (e.semInternet) marcarSemInternet(true)
                 return null
